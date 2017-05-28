@@ -61,11 +61,11 @@ fmt:
 	@test -z "$$(gofmt -s -l . 2>&1 | grep -v ^vendor/ | tee /dev/stderr)" || \
 		(echo >&2 "+ please format Go code with 'gofmt -s'" && false)
 
-lint:
-	@echo "+ $@"
-	$(if $(GOLINT), , \
-		$(error Please install golint: `go get -u github.com/golang/lint/golint`))
-	@test -z "$$($(GOLINT) ./... 2>&1 | grep -v ^vendor/ | tee /dev/stderr)"
+#lint:
+#	@echo "+ $@"
+#	$(if $(GOLINT), , \
+#		$(error Please install golint: `go get -u github.com/golang/lint/golint`))
+#	@test -z "$$($(GOLINT) ./... 2>&1 | grep -v ^vendor/ | tee /dev/stderr)"
 
 build:
 	@echo "+ $@"
