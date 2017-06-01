@@ -5,7 +5,6 @@ import (
 	"crypto/x509"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"os"
 	"time"
@@ -116,7 +115,7 @@ func (registry *Registry) ListenAndServe() error {
 		return err
 	}
 
-	log.Printf("IBM: Starting server")
+	log.Warnf("IBM: Starting server")
 
 	if config.HTTP.TLS.Certificate != "" || config.HTTP.TLS.LetsEncrypt.CacheFile != "" {
 		tlsConf := &tls.Config{

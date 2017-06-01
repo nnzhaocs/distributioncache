@@ -25,12 +25,12 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
 	"time"
+	log "github.com/Sirupsen/logrus"
 
 	"github.com/mitchellh/mapstructure"
 	"github.com/ncw/swift"
@@ -857,7 +857,7 @@ func (w *writer) Commit() error {
 		return err
 	}
 
-	log.Printf("IBM: creating manifest %s", w.driver.Container)
+	log.Warnf("IBM: creating manifest %s", w.driver.Container)
 	if err := w.driver.createManifest(w.path, w.driver.Container+"/"+w.segmentsPath); err != nil {
 		return err
 	}

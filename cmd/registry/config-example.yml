@@ -1,14 +1,22 @@
 version: 0.1
+#proxy:
+#  remoteurl: https://registry-1.docker.io
 log:
+  level: debug
   fields:
     service: registry
 storage:
   cache:
     blobdescriptor: inmemory
-  filesystem:
-    rootdirectory: /var/lib/registry
+  swift: 
+    username: admin
+    password: ADMIN_PASS
+    tenant: admin
+    authurl: http://127.0.0.1:5000/v2.0
+    insecureskipverify: true 
+    container: my_docker_registry 
 http:
-  addr: :5000
+  addr: :5005
   headers:
     X-Content-Type-Options: [nosniff]
 health:
