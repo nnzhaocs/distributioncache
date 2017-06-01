@@ -30,6 +30,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
 	log "github.com/Sirupsen/logrus"
 
 	"github.com/mitchellh/mapstructure"
@@ -178,6 +179,8 @@ func New(params Parameters) (*Driver, error) {
 		TLSClientConfig:     &tls.Config{InsecureSkipVerify: params.InsecureSkipVerify},
 	}
 
+	log.Warnf("IBM: create new driver")
+
 	ct := &swift.Connection{
 		UserName:       params.Username,
 		ApiKey:         params.Password,
@@ -292,6 +295,7 @@ func (d *driver) Name() string {
 
 // GetContent retrieves the content stored at "path" as a []byte.
 func (d *driver) GetContent(ctx context.Context, path string) ([]byte, error) {
+	log.Warnf("IBM: Get content")
 	content, err := d.Conn.ObjectGetBytes(d.Container, d.swiftPath(path))
 	if err == swift.ObjectNotFound {
 		return nil, storagedriver.PathNotFoundError{Path: path}
@@ -301,6 +305,7 @@ func (d *driver) GetContent(ctx context.Context, path string) ([]byte, error) {
 
 // PutContent stores the []byte content at a location designated by "path".
 func (d *driver) PutContent(ctx context.Context, path string, contents []byte) error {
+	log.Warnf("IBM: Put content")
 	err := d.Conn.ObjectPutBytes(d.Container, d.swiftPath(path), contents, contentType)
 	if err == swift.ObjectNotFound {
 		return storagedriver.PathNotFoundError{Path: path}
@@ -311,6 +316,8 @@ func (d *driver) PutContent(ctx context.Context, path string, contents []byte) e
 // Reader retrieves an io.ReadCloser for the content stored at "path" with a
 // given byte offset.
 func (d *driver) Reader(ctx context.Context, path string, offset int64) (io.ReadCloser, error) {
+
+	log.Warnf("IBM: Reader")
 	headers := make(swift.Headers)
 	headers["Range"] = "bytes=" + strconv.FormatInt(offset, 10) + "-"
 
@@ -353,6 +360,8 @@ func (d *driver) Reader(ctx context.Context, path string, offset int64) (io.Read
 // Writer returns a FileWriter which will store the content written to it
 // at the location designated by "path" after the call to Commit.
 func (d *driver) Writer(ctx context.Context, path string, append bool) (storagedriver.FileWriter, error) {
+
+	log.Warnf("IBM: Writer")
 	var (
 		segments     []swift.Object
 		segmentsPath string
@@ -395,6 +404,8 @@ func (d *driver) Writer(ctx context.Context, path string, append bool) (storaged
 // Stat retrieves the FileInfo for the given path, including the current size
 // in bytes and the creation time.
 func (d *driver) Stat(ctx context.Context, path string) (storagedriver.FileInfo, error) {
+
+	log.Warnf("IBM: stat")
 	swiftPath := d.swiftPath(path)
 	opts := &swift.ObjectsOpts{
 		Prefix:    swiftPath,
@@ -461,6 +472,8 @@ func (d *driver) Stat(ctx context.Context, path string) (storagedriver.FileInfo,
 
 // List returns a list of the objects that are direct descendants of the given path.
 func (d *driver) List(ctx context.Context, path string) ([]string, error) {
+
+	log.Warnf("IBM: delete")
 	var files []string
 
 	prefix := d.swiftPath(path)
@@ -592,6 +605,9 @@ func (d *driver) Delete(ctx context.Context, path string) error {
 
 // URLFor returns a URL which may be used to retrieve the content stored at the given path.
 func (d *driver) URLFor(ctx context.Context, path string, options map[string]interface{}) (string, error) {
+
+	log.Warnf("IBM: URL")
+
 	if d.SecretKey == "" {
 		return "", storagedriver.ErrUnsupportedMethod{}
 	}
@@ -660,6 +676,9 @@ func (d *driver) swiftSegmentPath(path string) (string, error) {
 }
 
 func (d *driver) getAllSegments(path string) ([]swift.Object, error) {
+
+	log.Warnf("IBM: Get all Segments")
+
 	//a simple container listing works 99.9% of the time
 	segments, err := d.Conn.ObjectsAll(d.Container, &swift.ObjectsOpts{Prefix: path})
 	if err != nil {
@@ -709,6 +728,9 @@ func (d *driver) getAllSegments(path string) ([]swift.Object, error) {
 }
 
 func (d *driver) createManifest(path string, segments string) error {
+
+	log.Warnf("IBM: Inside create manifest")
+
 	headers := make(swift.Headers)
 	headers["X-Object-Manifest"] = segments
 	manifest, err := d.Conn.ObjectCreate(d.Container, d.swiftPath(path), false, "", contentType, headers)
@@ -803,6 +825,7 @@ func (w *writer) Write(p []byte) (int, error) {
 		return 0, fmt.Errorf("already cancelled")
 	}
 
+	log.Warnf("IBM: write data")
 	n, err := w.bw.Write(p)
 	w.size += int64(n)
 	return n, err
