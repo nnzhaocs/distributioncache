@@ -25,6 +25,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -856,6 +857,7 @@ func (w *writer) Commit() error {
 		return err
 	}
 
+	log.Printf("IBM: creating manifest %s", w.driver.Container)
 	if err := w.driver.createManifest(w.path, w.driver.Container+"/"+w.segmentsPath); err != nil {
 		return err
 	}
