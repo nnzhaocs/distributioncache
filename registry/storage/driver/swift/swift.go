@@ -405,7 +405,7 @@ func (d *driver) Writer(ctx context.Context, path string, append bool) (storaged
 // in bytes and the creation time.
 func (d *driver) Stat(ctx context.Context, path string) (storagedriver.FileInfo, error) {
 
-	log.Warnf("IBM: stat")
+	log.Warnf("IBM: retrieving stat %s", path)
 	swiftPath := d.swiftPath(path)
 	opts := &swift.ObjectsOpts{
 		Prefix:    swiftPath,
