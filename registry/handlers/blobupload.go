@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/url"
 
+	log "github.com/Sirupsen/logrus"
 	"github.com/docker/distribution"
 	ctxu "github.com/docker/distribution/context"
 	"github.com/docker/distribution/reference"
@@ -22,6 +23,8 @@ func blobUploadDispatcher(ctx *Context, r *http.Request) http.Handler {
 		Context: ctx,
 		UUID:    getUploadUUID(ctx),
 	}
+
+	log.Warnf("IBM: blobUploadDispatcher")
 
 	handler := handlers.MethodHandler{
 		"GET":  http.HandlerFunc(buh.GetUploadStatus),
@@ -105,6 +108,9 @@ type blobUploadHandler struct {
 // StartBlobUpload begins the blob upload process and allocates a server-side
 // blob writer session, optionally mounting the blob from a separate repository.
 func (buh *blobUploadHandler) StartBlobUpload(w http.ResponseWriter, r *http.Request) {
+
+	log.Warnf("IBM: StartBlobUpload")
+
 	var options []distribution.BlobCreateOption
 
 	fromRepo := r.FormValue("from")
