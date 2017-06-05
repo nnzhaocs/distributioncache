@@ -28,6 +28,7 @@ func (bs *blobStore) Get(ctx context.Context, dgst digest.Digest) ([]byte, error
 		return nil, err
 	}
 
+	log.Warnf("IBM: calling get content from appropriate driver %s", dgst)
 	p, err := bs.driver.GetContent(ctx, bp)
 	if err != nil {
 		switch err.(type) {

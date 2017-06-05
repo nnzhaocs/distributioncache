@@ -179,6 +179,8 @@ func (d *driver) PutContent(ctx context.Context, subPath string, contents []byte
 // Reader retrieves an io.ReadCloser for the content stored at "path" with a
 // given byte offset.
 func (d *driver) Reader(ctx context.Context, path string, offset int64) (io.ReadCloser, error) {
+
+	log.Warnf("IBM: Reading %s from offset %d", path, offset)
 	file, err := os.OpenFile(d.fullPath(path), os.O_RDONLY, 0644)
 	if err != nil {
 		if os.IsNotExist(err) {
