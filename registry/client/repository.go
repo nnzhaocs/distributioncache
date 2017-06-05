@@ -475,7 +475,7 @@ func (ms *manifests) Get(ctx context.Context, dgst digest.Digest, options ...dis
 		return nil, err
 	}
 
-	log.Warnf("IBM: HTTP GET: %s %s", t.name, tag)
+	log.Warnf("IBM: HTTP GET: %s", dgst)
 
 	defer resp.Body.Close()
 	if resp.StatusCode == http.StatusNotModified {
@@ -545,7 +545,7 @@ func (ms *manifests) Put(ctx context.Context, m distribution.Manifest, options .
 		return "", err
 	}
 
-	log.Warnf("IBM: HTTP PUT: %s %s", t.name, tag)
+	log.Warnf("IBM: HTTP PUT..")
 
 	putRequest, err := http.NewRequest("PUT", manifestURL, bytes.NewReader(p))
 	if err != nil {
