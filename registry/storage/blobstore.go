@@ -3,6 +3,7 @@ package storage
 import (
 	"path"
 
+	log "github.com/Sirupsen/logrus"
 	"github.com/docker/distribution"
 	"github.com/docker/distribution/context"
 	"github.com/docker/distribution/registry/storage/driver"
@@ -73,6 +74,8 @@ func (bs *blobStore) Put(ctx context.Context, mediaType string, p []byte) (distr
 	if err != nil {
 		return distribution.Descriptor{}, err
 	}
+
+	log.Warnf("IBM: writing small object %s", mediaType)
 
 	// TODO(stevvooe): Write out mediatype here, as well.
 	return distribution.Descriptor{
