@@ -3,6 +3,7 @@ package handlers
 import (
 	"net/http"
 
+	log "github.com/Sirupsen/logrus"
 	"github.com/docker/distribution"
 	"github.com/docker/distribution/context"
 	"github.com/docker/distribution/registry/api/errcode"
@@ -56,6 +57,7 @@ type blobHandler struct {
 func (bh *blobHandler) GetBlob(w http.ResponseWriter, r *http.Request) {
 	context.GetLogger(bh).Debug("GetBlob")
 	blobs := bh.Repository.Blobs(bh)
+	log.Warnf("FAST2: handler blob.go GetBlob")
 	desc, err := blobs.Stat(bh, bh.Digest)
 	if err != nil {
 		if err == distribution.ErrBlobUnknown {

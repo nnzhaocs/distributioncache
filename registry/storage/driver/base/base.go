@@ -39,7 +39,7 @@ package base
 
 import (
 	"io"
-
+	log "github.com/Sirupsen/logrus"
 	"github.com/docker/distribution/context"
 	storagedriver "github.com/docker/distribution/registry/storage/driver"
 )
@@ -79,6 +79,8 @@ func (base *Base) setDriverName(e error) error {
 
 // GetContent wraps GetContent of underlying storage driver.
 func (base *Base) GetContent(ctx context.Context, path string) ([]byte, error) {
+
+	log.Warnf("FAST4: base get content")	
 	ctx, done := context.WithTrace(ctx)
 	defer done("%s.GetContent(%q)", base.Name(), path)
 
@@ -92,6 +94,7 @@ func (base *Base) GetContent(ctx context.Context, path string) ([]byte, error) {
 
 // PutContent wraps PutContent of underlying storage driver.
 func (base *Base) PutContent(ctx context.Context, path string, content []byte) error {
+	log.Warnf("FAST4: base put content")
 	ctx, done := context.WithTrace(ctx)
 	defer done("%s.PutContent(%q)", base.Name(), path)
 
@@ -104,9 +107,9 @@ func (base *Base) PutContent(ctx context.Context, path string, content []byte) e
 
 // Reader wraps Reader of underlying storage driver.
 func (base *Base) Reader(ctx context.Context, path string, offset int64) (io.ReadCloser, error) {
+	log.Warnf("FAST4: base reader")
 	ctx, done := context.WithTrace(ctx)
 	defer done("%s.Reader(%q, %d)", base.Name(), path, offset)
-
 	if offset < 0 {
 		return nil, storagedriver.InvalidOffsetError{Path: path, Offset: offset, DriverName: base.StorageDriver.Name()}
 	}
@@ -121,6 +124,7 @@ func (base *Base) Reader(ctx context.Context, path string, offset int64) (io.Rea
 
 // Writer wraps Writer of underlying storage driver.
 func (base *Base) Writer(ctx context.Context, path string, append bool) (storagedriver.FileWriter, error) {
+	log.Warnf("FAST4: base writer")
 	ctx, done := context.WithTrace(ctx)
 	defer done("%s.Writer(%q, %v)", base.Name(), path, append)
 
@@ -134,6 +138,7 @@ func (base *Base) Writer(ctx context.Context, path string, append bool) (storage
 
 // Stat wraps Stat of underlying storage driver.
 func (base *Base) Stat(ctx context.Context, path string) (storagedriver.FileInfo, error) {
+	log.Warnf("FAST4: base stat")
 	ctx, done := context.WithTrace(ctx)
 	defer done("%s.Stat(%q)", base.Name(), path)
 

@@ -33,6 +33,7 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 
+	"github.com/docker/distribution/registry/storage/driver/cache"
 	"github.com/mitchellh/mapstructure"
 	"github.com/ncw/swift"
 
@@ -59,6 +60,9 @@ var readAfterWriteTimeout = 15 * time.Second
 
 // readAfterWriteWait defines the time to sleep between two retries
 var readAfterWriteWait = 200 * time.Millisecond
+
+// cache for blobs
+var memCache *cache.MemCache
 
 // Parameters A struct that encapsulates all of the driver parameters after all values have been set
 type Parameters struct {
@@ -180,6 +184,7 @@ func New(params Parameters) (*Driver, error) {
 	}
 
 	log.Warnf("IBM: create new driver")
+	memCache = cache.Init(4096)
 
 	ct := &swift.Connection{
 		UserName:       params.Username,
@@ -295,17 +300,30 @@ func (d *driver) Name() string {
 
 // GetContent retrieves the content stored at "path" as a []byte.
 func (d *driver) GetContent(ctx context.Context, path string) ([]byte, error) {
-	log.Warnf("IBM: Get content")
+	log.Warnf("FAST: Swift Get Content %s", string(path))
+//	v, get_err := memCache.Get(string(path))
+//	if get_err != nil {
+//		//return errors.Trace(get_err)
+//		log.Warnf("yue:err=%s", get_err)
+//	}
+//	if v != nil { // yue: read hit
+//		log.Warnf("FAST: cache hit.. %s", string(v))
+//		return v, nil
+//	}
+        log.Warnf("FAST: cache miss.. %d", memCache.GetNumElem())
 	content, err := d.Conn.ObjectGetBytes(d.Container, d.swiftPath(path))
 	if err == swift.ObjectNotFound {
 		return nil, storagedriver.PathNotFoundError{Path: path}
 	}
+//	log.Warnf("FAST: setting cache %s", content)
+//	memCache.Set(string(path), content)
 	return content, err
 }
 
 // PutContent stores the []byte content at a location designated by "path".
 func (d *driver) PutContent(ctx context.Context, path string, contents []byte) error {
-	log.Warnf("IBM: Put content")
+	log.Warnf("FAST: Swift Put Content %s", string(path))
+	memCache.Set(string(path), contents)
 	err := d.Conn.ObjectPutBytes(d.Container, d.swiftPath(path), contents, contentType)
 	if err == swift.ObjectNotFound {
 		return storagedriver.PathNotFoundError{Path: path}
@@ -317,7 +335,7 @@ func (d *driver) PutContent(ctx context.Context, path string, contents []byte) e
 // given byte offset.
 func (d *driver) Reader(ctx context.Context, path string, offset int64) (io.ReadCloser, error) {
 
-	log.Warnf("IBM: Reader")
+	log.Warnf("FAST: Reader swift %s", string(path))
 	headers := make(swift.Headers)
 	headers["Range"] = "bytes=" + strconv.FormatInt(offset, 10) + "-"
 
@@ -360,7 +378,7 @@ func (d *driver) Reader(ctx context.Context, path string, offset int64) (io.Read
 // Writer returns a FileWriter which will store the content written to it
 // at the location designated by "path" after the call to Commit.
 func (d *driver) Writer(ctx context.Context, path string, append bool) (storagedriver.FileWriter, error) {
-
+	log.Warnf("FAST: Writer swift")
 	log.Warnf("IBM: Writer")
 	var (
 		segments     []swift.Object
@@ -404,8 +422,8 @@ func (d *driver) Writer(ctx context.Context, path string, append bool) (storaged
 // Stat retrieves the FileInfo for the given path, including the current size
 // in bytes and the creation time.
 func (d *driver) Stat(ctx context.Context, path string) (storagedriver.FileInfo, error) {
-
-	log.Warnf("IBM: retrieving stat %s", path)
+	log.Warnf("FAST: Stat swift")
+	log.Warnf("IBM: stat")
 	swiftPath := d.swiftPath(path)
 	opts := &swift.ObjectsOpts{
 		Prefix:    swiftPath,
@@ -472,7 +490,7 @@ func (d *driver) Stat(ctx context.Context, path string) (storagedriver.FileInfo,
 
 // List returns a list of the objects that are direct descendants of the given path.
 func (d *driver) List(ctx context.Context, path string) ([]string, error) {
-
+	log.Warnf("FAST: list swift")
 	log.Warnf("IBM: delete")
 	var files []string
 
@@ -519,6 +537,9 @@ func (d *driver) Move(ctx context.Context, sourcePath string, destPath string) e
 
 // Delete recursively deletes all objects stored at "path" and its subpaths.
 func (d *driver) Delete(ctx context.Context, path string) error {
+
+	log.Warnf("FAST: Delete swift")
+
 	opts := swift.ObjectsOpts{
 		Prefix: d.swiftPath(path) + "/",
 	}
@@ -607,6 +628,7 @@ func (d *driver) Delete(ctx context.Context, path string) error {
 func (d *driver) URLFor(ctx context.Context, path string, options map[string]interface{}) (string, error) {
 
 	log.Warnf("IBM: URL")
+	log.Warnf("FAST: URL swift")
 
 	if d.SecretKey == "" {
 		return "", storagedriver.ErrUnsupportedMethod{}
@@ -662,10 +684,15 @@ func (d *driver) URLFor(ctx context.Context, path string, options map[string]int
 }
 
 func (d *driver) swiftPath(path string) string {
+
+	log.Warnf("FAST: swiftpath swift")
 	return strings.TrimLeft(strings.TrimRight(d.Prefix+"/files"+path, "/"), "/")
 }
 
 func (d *driver) swiftSegmentPath(path string) (string, error) {
+
+	log.Warnf("FAST: WriteSegpath swift")
+
 	checksum := sha1.New()
 	random := make([]byte, 32)
 	if _, err := rand.Read(random); err != nil {
@@ -678,6 +705,8 @@ func (d *driver) swiftSegmentPath(path string) (string, error) {
 func (d *driver) getAllSegments(path string) ([]swift.Object, error) {
 
 	log.Warnf("IBM: Get all Segments")
+
+	log.Warnf("FAST: GetAllSegment swift")
 
 	//a simple container listing works 99.9% of the time
 	segments, err := d.Conn.ObjectsAll(d.Container, &swift.ObjectsOpts{Prefix: path})
@@ -750,6 +779,8 @@ func (d *driver) createManifest(path string, segments string) error {
 }
 
 func chunkFilenames(slice []string, maxSize int) (chunks [][]string, err error) {
+
+	log.Warnf("FAST: chunkfilename swift")
 	if maxSize > 0 {
 		for offset := 0; offset < len(slice); offset += maxSize {
 			chunkSize := maxSize
@@ -782,6 +813,8 @@ func generateSecret() (string, error) {
 }
 
 func getSegmentPath(segmentsPath string, partNumber int) string {
+
+	log.Warnf("FAST: GetSegmentPath swift")
 	return fmt.Sprintf("%s/%016d", segmentsPath, partNumber)
 }
 
@@ -825,7 +858,7 @@ func (w *writer) Write(p []byte) (int, error) {
 		return 0, fmt.Errorf("already cancelled")
 	}
 
-	log.Warnf("IBM: write data")
+	log.Warnf("FAST: write swift")
 	n, err := w.bw.Write(p)
 	w.size += int64(n)
 	return n, err
@@ -890,6 +923,8 @@ func (w *writer) Commit() error {
 }
 
 func (w *writer) waitForSegmentsToShowUp() error {
+
+	log.Warnf("FAST: WaitForSegment swift")
 	var err error
 	waitingTime := readAfterWriteWait
 	endTime := time.Now().Add(readAfterWriteTimeout)
@@ -922,6 +957,7 @@ type segmentWriter struct {
 
 func (sw *segmentWriter) Write(p []byte) (int, error) {
 	n := 0
+	log.Warnf("FAST: Write swift")
 	for offset := 0; offset < len(p); offset += sw.maxChunkSize {
 		chunkSize := sw.maxChunkSize
 		if offset+chunkSize > len(p) {

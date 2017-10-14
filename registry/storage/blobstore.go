@@ -23,12 +23,13 @@ var _ distribution.BlobProvider = &blobStore{}
 
 // Get implements the BlobReadService.Get call.
 func (bs *blobStore) Get(ctx context.Context, dgst digest.Digest) ([]byte, error) {
+
+	log.Warnf("FAST: calling get content from appropriate driver %s", dgst)
 	bp, err := bs.path(dgst)
 	if err != nil {
 		return nil, err
 	}
 
-	log.Warnf("IBM: calling get content from appropriate driver %s", dgst)
 	p, err := bs.driver.GetContent(ctx, bp)
 	if err != nil {
 		switch err.(type) {
@@ -60,6 +61,8 @@ func (bs *blobStore) Open(ctx context.Context, dgst digest.Digest) (distribution
 // content is already present, only the digest will be returned. This should
 // only be used for small objects, such as manifests. This implemented as a convenience for other Put implementations
 func (bs *blobStore) Put(ctx context.Context, mediaType string, p []byte) (distribution.Descriptor, error) {
+
+	log.Warnf("FAST: calling put blobstore")
 	dgst := digest.FromBytes(p)
 	desc, err := bs.statter.Stat(ctx, dgst)
 	if err == nil {
@@ -123,6 +126,8 @@ func (bs *blobStore) Enumerate(ctx context.Context, ingester func(dgst digest.Di
 // path returns the canonical path for the blob identified by digest. The blob
 // may or may not exist.
 func (bs *blobStore) path(dgst digest.Digest) (string, error) {
+
+	log.Warnf("FAST: path blobstore")
 	bp, err := pathFor(blobDataPathSpec{
 		digest: dgst,
 	})
@@ -139,11 +144,15 @@ func (bs *blobStore) path(dgst digest.Digest) (string, error) {
 func (bs *blobStore) link(ctx context.Context, path string, dgst digest.Digest) error {
 	// The contents of the "link" file are the exact string contents of the
 	// digest, which is specified in that package.
+	log.Warnf("FAST: link blobstore")
 	return bs.driver.PutContent(ctx, path, []byte(dgst))
 }
 
 // readlink returns the linked digest at path.
 func (bs *blobStore) readlink(ctx context.Context, path string) (digest.Digest, error) {
+
+
+	log.Warnf("FAST: readlink blobstore")
 	content, err := bs.driver.GetContent(ctx, path)
 	if err != nil {
 		return "", err
@@ -159,6 +168,7 @@ func (bs *blobStore) readlink(ctx context.Context, path string) (digest.Digest, 
 
 // resolve reads the digest link at path and returns the blob store path.
 func (bs *blobStore) resolve(ctx context.Context, path string) (string, error) {
+	log.Warnf("FAST: resolve blobstore")
 	dgst, err := bs.readlink(ctx, path)
 	if err != nil {
 		return "", err
