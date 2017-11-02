@@ -250,6 +250,42 @@ func NewApp(ctx context.Context, config *configuration.Configuration) *App {
 		}
 	}
 
+	if cc, ok := config.Storage["blobcache"]; ok {
+		fmt.Printf("hehehehehere\n\n")
+		c, ok := cc["type"]
+		if ok {
+			switch c {
+			case "lru":
+				options = append(options, storage.SetCacheType("lru"))
+			case "arc":
+				options = append(options, storage.SetCacheType("arc"))
+			default:
+				if c != "" {
+					panic(fmt.Sprintf("invalid cache type: %#v", c))
+				}
+			}
+		}
+		size, ok := cc["size"]
+		if ok {
+			switch size := size.(type) {
+			case int:
+				options = append(options, storage.SetCacheSize(size))
+			default:
+				panic(fmt.Sprintf("invalid type for cache size config: %#v", size))
+			}
+		}
+
+		sizelim, ok := cc["sizelimit"]
+		if ok {
+			switch sizelim := sizelim.(type) {
+			case int:
+				options = append(options, storage.SetCacheSizeLimit(sizelim))
+			default:
+				panic(fmt.Sprintf("invalid type for cache entry size limit config: %#v", sizelim))
+			}
+		}
+	}
+
 	// configure storage caches
 	if cc, ok := config.Storage["cache"]; ok {
 		v, ok := cc["blobdescriptor"]

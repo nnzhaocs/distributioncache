@@ -1,6 +1,7 @@
 package cache
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/allegro/bigcache"
@@ -13,6 +14,53 @@ type MemCache struct {
 	numElements int64
 	readMiss    float32
 	readHit     float32
+	arc         bool
+	capacity    int
+	entryLimit  int
+}
+
+func (cache *MemCache) Init() error {
+	config := bigcache.Config{
+		Shards:           1024,
+		LifeWindow:       600 * time.Minute,
+		MaxEntrySize:     cache.entryLimit,
+		Verbose:          true,
+		HardMaxCacheSize: cache.capacity,
+		OnRemove:         nil,
+	}
+	c, err := bigcache.NewBigCache(config)
+	if err != nil {
+		return err
+	}
+	cache.mc = c
+	return err
+}
+
+func (cache *MemCache) GetEntryLimit() int {
+	return cache.entryLimit
+}
+
+func (cache *MemCache) SetType(t string) error {
+	switch t {
+	case "arc":
+		cache.arc = true
+	default:
+		cache.arc = false
+	}
+	fmt.Printf("cache type: %s\n\n", t)
+	return nil
+}
+
+func (cache *MemCache) SetSize(size int) error {
+	cache.capacity = size
+	fmt.Printf("Cache Size: %d\n\n", cache.capacity)
+	return nil
+}
+
+func (cache *MemCache) SetEntrylimit(entryLimit int) error {
+	cache.entryLimit = entryLimit * 1024 * 1024
+	fmt.Printf("CacheSize: %d\n\n", cache.entryLimit)
+	return nil
 }
 
 func (cache *MemCache) Set(k string, v []byte) {
@@ -29,7 +77,7 @@ func (cache *MemCache) Get(k string) ([]byte, error) {
 		//return nil, errors.Trace(err)
 		cache.readMiss++
 	} else {
-//		log.Debugf("ali:cache get v=%s", v)
+		//		log.Debugf("ali:cache get v=%s", v)
 		cache.readHit++
 	}
 	return v, nil
@@ -67,5 +115,8 @@ func Init(maxSize int) *MemCache {
 		numElements: 0,
 		readMiss:    0.0,
 		readHit:     0.0,
+		arc:         true,
+		capacity:    0,
+		entryLimit:  0,
 	}
 }

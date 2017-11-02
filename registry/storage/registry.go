@@ -8,6 +8,7 @@ import (
 	"github.com/docker/distribution/reference"
 	"github.com/docker/distribution/registry/storage/cache"
 	storagedriver "github.com/docker/distribution/registry/storage/driver"
+	blobcache "github.com/docker/distribution/registry/storage/driver/cache"
 	"github.com/docker/libtrust"
 )
 
@@ -39,6 +40,27 @@ type RegistryOption func(*registry) error
 func EnableRedirect(registry *registry) error {
 	registry.blobServer.redirect = true
 	return nil
+}
+
+func SetCacheType(t string) RegistryOption {
+	return func(registry *registry) error {
+		registry.blobServer.cache.SetType(t)
+		return nil
+	}
+}
+
+func SetCacheSize(size int) RegistryOption {
+	return func(registry *registry) error {
+		registry.blobServer.cache.SetSize(size)
+		return nil
+	}
+}
+
+func SetCacheSizeLimit(sizelim int) RegistryOption {
+	return func(registry *registry) error {
+		registry.blobServer.cache.SetEntrylimit(sizelim)
+		return nil
+	}
 }
 
 // EnableDelete is a functional option for NewRegistry. It enables deletion on
@@ -130,6 +152,7 @@ func NewRegistry(ctx context.Context, driver storagedriver.StorageDriver, option
 			driver:  driver,
 			statter: statter,
 			pathFn:  bs.path,
+			cache:   new(blobcache.MemCache),
 		},
 		statter:                statter,
 		resumableDigestEnabled: true,
@@ -140,7 +163,7 @@ func NewRegistry(ctx context.Context, driver storagedriver.StorageDriver, option
 			return nil, err
 		}
 	}
-
+	registry.blobServer.cache.Init()
 	return registry, nil
 }
 
