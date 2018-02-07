@@ -282,19 +282,13 @@ under /registry of this registries name/port. It will then watch for children of
 If an error occurs it will send it to reporter.
 */
 func watcher(zookeeperName string, registryName string, ch *consistentHash.ConsistentHash, reporter chan error) {
+	log.Debugf("Zookeeper: Attempting to connect to %s", zookeeperName)
 	zk, session, err := zookeeper.Dial(zookeeperName, 5e9)
 	if err != nil {
 		reporter <- err
 		return
 	}
 	defer zk.Close()
-	event := <-session
-
-	if event.State != zookeeper.STATE_CONNECTED {
-		reporter <- fmt.Errorf("Zookeeper: Can't connect: %v", event)
-		return
-	}
-
 	//Time Wait for connection to Zookeeper to be established, make configurable?
 	select {
 	case event := <-session:
@@ -302,6 +296,8 @@ func watcher(zookeeperName string, registryName string, ch *consistentHash.Consi
 			reporter <- fmt.Errorf("Zookeeper: Can't connect: %v", event)
 			return
 		}
+		log.Debugf("Zookeeper: Connected")
+		reporter <- nil
 	case <-time.After(30 * time.Second):
 		reporter <- fmt.Errorf("Zookeeper connection timeout")
 		return
