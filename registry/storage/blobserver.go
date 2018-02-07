@@ -2,7 +2,9 @@ package storage
 
 import (
 	"bytes"
+
 	"encoding/json"
+
 	"fmt"
 	"net/http"
 	"strings"
@@ -56,7 +58,7 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 	if err != nil {
 		return err
 	}
-
+	log.Warnf("entering serveBlob")
 	log.Warnf("FAST: Serving blob %s", desc.Digest.String())
 	path, err := bs.pathFn(desc.Digest)
 	if err != nil {
