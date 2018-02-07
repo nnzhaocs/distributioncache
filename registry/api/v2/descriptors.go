@@ -1583,6 +1583,76 @@ var routeDescriptors = []RouteDescriptor{
 			},
 		},
 	},
+	{
+		Name:        RouteNameRegistries,
+		Path:        "/v2/registries",
+		Entity:      "Registries",
+		Description: "List a set of available registries in the cluster.",
+		Methods: []MethodDescriptor{
+			{
+				Method:      "GET",
+				Description: "Retrieve a sorted, json list of registries available.",
+				Requests: []RequestDescriptor{
+					{
+						Name:        "Registry Fetch",
+						Description: "Request an unabridged list of registries available.",
+						Successes: []ResponseDescriptor{
+							{
+								Description: "Returns the unabridged list of registries as a json response.",
+								StatusCode:  http.StatusOK,
+								Headers: []ParameterDescriptor{
+									{
+										Name:        "Content-Length",
+										Type:        "integer",
+										Description: "Length of the JSON response body.",
+										Format:      "<length>",
+									},
+								},
+								Body: BodyDescriptor{
+									ContentType: "application/json; charset=utf-8",
+									Format: `{
+	"repositories": [
+		<name>,
+		...
+	]
+}`,
+								},
+							},
+						},
+					},
+					{
+						Name:            "Registries Fetch Paginated",
+						Description:     "Return the specified portion of repositories.",
+						QueryParameters: paginationParameters,
+						Successes: []ResponseDescriptor{
+							{
+								StatusCode: http.StatusOK,
+								Body: BodyDescriptor{
+									ContentType: "application/json; charset=utf-8",
+									Format: `{
+	"repositories": [
+		<name>,
+		...
+	]
+	"next": "<url>?last=<name>&n=<last value of n>"
+}`,
+								},
+								Headers: []ParameterDescriptor{
+									{
+										Name:        "Content-Length",
+										Type:        "integer",
+										Description: "Length of the JSON response body.",
+										Format:      "<length>",
+									},
+									linkHeader,
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	},
 }
 
 var routeDescriptorsMap map[string]RouteDescriptor

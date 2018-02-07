@@ -12,6 +12,7 @@ const (
 	RouteNameBlobUpload      = "blob-upload"
 	RouteNameBlobUploadChunk = "blob-upload-chunk"
 	RouteNameCatalog         = "catalog"
+	RouteNameRegistries      = "registries"
 )
 
 var allEndpoints = []string{
@@ -21,6 +22,7 @@ var allEndpoints = []string{
 	RouteNameBlob,
 	RouteNameBlobUpload,
 	RouteNameBlobUploadChunk,
+	RouteNameRegistries,
 }
 
 // Router builds a gorilla router with named routes for the various API

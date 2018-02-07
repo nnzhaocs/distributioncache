@@ -1,6 +1,7 @@
 package proxy
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -115,6 +116,21 @@ func (pr *proxyingRegistry) Scope() distribution.Scope {
 
 func (pr *proxyingRegistry) Repositories(ctx context.Context, repos []string, last string) (n int, err error) {
 	return pr.embedded.Repositories(ctx, repos, last)
+}
+
+type registriesAPIResponse struct {
+	Registries []string
+}
+
+func (pr *proxyingRegistry) URLWriter(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
+	registries := []string{}
+	enc := json.NewEncoder(w)
+	if err := enc.Encode(registriesAPIResponse{
+		Registries: registries,
+	}); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (pr *proxyingRegistry) Repository(ctx context.Context, name reference.Named) (distribution.Repository, error) {

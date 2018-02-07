@@ -167,6 +167,11 @@ type BlobServer interface {
 	ServeBlob(ctx context.Context, w http.ResponseWriter, r *http.Request, dgst digest.Digest) error
 }
 
+//Used by registry request to return list of registries
+type BlobURL interface {
+    URLWriter(ctx context.Context, w http.ResponseWriter, r *http.Request) error
+}
+
 // BlobIngester ingests blob data.
 type BlobIngester interface {
 	// Put inserts the content p into the blob service, returning a descriptor

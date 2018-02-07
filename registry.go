@@ -46,6 +46,8 @@ type Namespace interface {
 
 	// BlobStatter returns a BlobStatter to control
 	BlobStatter() BlobStatter
+
+    BlobURL
 }
 
 // RepositoryEnumerator describes an operation to enumerate repositories

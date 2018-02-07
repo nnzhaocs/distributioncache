@@ -106,6 +106,7 @@ func NewApp(ctx context.Context, config *configuration.Configuration) *App {
 	app.register(v2.RouteNameBlob, blobDispatcher)
 	app.register(v2.RouteNameBlobUpload, blobUploadDispatcher)
 	app.register(v2.RouteNameBlobUploadChunk, blobUploadDispatcher)
+	app.register(v2.RouteNameRegistries, registriesDispatcher)
 
 	// override the storage driver's UA string for registry outbound HTTP requests
 	storageParams := config.Storage.Parameters()
@@ -246,6 +247,42 @@ func NewApp(ctx context.Context, config *configuration.Configuration) *App {
 				}
 				re := regexp.MustCompile(strings.Join(config.Validation.Manifests.URLs.Deny, "|"))
 				options = append(options, storage.ManifestURLsDenyRegexp(re))
+			}
+		}
+	}
+
+	if cc, ok := config.Storage["blobcache"]; ok {
+		fmt.Printf("hehehehehere\n\n")
+		c, ok := cc["type"]
+		if ok {
+			switch c {
+			case "lru":
+				options = append(options, storage.SetCacheType("lru"))
+			case "arc":
+				options = append(options, storage.SetCacheType("arc"))
+			default:
+				if c != "" {
+					panic(fmt.Sprintf("invalid cache type: %#v", c))
+				}
+			}
+		}
+		size, ok := cc["size"]
+		if ok {
+			switch size := size.(type) {
+			case int:
+				options = append(options, storage.SetCacheSize(size))
+			default:
+				panic(fmt.Sprintf("invalid type for cache size config: %#v", size))
+			}
+		}
+
+		sizelim, ok := cc["sizelimit"]
+		if ok {
+			switch sizelim := sizelim.(type) {
+			case int:
+				options = append(options, storage.SetCacheSizeLimit(sizelim))
+			default:
+				panic(fmt.Sprintf("invalid type for cache entry size limit config: %#v", sizelim))
 			}
 		}
 	}
@@ -860,7 +897,7 @@ func (app *App) eventBridge(ctx *Context, r *http.Request) notifications.Listene
 func (app *App) nameRequired(r *http.Request) bool {
 	route := mux.CurrentRoute(r)
 	routeName := route.GetName()
-	return route == nil || (routeName != v2.RouteNameBase && routeName != v2.RouteNameCatalog)
+	return route == nil || (routeName != v2.RouteNameBase && routeName != v2.RouteNameCatalog && routeName != v2.RouteNameRegistries)
 }
 
 // apiBase implements a simple yes-man for doing overall checks against the
