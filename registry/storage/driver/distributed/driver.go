@@ -297,7 +297,6 @@ func watcher(zookeeperName string, registryName string, ch *consistentHash.Consi
 			return
 		}
 		log.Debugf("Zookeeper: Connected")
-		reporter <- nil
 	case <-time.After(30 * time.Second):
 		reporter <- fmt.Errorf("Zookeeper connection timeout")
 		return
@@ -320,14 +319,17 @@ func watcher(zookeeperName string, registryName string, ch *consistentHash.Consi
 		reporter <- fmt.Errorf("Zookeeper: Can't create %s: %v", self, err)
 		return
 	}
+	log.Warnf("Zookeeper: %s created", self)
 	reporter <- nil
 
 	//Change Consistent hash table based on changes in zookeeper entries
 	for {
 		registries, _, sig, err := zk.ChildrenW("/registry")
+		log.Warnf("Zookeeper in for loop")
 		if err != nil {
 			log.Errorf("Zookeeper ChildrenW error: %v\n", err) //don't know how to handle this
 		} else {
+			log.Warnf("Registries: %v", registries)
 			remove, add := difference(registries, ch.GetNodes())
 			for _, newreg := range add {
 				ch.AddNode(newreg)
@@ -346,6 +348,7 @@ func watcher(zookeeperName string, registryName string, ch *consistentHash.Consi
 This function is used to forward put requests on to other registries along the chain
 */
 func forwardToRegistry(regname, dgst, path string) error {
+	log.Warnf("Littley: forwarding %s to %s", regname, dgst)
 	var buffer bytes.Buffer
 	buffer.WriteString("http://")
 	buffer.WriteString(regname)
@@ -684,6 +687,7 @@ func (d *driver) List(ctx context.Context, subPath string) ([]string, error) {
 
 func forwardRegistries(registryList []string, dgst, path string) {
 	for _, registry := range registryList {
+		log.Warnf("Forwarding %s to %s", dgst, registry)
 		go forwardToRegistry(registry, dgst, path)
 	}
 }
@@ -696,7 +700,8 @@ func (d *driver) Move(ctx context.Context, sourcePath string, destPath string) e
 	dgst := getDigestFromPath(destPath)
 	var reglist []string
 	if dgst != "" {
-		reglist, _ := d.ch.GetReplicaNodes(dgst)
+		reglist, _ = d.ch.GetReplicaNodes(dgst)
+		log.Warnf("Registry List of %s: %v", dgst, reglist)
 		good := false
 		for _, reg := range reglist {
 			if reg == d.thisRegistry {
@@ -724,8 +729,9 @@ func (d *driver) Move(ctx context.Context, sourcePath string, destPath string) e
 	if err != nil {
 		return err
 	}
-	if len(reglist) > 0 {
-		forwardRegistries(reglist, dgst, destPath)
+
+	if len(reglist) > 1 && reglist[0] == d.thisRegistry {
+		forwardRegistries(reglist[1:], dgst, dest)
 	}
 	return nil
 }
@@ -750,6 +756,7 @@ func (d *driver) Delete(ctx context.Context, subPath string) error {
 // URLFor returns a URL which may be used to retrieve the content stored at the given path.
 // May return an UnsupportedMethodErr in certain StorageDriver implementations.
 func (d *driver) URLFor(ctx context.Context, path string, options map[string]interface{}) (string, error) {
+	log.Warn("URLFor Beginning")
 	dgst := getDigestFromPath(path)
 	var registries []string
 	if dgst == "" {
@@ -763,7 +770,9 @@ func (d *driver) URLFor(ctx context.Context, path string, options map[string]int
 		buffer.WriteString(",")
 	}
 	buffer.WriteString(registries[len(registries)-1])
-	return buffer.String(), nil
+	ret := buffer.String()
+	log.Warnf("URLFor Registries: %s", ret)
+	return ret, nil
 }
 
 // fullPath returns the absolute path of a key within the Driver's storage.

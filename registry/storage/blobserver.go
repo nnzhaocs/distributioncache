@@ -37,9 +37,10 @@ type registriesAPIResponse struct {
 
 func (bs *blobServer) URLWriter(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
 	var registries []string
+	log.Warnf("Using: %s", bs.driver.Name())
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	if bs.driver.Name() == "distributed" {
-		registriesstr, _ := bs.driver.URLFor(ctx, "", nil)
+		registriesstr, _ := bs.driver.URLFor(ctx, "/dev/nil", nil)
 		registries = strings.Split(registriesstr, ",")
 	} else {
 		registries = make([]string, 0)

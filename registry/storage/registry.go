@@ -5,6 +5,7 @@ import (
 
 	"net/http"
 
+	log "github.com/Sirupsen/logrus"
 	"github.com/docker/distribution"
 	"github.com/docker/distribution/context"
 	"github.com/docker/distribution/reference"
@@ -176,6 +177,7 @@ func (reg *registry) Scope() distribution.Scope {
 }
 
 func (reg *registry) URLWriter(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
+	log.Warn("Storage Registry calling blobServer URLWriter")
 	return reg.blobServer.URLWriter(ctx, w, r)
 }
 
