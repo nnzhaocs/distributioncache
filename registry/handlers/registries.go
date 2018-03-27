@@ -4,7 +4,7 @@ import (
 	//"encoding/json"
 	"net/http"
 
-	log "github.com/Sirupsen/logrus"
+	//log "github.com/Sirupsen/logrus"
 	//"github.com/docker/distribution"
 	"github.com/docker/distribution/context"
 	"github.com/docker/distribution/registry/api/errcode"
@@ -38,7 +38,7 @@ type registriesHandler struct {
 // response.
 func (rh *registriesHandler) GetRegistries(w http.ResponseWriter, r *http.Request) {
 	//blobs := bh.Repository.Blobs(bh)
-	log.Warnf("LITTLEY: handler registries.go GetRegistries")
+	//log.Warnf("LITTLEY: handler registries.go GetRegistries")
 
 	if err := rh.App.registry.URLWriter(rh, w, r); err != nil {
 		context.GetLogger(rh).Debugf("unexpected error getting Registry HTTP handler: %v", err)

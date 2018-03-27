@@ -37,7 +37,6 @@ type registriesAPIResponse struct {
 
 func (bs *blobServer) URLWriter(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
 	var registries []string
-	log.Warnf("Using: %s", bs.driver.Name())
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	if bs.driver.Name() == "distributed" {
 		registriesstr, _ := bs.driver.URLFor(ctx, "/dev/nil", nil)
@@ -59,15 +58,14 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 	if err != nil {
 		return err
 	}
-	log.Warnf("entering serveBlob")
-	log.Warnf("FAST: Serving blob %s", desc.Digest.String())
+	//log.Warnf("FAST: Serving blob %s", desc.Digest.String())
 	path, err := bs.pathFn(desc.Digest)
 	if err != nil {
 		return err
 	}
 
 	if bs.redirect {
-		log.Warnf("FAST: Redirect enables for %s", desc.Digest.String())
+		//log.Warnf("FAST: Redirect enables for %s", desc.Digest.String())
 		redirectURL, err := bs.driver.URLFor(ctx, path, map[string]interface{}{"method": r.Method})
 		switch err.(type) {
 		case nil:
@@ -90,10 +88,10 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 	v, get_err := bs.cache.Get(desc.Digest.String())
 	if get_err != nil {
 		//return errors.Trace(get_err)
-		log.Debug("ali:err=%s", get_err)
+		log.Warnf("ali:err=%s", get_err)
 	}
 	if v != nil { // ali: read hit
-		log.Warnf("FAST: cache hit...")
+		log.Warnf("FAST: cache hit on %s", desc.Digest.String())
 		br := bytes.NewReader(v)
 
 		http.ServeContent(w, r, desc.Digest.String(), time.Time{}, br)
@@ -119,7 +117,8 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 		//                http.ServeContent(w, r, desc.Digest.String(), time.Time{}, br)
 		//
 	} else {
-		log.Warnf("FAST: Setting new file reader %s", path)
+		log.Warnf("FAST: cache miss on %s", desc.Digest.String())
+
 		br, err := newFileReader(ctx, bs.driver, path, desc.Size)
 		if err != nil {
 			return err
@@ -128,7 +127,7 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 		if br.size < int64(bs.cache.GetEntryLimit()) {
 			buf := new(bytes.Buffer)
 			buf.ReadFrom(br)
-			log.Warnf("FAST3: length buffer %d", br.size)
+			//log.Warnf("FAST3: length buffer %d", br.size)
 			bs.cache.Set(desc.Digest.String(), buf.Bytes())
 			defer br.Close()
 
@@ -156,7 +155,7 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 			}
 			br2 := bytes.NewReader(v)
 
-			log.Warnf("FAST: Close file reader %s", desc.Digest.String())
+			//log.Warnf("FAST: Close file reader %s", desc.Digest.String())
 			http.ServeContent(w, r, desc.Digest.String(), time.Time{}, br2)
 		} else {
 			defer br.Close()

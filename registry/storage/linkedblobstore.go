@@ -6,7 +6,7 @@ import (
 	"path"
 	"time"
 
-	log "github.com/Sirupsen/logrus"
+	//log "github.com/Sirupsen/logrus"
 	"github.com/docker/distribution"
 	"github.com/docker/distribution/context"
 	"github.com/docker/distribution/reference"
@@ -47,12 +47,12 @@ type linkedBlobStore struct {
 var _ distribution.BlobStore = &linkedBlobStore{}
 
 func (lbs *linkedBlobStore) Stat(ctx context.Context, dgst digest.Digest) (distribution.Descriptor, error) {
-	log.Warnf("FAST2: Stat linkedbs")
+	//log.Warnf("FAST2: Stat linkedbs")
 	return lbs.blobAccessController.Stat(ctx, dgst)
 }
 
 func (lbs *linkedBlobStore) Get(ctx context.Context, dgst digest.Digest) ([]byte, error) {
-	log.Warnf("FAST2: Get linkedbs")
+	//log.Warnf("FAST2: Get linkedbs")
 	canonical, err := lbs.Stat(ctx, dgst) // access check
 	if err != nil {
 		return nil, err

@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	log "github.com/Sirupsen/logrus"
+	//log "github.com/Sirupsen/logrus"
 	"github.com/docker/distribution"
 	"github.com/docker/distribution/context"
 	"github.com/docker/distribution/reference"
@@ -294,7 +294,7 @@ func descriptorFromResponse(response *http.Response) (distribution.Descriptor, e
 // a manifest, fallback to GET.
 func (t *tags) Get(ctx context.Context, tag string) (distribution.Descriptor, error) {
 
-	log.Warnf("IBM: HTTP Head: %s %s", t.name, tag)
+	//log.Warnf("IBM: HTTP Head: %s %s", t.name, tag)
 
 	ref, err := reference.WithTag(t.name, tag)
 	if err != nil {
@@ -475,7 +475,7 @@ func (ms *manifests) Get(ctx context.Context, dgst digest.Digest, options ...dis
 		return nil, err
 	}
 
-	log.Warnf("IBM: HTTP GET: %s", dgst)
+	//log.Warnf("IBM: HTTP GET: %s", dgst)
 
 	defer resp.Body.Close()
 	if resp.StatusCode == http.StatusNotModified {
@@ -545,7 +545,7 @@ func (ms *manifests) Put(ctx context.Context, m distribution.Manifest, options .
 		return "", err
 	}
 
-	log.Warnf("IBM: HTTP PUT..")
+	//log.Warnf("IBM: HTTP PUT..")
 
 	putRequest, err := http.NewRequest("PUT", manifestURL, bytes.NewReader(p))
 	if err != nil {
@@ -634,7 +634,7 @@ func (bs *blobs) Stat(ctx context.Context, dgst digest.Digest) (distribution.Des
 
 func (bs *blobs) Get(ctx context.Context, dgst digest.Digest) ([]byte, error) {
 
-	log.Warnf("IBM: Registr getting blobs: %s", dgst)
+	//log.Warnf("IBM: Registr getting blobs: %s", dgst)
 
 	reader, err := bs.Open(ctx, dgst)
 	if err != nil {
@@ -670,7 +670,7 @@ func (bs *blobs) ServeBlob(ctx context.Context, w http.ResponseWriter, r *http.R
 
 func (bs *blobs) Put(ctx context.Context, mediaType string, p []byte) (distribution.Descriptor, error) {
 
-	log.Warnf("IBM: Registry putting  blobs")
+	//log.Warnf("IBM: Registry putting  blobs")
 
 	writer, err := bs.Create(ctx)
 	if err != nil {
@@ -719,7 +719,7 @@ func WithMountFrom(ref reference.Canonical) distribution.BlobCreateOption {
 func (bs *blobs) Create(ctx context.Context, options ...distribution.BlobCreateOption) (distribution.BlobWriter, error) {
 	var opts distribution.CreateOptions
 
-	log.Warnf("IBM: Registry creating blobs")
+	//log.Warnf("IBM: Registry creating blobs")
 
 	for _, option := range options {
 		err := option.Apply(&opts)

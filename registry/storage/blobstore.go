@@ -3,7 +3,7 @@ package storage
 import (
 	"path"
 
-	log "github.com/Sirupsen/logrus"
+	//log "github.com/Sirupsen/logrus"
 	"github.com/docker/distribution"
 	"github.com/docker/distribution/context"
 	"github.com/docker/distribution/registry/storage/driver"
@@ -24,7 +24,7 @@ var _ distribution.BlobProvider = &blobStore{}
 // Get implements the BlobReadService.Get call.
 func (bs *blobStore) Get(ctx context.Context, dgst digest.Digest) ([]byte, error) {
 
-	log.Warnf("FAST: calling get content from appropriate driver %s", dgst)
+	//log.Warnf("FAST: calling get content from appropriate driver %s", dgst)
 	bp, err := bs.path(dgst)
 	if err != nil {
 		return nil, err
@@ -62,7 +62,7 @@ func (bs *blobStore) Open(ctx context.Context, dgst digest.Digest) (distribution
 // only be used for small objects, such as manifests. This implemented as a convenience for other Put implementations
 func (bs *blobStore) Put(ctx context.Context, mediaType string, p []byte) (distribution.Descriptor, error) {
 
-	log.Warnf("FAST: calling put blobstore")
+	//log.Warnf("FAST: calling put blobstore")
 	dgst := digest.FromBytes(p)
 	desc, err := bs.statter.Stat(ctx, dgst)
 	if err == nil {
@@ -79,7 +79,7 @@ func (bs *blobStore) Put(ctx context.Context, mediaType string, p []byte) (distr
 		return distribution.Descriptor{}, err
 	}
 
-	log.Warnf("IBM: writing small object %s", mediaType)
+	//log.Warnf("IBM: writing small object %s", mediaType)
 
 	// TODO(stevvooe): Write out mediatype here, as well.
 	return distribution.Descriptor{
@@ -127,7 +127,7 @@ func (bs *blobStore) Enumerate(ctx context.Context, ingester func(dgst digest.Di
 // may or may not exist.
 func (bs *blobStore) path(dgst digest.Digest) (string, error) {
 
-	log.Warnf("FAST: path blobstore")
+	//log.Warnf("FAST: path blobstore")
 	bp, err := pathFor(blobDataPathSpec{
 		digest: dgst,
 	})
@@ -144,15 +144,14 @@ func (bs *blobStore) path(dgst digest.Digest) (string, error) {
 func (bs *blobStore) link(ctx context.Context, path string, dgst digest.Digest) error {
 	// The contents of the "link" file are the exact string contents of the
 	// digest, which is specified in that package.
-	log.Warnf("FAST: link blobstore")
+	//log.Warnf("FAST: link blobstore")
 	return bs.driver.PutContent(ctx, path, []byte(dgst))
 }
 
 // readlink returns the linked digest at path.
 func (bs *blobStore) readlink(ctx context.Context, path string) (digest.Digest, error) {
 
-
-	log.Warnf("FAST: readlink blobstore")
+	//log.Warnf("FAST: readlink blobstore")
 	content, err := bs.driver.GetContent(ctx, path)
 	if err != nil {
 		return "", err
@@ -168,7 +167,7 @@ func (bs *blobStore) readlink(ctx context.Context, path string) (digest.Digest, 
 
 // resolve reads the digest link at path and returns the blob store path.
 func (bs *blobStore) resolve(ctx context.Context, path string) (string, error) {
-	log.Warnf("FAST: resolve blobstore")
+	//log.Warnf("FAST: resolve blobstore")
 	dgst, err := bs.readlink(ctx, path)
 	if err != nil {
 		return "", err

@@ -272,6 +272,46 @@ func difference(newlist, oldlist []string) ([]string, []string) {
 	return remove, add
 }
 
+func check_and_forward(thisReg string, registries []string, ch *consistentHash.ConsistentHash) error {
+	files, err := ioutil.ReadDir("/var/lib/registry/docker/registry/v2/repositories/test_repo/_layers/sha256/")
+	if err != nil {
+		return err
+	}
+	for _, file := range files {
+		dgst := file.Name()
+		var buffer bytes.Buffer
+		buffer.WriteString("/var/lib/registry/docker/registry/v2/blobs/sha256/")
+		buffer.WriteString(dgst[:2])
+		buffer.WriteString("/")
+		buffer.WriteString(dgst)
+		buffer.WriteString("/data")
+		blobFile := buffer.String()
+		_, err := os.Stat(blobFile)
+		if err != nil {
+			continue
+		}
+		regList, _ := ch.GetReplicaNodes(dgst)
+		forward := true
+		for _, r := range regList {
+			if r == thisReg {
+				forward = false
+				break
+			}
+		}
+		if !forward {
+			continue
+		}
+		for _, r := range registries {
+			if r == regList[0] {
+				forwardToRegistry(r, dgst, blobFile)
+				os.Remove(blobFile)
+				break
+			}
+		}
+	}
+	return nil
+}
+
 /*
 This function is designed to be run from a goroutine. It connects to a specified
 zookeeper hostname (which can be a comma separated list). If the zookeeper
@@ -335,6 +375,7 @@ func watcher(zookeeperName string, registryName string, ch *consistentHash.Consi
 				ch.AddNode(newreg)
 				fmt.Printf("Adding %s\n", newreg)
 			}
+			go check_and_forward(registryName, add, ch)
 			for _, downreg := range remove {
 				ch.InvalidateNode(downreg)
 				fmt.Printf("Removing %s\n", downreg)
@@ -348,7 +389,7 @@ func watcher(zookeeperName string, registryName string, ch *consistentHash.Consi
 This function is used to forward put requests on to other registries along the chain
 */
 func forwardToRegistry(regname, dgst, path string) error {
-	log.Warnf("Littley: forwarding %s to %s", regname, dgst)
+	//log.Warnf("Littley: forwarding %s to %s", regname, dgst)
 	var buffer bytes.Buffer
 	buffer.WriteString("http://")
 	buffer.WriteString(regname)
@@ -412,8 +453,8 @@ func forwardToRegistry(regname, dgst, path string) error {
 /*
 This function is used to get layers from other registries for lazy population
 */
-func getFromRegistry(regname, dgst, path string) error {
-	var body []byte
+func (d *driver) getFromRegistry(regname, dgst, subPath string) error {
+	log.Warnf("Requesting %s from %s and storing at %s", dgst, regname, subPath)
 	//Build URLHeadRegistry(regname, dgst)
 	var buffer bytes.Buffer
 	buffer.WriteString("http://")
@@ -431,12 +472,41 @@ func getFromRegistry(regname, dgst, path string) error {
 	if resp.StatusCode < 200 || resp.StatusCode > 299 {
 		return fmt.Errorf("%s returned status code %d", regname, resp.StatusCode)
 	}
-	body, err = ioutil.ReadAll(resp.Body)
+
+	out, err := d.Writer(nil, subPath, false)
 	if err != nil {
 		return err
 	}
-	if path != "" {
-		ioutil.WriteFile(path, body, 0644)
+	defer out.Close()
+	_, err = io.Copy(out, resp.Body)
+	return err
+}
+
+/*
+check for existance in registry
+*/
+
+/*
+This function is used to check for layers in other registries
+*/
+func headFromRegistry(regname, dgst string) error {
+	log.Warnf("Head Request for %s to %s", dgst, regname)
+	//Build URLHeadRegistry(regname, dgst)
+	var buffer bytes.Buffer
+	buffer.WriteString("http://")
+	buffer.WriteString(regname)
+	buffer.WriteString("/v2/test_repo/blobs/sha256:")
+	buffer.WriteString(dgst)
+	url := buffer.String()
+
+	//Send Get Request
+	resp, err := http.Head(url)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode < 200 || resp.StatusCode > 299 {
+		return fmt.Errorf("%s returned status code %d", regname, resp.StatusCode)
 	}
 	return nil
 }
@@ -478,24 +548,23 @@ func (d *driver) Name() string {
 }
 
 //returns digest from path name
-func getDigestFromPath(path string) string {
+func getDigestFromPath(path string) (string, bool) {
 	dirs := strings.Split(path, "/")
 	isBlob := false
 	for _, s := range dirs {
 		a, err := hex.DecodeString(s)
-		if err == nil && len(a) == 32 && isBlob {
-			return s
+		if err == nil && len(a) == 32 {
+			return s, isBlob
 		} else if s == "blobs" {
 			isBlob = true
 		}
 	}
-	return ""
+	return "", false
 }
 
 // GetContent retrieves the content stored at "path" as a []byte.
 func (d *driver) GetContent(ctx context.Context, path string) ([]byte, error) {
-
-	log.Warnf("IBM: Get content %s", path)
+	//log.Warnf("IBM: Get content %s", path)
 	rc, err := d.Reader(ctx, path, 0)
 	if err != nil {
 		return nil, err
@@ -512,7 +581,7 @@ func (d *driver) GetContent(ctx context.Context, path string) ([]byte, error) {
 
 // PutContent stores the []byte content at a location designated by "path".
 func (d *driver) PutContent(ctx context.Context, subPath string, contents []byte) error {
-	log.Warnf("IBM: Put content %s", subPath)
+	//log.Warnf("IBM: Put content %s", subPath)
 	writer, err := d.Writer(ctx, subPath, false)
 	if err != nil {
 		return err
@@ -529,16 +598,52 @@ func (d *driver) PutContent(ctx context.Context, subPath string, contents []byte
 // Reader retrieves an io.ReadCloser for the content stored at "path" with a
 // given byte offset.
 func (d *driver) Reader(ctx context.Context, path string, offset int64) (io.ReadCloser, error) {
-
-	log.Warnf("IBM: MBL Reading %s from offset %d", path, offset)
-
-	file, err := os.OpenFile(d.fullPath(path), os.O_RDONLY, 0644)
+	//log.Warnf("IBM: MBL Reading %s from offset %d", path, offset)
+	fullpath := d.fullPath(path)
+	file, err := os.OpenFile(fullpath, os.O_RDONLY, 0644)
 	if err != nil {
-		if os.IsNotExist(err) {
-			return nil, storagedriver.PathNotFoundError{Path: path}
-		}
 
-		return nil, err
+		if os.IsNotExist(err) {
+			//Check to see if blob
+			dgst, isBlob := getDigestFromPath(fullpath)
+			if dgst != "" {
+				var buffer bytes.Buffer
+				buffer.WriteString("/docker/registry/v2/blobs/sha256/")
+				buffer.WriteString(dgst[:2])
+				buffer.WriteString("/")
+				buffer.WriteString(dgst)
+				buffer.WriteString("/data")
+				blobFile := buffer.String()
+
+				_, err := d.Stat(ctx, blobFile) //Check if Blob exists
+				if err != nil {
+					return nil, err
+				}
+				if isBlob {
+					file, err = os.OpenFile(fullpath, os.O_RDONLY, 0644)
+					if err != nil {
+						return nil, err
+					}
+				} else {
+					buffer.Reset()
+					buffer.WriteString("sha256:")
+					buffer.WriteString(dgst)
+					link := buffer.Bytes()
+					err := d.PutContent(ctx, path, link)
+					if err != nil {
+						return nil, err
+					}
+					file, err = os.OpenFile(fullpath, os.O_RDONLY, 0644)
+					if err != nil {
+						return nil, err
+					}
+				}
+			} else {
+				return nil, storagedriver.PathNotFoundError{Path: path}
+			}
+		} else {
+			return nil, err
+		}
 	}
 
 	seekPos, err := file.Seek(int64(offset), os.SEEK_SET)
@@ -547,7 +652,7 @@ func (d *driver) Reader(ctx context.Context, path string, offset int64) (io.Read
 		return nil, err
 	} else if seekPos < int64(offset) {
 		file.Close()
-		return nil, storagedriver.InvalidOffsetError{Path: path, Offset: offset}
+		return nil, storagedriver.InvalidOffsetError{Path: fullpath, Offset: offset}
 	}
 
 	return file, nil
@@ -557,7 +662,7 @@ func (d *driver) Writer(ctx context.Context, subPath string, append bool) (stora
 	fullPath := d.fullPath(subPath)
 	parentDir := path.Dir(fullPath)
 
-	log.Warnf("IBM: MBL Reading %s", fullPath)
+	//log.Warnf("IBM: MBL Writer %s", fullPath)
 	if err := os.MkdirAll(parentDir, 0777); err != nil {
 		return nil, err
 	}
@@ -590,16 +695,16 @@ func (d *driver) Writer(ctx context.Context, subPath string, append bool) (stora
 // Stat retrieves the FileInfo for the given path, including the current size
 // in bytes and the creation time.
 func (d *driver) Stat(ctx context.Context, subPath string) (storagedriver.FileInfo, error) {
-	log.Warnf("IBM: Stat %s", subPath)
+	//log.Warnf("IBM: Stat %s", subPath)
 	fullPath := d.fullPath(subPath)
-
+	log.Warnf("CTX %v\n", ctx)
 	fi, err := os.Stat(fullPath)
 	if err != nil {
 		if os.IsNotExist(err) {
 
 			//Check to see if blob
-			dgst := getDigestFromPath(subPath)
-			if dgst != "" {
+			dgst, isBlob := getDigestFromPath(fullPath)
+			if dgst != "" && isBlob == true {
 
 				//Check if master or slave
 				registries, _ := d.ch.GetReplicaNodes(dgst)
@@ -607,14 +712,7 @@ func (d *driver) Stat(ctx context.Context, subPath string) (storagedriver.FileIn
 
 					//Is master?
 					if d.thisRegistry == registries[0] {
-						err = getFromRegistry(registries[1], dgst, fullPath) //get blob from slave
-						if err != nil {
-							return nil, storagedriver.PathNotFoundError{Path: subPath}
-						}
-						fi, err = os.Stat(fullPath)
-						if err != nil {
-							return nil, storagedriver.PathNotFoundError{Path: subPath}
-						}
+						return nil, storagedriver.PathNotFoundError{Path: subPath}
 					} else { //if not master
 						// Is it a slave
 						slave := false
@@ -626,8 +724,9 @@ func (d *driver) Stat(ctx context.Context, subPath string) (storagedriver.FileIn
 						}
 
 						if slave == true {
-							err = getFromRegistry(registries[0], dgst, fullPath) //get blob from master
+							err = d.getFromRegistry(registries[0], dgst, subPath) //get blob from master
 							if err != nil {
+								log.Warnf("%v", err)
 								return nil, storagedriver.PathNotFoundError{Path: subPath}
 							}
 
@@ -643,7 +742,7 @@ func (d *driver) Stat(ctx context.Context, subPath string) (storagedriver.FileIn
 				} else { //if len(registries) < 1
 					return nil, storagedriver.PathNotFoundError{Path: subPath}
 				}
-			} else { //if gst == ""
+			} else { //if dgst == ""
 				return nil, storagedriver.PathNotFoundError{Path: subPath}
 			}
 		}
@@ -661,7 +760,7 @@ func (d *driver) Stat(ctx context.Context, subPath string) (storagedriver.FileIn
 // path.
 func (d *driver) List(ctx context.Context, subPath string) ([]string, error) {
 	fullPath := d.fullPath(subPath)
-	log.Warnf("IBM: List %s", fullPath)
+	//log.Warnf("IBM: List %s", fullPath)
 	dir, err := os.Open(fullPath)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -695,11 +794,11 @@ func forwardRegistries(registryList []string, dgst, path string) {
 // Move moves an object stored at sourcePath to destPath, removing the original
 // object.
 func (d *driver) Move(ctx context.Context, sourcePath string, destPath string) error {
-	log.Warnf("IBM: Move %s to %s", sourcePath, destPath)
+	//log.Warnf("IBM: Move %s to %s", sourcePath, destPath)
 	//Check if digest belongs to registry, raise error, do nothing if not digest
-	dgst := getDigestFromPath(destPath)
+	dgst, isBlob := getDigestFromPath(destPath)
 	var reglist []string
-	if dgst != "" {
+	if dgst != "" && isBlob == true {
 		reglist, _ = d.ch.GetReplicaNodes(dgst)
 		log.Warnf("Registry List of %s: %v", dgst, reglist)
 		good := false
@@ -739,7 +838,7 @@ func (d *driver) Move(ctx context.Context, sourcePath string, destPath string) e
 // Delete recursively deletes all objects stored at "path" and its subpaths.
 func (d *driver) Delete(ctx context.Context, subPath string) error {
 
-	log.Warnf("IBM: Removing objects %s", subPath)
+	//log.Warnf("IBM: Removing objects %s", subPath)
 	fullPath := d.fullPath(subPath)
 
 	_, err := os.Stat(fullPath)
@@ -756,8 +855,8 @@ func (d *driver) Delete(ctx context.Context, subPath string) error {
 // URLFor returns a URL which may be used to retrieve the content stored at the given path.
 // May return an UnsupportedMethodErr in certain StorageDriver implementations.
 func (d *driver) URLFor(ctx context.Context, path string, options map[string]interface{}) (string, error) {
-	log.Warn("URLFor Beginning")
-	dgst := getDigestFromPath(path)
+	//log.Warn("URLFor Beginning")
+	dgst, _ := getDigestFromPath(path)
 	var registries []string
 	if dgst == "" {
 		registries = d.ch.GetNodes()
@@ -771,7 +870,7 @@ func (d *driver) URLFor(ctx context.Context, path string, options map[string]int
 	}
 	buffer.WriteString(registries[len(registries)-1])
 	ret := buffer.String()
-	log.Warnf("URLFor Registries: %s", ret)
+	//log.Warnf("URLFor Registries: %s", ret)
 	return ret, nil
 }
 
