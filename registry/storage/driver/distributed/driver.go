@@ -272,15 +272,25 @@ func difference(newlist, oldlist []string) ([]string, []string) {
 	return remove, add
 }
 
-func check_and_forward(thisReg string, registries []string, ch *consistentHash.ConsistentHash) error {
-	files, err := ioutil.ReadDir("/var/lib/registry/docker/registry/v2/repositories/test_repo/_layers/sha256/")
+func (d *driver) check_and_forward(thisReg string, registries []string) error {
+	time.Sleep(1 * time.Second) // Give registry time to start
+	log.Debugf("%v %s", registries, thisReg)
+	if len(registries) < 1 {
+		return nil
+	}
+
+	files, err := ioutil.ReadDir(d.fullPath("/docker/registry/v2/repositories/test_repo/_layers/sha256/"))
+	log.Warnf("CHECK AND FORWARD: checking %d files", len(files))
 	if err != nil {
 		return err
 	}
+	var rmlist []string
 	for _, file := range files {
 		dgst := file.Name()
+		log.Debugf("CHECKING	%s", dgst)
 		var buffer bytes.Buffer
-		buffer.WriteString("/var/lib/registry/docker/registry/v2/blobs/sha256/")
+		buffer.WriteString(d.fullPath("/docker/registry/v2/blobs/sha256"))
+		buffer.WriteString("/")
 		buffer.WriteString(dgst[:2])
 		buffer.WriteString("/")
 		buffer.WriteString(dgst)
@@ -288,26 +298,42 @@ func check_and_forward(thisReg string, registries []string, ch *consistentHash.C
 		blobFile := buffer.String()
 		_, err := os.Stat(blobFile)
 		if err != nil {
+			log.Debugf("ERROR	%v", err)
 			continue
 		}
-		regList, _ := ch.GetReplicaNodes(dgst)
-		forward := true
-		for _, r := range regList {
-			if r == thisReg {
-				forward = false
-				break
-			}
-		}
-		if !forward {
+
+		regList, err := d.ch.GetReplicaNodes(dgst)
+		if err != nil {
 			continue
 		}
-		for _, r := range registries {
-			if r == regList[0] {
-				forwardToRegistry(r, dgst, blobFile)
-				os.Remove(blobFile)
-				break
+		if regList[1] == thisReg {
+			for _, r := range registries {
+				if regList[0] == r {
+					err = forwardToRegistry(r, dgst, blobFile)
+					if err != nil {
+						log.Warnf("Forward Failed! %v", err)
+					}
+					break
+				}
+			}
+		} else {
+			del := true
+			for _, r := range regList {
+				if r == thisReg {
+					del = false
+					break
+				}
+			}
+			if del {
+				rmlist = append(rmlist, blobFile)
 			}
 		}
+	}
+	log.Warnf("Done Checking Files")
+
+	//Remove files sent to registry
+	for _, blobFile := range rmlist {
+		os.Remove(blobFile)
 	}
 	return nil
 }
@@ -321,7 +347,7 @@ under /registry of this registries name/port. It will then watch for children of
 /registry.
 If an error occurs it will send it to reporter.
 */
-func watcher(zookeeperName string, registryName string, ch *consistentHash.ConsistentHash, reporter chan error) {
+func (d *driver) watcher(zookeeperName string, registryName string, reporter chan error) {
 	log.Debugf("Zookeeper: Attempting to connect to %s", zookeeperName)
 	zk, session, err := zookeeper.Dial(zookeeperName, 5e9)
 	if err != nil {
@@ -370,16 +396,17 @@ func watcher(zookeeperName string, registryName string, ch *consistentHash.Consi
 			log.Errorf("Zookeeper ChildrenW error: %v\n", err) //don't know how to handle this
 		} else {
 			log.Warnf("Registries: %v", registries)
-			remove, add := difference(registries, ch.GetNodes())
+			remove, add := difference(registries, d.ch.GetNodes())
+			//Add nodes:
 			for _, newreg := range add {
-				ch.AddNode(newreg)
+				d.ch.AddNode(newreg)
 				fmt.Printf("Adding %s\n", newreg)
 			}
-			go check_and_forward(registryName, add, ch)
 			for _, downreg := range remove {
-				ch.InvalidateNode(downreg)
+				d.ch.InvalidateNode(downreg)
 				fmt.Printf("Removing %s\n", downreg)
 			}
+			go d.check_and_forward(registryName, add)
 		}
 		<-sig
 	}
@@ -389,7 +416,7 @@ func watcher(zookeeperName string, registryName string, ch *consistentHash.Consi
 This function is used to forward put requests on to other registries along the chain
 */
 func forwardToRegistry(regname, dgst, path string) error {
-	//log.Warnf("Littley: forwarding %s to %s", regname, dgst)
+	log.Warnf("Littley: forwarding %s to %s", regname, dgst)
 	var buffer bytes.Buffer
 	buffer.WriteString("http://")
 	buffer.WriteString(regname)
@@ -454,9 +481,19 @@ func forwardToRegistry(regname, dgst, path string) error {
 This function is used to get layers from other registries for lazy population
 */
 func (d *driver) getFromRegistry(regname, dgst, subPath string) error {
+	fullPath := d.fullPath(subPath)
+	var buffer bytes.Buffer
+	buffer.WriteString(fullPath)
+	buffer.WriteString("_temp")
+	tempFile := buffer.String()
+	buffer.Reset()
+	_, err := os.Stat(tempFile)
+	if err == nil {
+		return fmt.Errorf("Another request is loading File")
+	}
+
 	log.Warnf("Requesting %s from %s and storing at %s", dgst, regname, subPath)
 	//Build URLHeadRegistry(regname, dgst)
-	var buffer bytes.Buffer
 	buffer.WriteString("http://")
 	buffer.WriteString(regname)
 	buffer.WriteString("/v2/test_repo/blobs/sha256:")
@@ -473,13 +510,20 @@ func (d *driver) getFromRegistry(regname, dgst, subPath string) error {
 		return fmt.Errorf("%s returned status code %d", regname, resp.StatusCode)
 	}
 
-	out, err := d.Writer(nil, subPath, false)
+	fp, err := os.OpenFile(fullPath, os.O_WRONLY|os.O_CREATE, 0666)
 	if err != nil {
 		return err
 	}
-	defer out.Close()
+	out := newFileWriter(fp, 0)
+
 	_, err = io.Copy(out, resp.Body)
-	return err
+	out.Close()
+	if err != nil {
+		os.Remove(tempFile)
+		return err
+	}
+	return os.Rename(tempFile, fullPath)
+
 }
 
 /*
@@ -518,13 +562,6 @@ func New(params DriverParameters) *Driver {
 	c.AddNode(params.RegistryName)
 	reporter := make(chan error)
 
-	//Spawn the watcher to connect to zookeeper
-	go watcher(params.ZookeeperName, params.RegistryName, c, reporter)
-	err := <-reporter
-	if err != nil {
-		panic(err) //Panic since we can't return an error
-	}
-
 	fsDriver := &driver{
 		rootDirectory: params.RootDirectory,
 		ch:            c,
@@ -532,6 +569,12 @@ func New(params DriverParameters) *Driver {
 		thisRegistry:  params.RegistryName,
 	}
 
+	//Spawn the watcher to connect to zookeeper
+	go fsDriver.watcher(params.ZookeeperName, params.RegistryName, reporter)
+	err := <-reporter
+	if err != nil {
+		panic(err) //Panic since we can't return an error
+	}
 	return &Driver{
 		baseEmbed: baseEmbed{
 			Base: base.Base{
@@ -697,7 +740,7 @@ func (d *driver) Writer(ctx context.Context, subPath string, append bool) (stora
 func (d *driver) Stat(ctx context.Context, subPath string) (storagedriver.FileInfo, error) {
 	//log.Warnf("IBM: Stat %s", subPath)
 	fullPath := d.fullPath(subPath)
-	log.Warnf("CTX %v\n", ctx)
+	//log.Warnf("CTX %v\n", ctx)
 	fi, err := os.Stat(fullPath)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -745,9 +788,9 @@ func (d *driver) Stat(ctx context.Context, subPath string) (storagedriver.FileIn
 			} else { //if dgst == ""
 				return nil, storagedriver.PathNotFoundError{Path: subPath}
 			}
+		} else {
+			return nil, err
 		}
-
-		return nil, err
 	}
 
 	return fileInfo{
