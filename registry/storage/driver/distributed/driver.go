@@ -491,7 +491,9 @@ func (d *driver) getFromRegistry(regname, dgst, subPath string) error {
 	if err == nil {
 		return fmt.Errorf("Another request is loading File")
 	}
-
+	if err := os.MkdirAll(path.Dir(tempFile), 0755); err != nil {
+		return err
+	}
 	log.Warnf("Requesting %s from %s and storing at %s", dgst, regname, subPath)
 	//Build URLHeadRegistry(regname, dgst)
 	buffer.WriteString("http://")
