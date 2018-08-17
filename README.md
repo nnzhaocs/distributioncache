@@ -1,3 +1,32 @@
+# Deduplication on Docker registry
+
+
+## How to Run this code?
+
+You can either follow the below steps or read the BUILDING.md
+## Before run, you need to:
+
+- Install go version after 1.7. We recommend go1.9.7.linux-amd64.tar.gz. 
+- Create directory $GOPATH/src/github.com/docker/ and checkout our repo in that directory: `git clone https://github.com/nnzhaocs/distribution.git`
+- Install the following vendoring dependencies and our own dependency.
+
+`go get github.com/ngaut/log`
+
+`go get github.com/allegro/bigcache`
+
+And the following packages, `sudo apt-get install libzookeeper-mt-dev, go get launchpad.net/gozk/zookeeper`, 
+
+Create directory $GOPATH/src/bitbucket.com/milit93/ and checkout our CHT repo in that directory: `git clone https://github.com/nnzhaocs/consistenthash_sha256`
+
+Then, run `go test -coverpkg.sh` to check if all packages are installed.
+
+## Build 
+
+`make`
+
+## Run
+
+# Below is the readme from Docker Distribution.You can simply igron it!
 # Distribution
 
 The Docker toolset to pack, ship, store, and deliver content.
