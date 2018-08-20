@@ -27,20 +27,46 @@ Then, run `go test -coverpkg.sh` to check if all packages are installed.
 Then you can find the binary `./bin/registry`.
 
 We highly recommend to use `docker build` commond build a registry image:
-`docker build -t yourreponame/imagename:tag .`
+`docker build -t yourreponame/registry:tag .`
 
-After that you can simply push reponame/imagename:tag to docker hub:
-`docker push yourreponame/imagename:tag`
+After that you can simply push yourreponame/imagename:tag to docker hub:
+`docker push yourreponame/registry:tag`
 
 ## Run
 
-Here we run registry as a container.
-`docker run `
+Here we run registry as a container. With the following CMD, your registry starts with configuration defined in `/etc/docker/registry/config.yml`.
 
+`docker run yourreponame/registry:tag`
+
+Currently, we run different numbers of registries on different machines as a distributed system with the following CMD.
+
+`docker run -p 5000:5000  -e ZOOKEEPER="thor4:2181" -e MEMORY="100" --cpus 1 --add-host=thor4:192.168.0.204 --add-host=thor8:192.168.0.208 --add-host=thor9:192.168.0.209 --add-host=thor10:192.168.0.210 --add-host=thor11:192.168.0.211 --add-host=thor19:192.168.0.219 --add-host=thor20:192.168.0.220 --add-host=thor21:192.168.0.221 --add-host=thor1:192.168.0.201 --add-host=thor2:192.168.0.202 --add-host=thor3:192.168.0.203  -e HOST="thor8:5000" -t yourreponame/registry:tag`
+
+-p=[]      : Publish a container᾿s port or a range of ports to the host
+               format: ip:hostPort:containerPort | ip::containerPort | hostPort:containerPort | containerPort
+               Both hostPort and containerPort can be specified as a
+               range of ports. When specifying ranges for both, the
+               number of container ports in the range must match the
+               number of host ports in the range, for example:
+                   -p 1234-1236:1234-1236/tcp
+
+               When specifying a range for hostPort only, the
+               containerPort must not be a range.  In this case the
+               container port is published somewhere within the
+               specified hostPort range. (e.g., `-p 1234-1236:1234/tcp`)
+
+               (use 'docker port' to see the actual mapping)
+
+-e :  the operator can set any environment variable in the container by using one or more -e flags, even overriding those mentioned above, or already defined by the developer with a Dockerfile ENV.
+
+--cpus : --cpus=0.000	Number of CPUs. Number is a fractional number. 0.000 means no limit.
+
+--add-host=""      : Add a line to /etc/hosts (host:IP)
 
 ## Tips
 
 Read `docker build/run` CMD details online.
+
 We use github to maintain our code and use docker hub to maintain our registry image.
 
 # Below is the readme from Docker Distribution.You can simply igron it!
