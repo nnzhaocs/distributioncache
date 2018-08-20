@@ -24,7 +24,24 @@ Then, run `go test -coverpkg.sh` to check if all packages are installed.
 
 `make`
 
+Then you can find the binary `./bin/registry`.
+
+We highly recommend to use `docker build` commond build a registry image:
+`docker build -t yourreponame/imagename:tag .`
+
+After that you can simply push reponame/imagename:tag to docker hub:
+`docker push yourreponame/imagename:tag`
+
 ## Run
+
+Here we run registry as a container.
+`docker run `
+
+
+## Tips
+
+Read `docker build/run` CMD details online.
+We use github to maintain our code and use docker hub to maintain our registry image.
 
 # Below is the readme from Docker Distribution.You can simply igron it!
 # Distribution
