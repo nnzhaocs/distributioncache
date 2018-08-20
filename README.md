@@ -56,6 +56,12 @@ Currently, we run different numbers of registries on different machines as a dis
 
 --add-host=""      : Add a line to /etc/hosts (host:IP)
 
+### Run as a distributed registry system
+
+- Setup. please refer to google doc: https://docs.google.com/spreadsheets/d/16OhvMcFmja4sqY4Jlbpf_XxrvKJiTSAXuS8R0fDTkaI/edit#gid=0
+### Run with Docker registry tracer.
+
+
 ## Tips
 
 Read `docker build/run` CMD details online.
