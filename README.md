@@ -50,14 +50,7 @@ Currently, we run different numbers of registries on different machines as a dis
                number of host ports in the range, for example:
                    -p 1234-1236:1234-1236/tcp
 
-               When specifying a range for hostPort only, the
-               containerPort must not be a range.  In this case the
-               container port is published somewhere within the
-               specified hostPort range. (e.g., `-p 1234-1236:1234/tcp`)
-
-               (use 'docker port' to see the actual mapping)
-
--e :  the operator can set any environment variable in the container by using one or more -e flags, even overriding those mentioned above, or already defined by the developer with a Dockerfile ENV.
+-e :  the operator can set any environment variable in the container by using one or more -e flags, even overriding those mentioned, or already defined by the developer with a Dockerfile ENV.
 
 --cpus : --cpus=0.000	Number of CPUs. Number is a fractional number. 0.000 means no limit.
 
