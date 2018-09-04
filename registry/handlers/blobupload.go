@@ -280,7 +280,7 @@ func (buh *blobUploadHandler) PutBlobUploadComplete(w http.ResponseWriter, r *ht
 
 	// NANNAN: Here, we send a des address to deduplication service
 	// desc distribution.Descriptor
-	blobPath, err := pathFor(blobDataPathSpec{
+	blobPath, err := storage.PathFor(storage.BlobDataPathSpec{
 		digest: desc.Digest,
 	})
 	ctxu.GetLogger(buh).Debugf("NANNAN: blob = %v:%v", blobPath, desc.Digest)

@@ -258,6 +258,160 @@ func pathFor(spec pathSpec) (string, error) {
 	}
 }
 
+func PathFor(spec pathSpec) (string, error) {
+
+	// Switch on the path object type and return the appropriate path. At
+	// first glance, one may wonder why we don't use an interface to
+	// accomplish this. By keep the formatting separate from the pathSpec, we
+	// keep separate the path generation componentized. These specs could be
+	// passed to a completely different mapper implementation and generate a
+	// different set of paths.
+	//
+	// For example, imagine migrating from one backend to the other: one could
+	// build a filesystem walker that converts a string path in one version,
+	// to an intermediate path object, than can be consumed and mapped by the
+	// other version.
+
+	rootPrefix := []string{storagePathRoot, storagePathVersion}
+	repoPrefix := append(rootPrefix, "repositories")
+
+	switch v := spec.(type) {
+
+	case manifestRevisionsPathSpec:
+		return path.Join(append(repoPrefix, v.name, "_manifests", "revisions")...), nil
+
+	case manifestRevisionPathSpec:
+		components, err := digestPathComponents(v.revision, false)
+		if err != nil {
+			return "", err
+		}
+
+		return path.Join(append(append(repoPrefix, v.name, "_manifests", "revisions"), components...)...), nil
+	case manifestRevisionLinkPathSpec:
+		root, err := pathFor(manifestRevisionPathSpec{
+			name:     v.name,
+			revision: v.revision,
+		})
+
+		if err != nil {
+			return "", err
+		}
+
+		return path.Join(root, "link"), nil
+	case manifestTagsPathSpec:
+		return path.Join(append(repoPrefix, v.name, "_manifests", "tags")...), nil
+	case manifestTagPathSpec:
+		root, err := pathFor(manifestTagsPathSpec{
+			name: v.name,
+		})
+
+		if err != nil {
+			return "", err
+		}
+
+		return path.Join(root, v.tag), nil
+	case manifestTagCurrentPathSpec:
+		root, err := pathFor(manifestTagPathSpec{
+			name: v.name,
+			tag:  v.tag,
+		})
+
+		if err != nil {
+			return "", err
+		}
+
+		return path.Join(root, "current", "link"), nil
+	case manifestTagIndexPathSpec:
+		root, err := pathFor(manifestTagPathSpec{
+			name: v.name,
+			tag:  v.tag,
+		})
+
+		if err != nil {
+			return "", err
+		}
+
+		return path.Join(root, "index"), nil
+	case manifestTagIndexEntryLinkPathSpec:
+		root, err := pathFor(manifestTagIndexEntryPathSpec{
+			name:     v.name,
+			tag:      v.tag,
+			revision: v.revision,
+		})
+
+		if err != nil {
+			return "", err
+		}
+
+		return path.Join(root, "link"), nil
+	case manifestTagIndexEntryPathSpec:
+		root, err := pathFor(manifestTagIndexPathSpec{
+			name: v.name,
+			tag:  v.tag,
+		})
+
+		if err != nil {
+			return "", err
+		}
+
+		components, err := digestPathComponents(v.revision, false)
+		if err != nil {
+			return "", err
+		}
+
+		return path.Join(root, path.Join(components...)), nil
+	case layerLinkPathSpec:
+		components, err := digestPathComponents(v.digest, false)
+		if err != nil {
+			return "", err
+		}
+
+		// TODO(stevvooe): Right now, all blobs are linked under "_layers". If
+		// we have future migrations, we may want to rename this to "_blobs".
+		// A migration strategy would simply leave existing items in place and
+		// write the new paths, commit a file then delete the old files.
+
+		blobLinkPathComponents := append(repoPrefix, v.name, "_layers")
+
+		return path.Join(path.Join(append(blobLinkPathComponents, components...)...), "link"), nil
+	case blobsPathSpec:
+		blobsPathPrefix := append(rootPrefix, "blobs")
+		return path.Join(blobsPathPrefix...), nil
+	case blobPathSpec:
+		components, err := digestPathComponents(v.digest, true)
+		if err != nil {
+			return "", err
+		}
+
+		blobPathPrefix := append(rootPrefix, "blobs")
+		return path.Join(append(blobPathPrefix, components...)...), nil
+	case blobDataPathSpec:
+		components, err := digestPathComponents(v.digest, true)
+		if err != nil {
+			return "", err
+		}
+
+		components = append(components, "data")
+		blobPathPrefix := append(rootPrefix, "blobs")
+		return path.Join(append(blobPathPrefix, components...)...), nil
+
+	case uploadDataPathSpec:
+		return path.Join(append(repoPrefix, v.name, "_uploads", v.id, "data")...), nil
+	case uploadStartedAtPathSpec:
+		return path.Join(append(repoPrefix, v.name, "_uploads", v.id, "startedat")...), nil
+	case uploadHashStatePathSpec:
+		offset := fmt.Sprintf("%d", v.offset)
+		if v.list {
+			offset = "" // Limit to the prefix for listing offsets.
+		}
+		return path.Join(append(repoPrefix, v.name, "_uploads", v.id, "hashstates", string(v.alg), offset)...), nil
+	case repositoriesRootPathSpec:
+		return path.Join(repoPrefix...), nil
+	default:
+		// TODO(sday): This is an internal error. Ensure it doesn't escape (panic?).
+		return "", fmt.Errorf("unknown path spec: %#v", v)
+	}
+}
 // pathSpec is a type to mark structs as path specs. There is no
 // implementation because we'd like to keep the specs and the mappers
 // decoupled.
@@ -395,6 +549,8 @@ type blobDataPathSpec struct {
 }
 
 func (blobDataPathSpec) pathSpec() {}
+
+func (BlobDataPathSpec) pathSpec() {}
 
 // uploadDataPathSpec defines the path parameters of the data file for
 // uploads.
