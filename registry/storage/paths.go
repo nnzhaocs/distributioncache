@@ -412,6 +412,9 @@ func PathFor(spec pathSpec) (string, error) {
 		return "", fmt.Errorf("unknown path spec: %#v", v)
 	}
 }
+
+//func (BlobDataPathSpec) pathSpec() {}
+
 // pathSpec is a type to mark structs as path specs. There is no
 // implementation because we'd like to keep the specs and the mappers
 // decoupled.
@@ -548,10 +551,14 @@ type blobDataPathSpec struct {
 	digest digest.Digest
 }
 
-func (blobDataPathSpec) pathSpec() {}
+func (BlobDataPathSpec) pathSpec() {}
+//BlobDataPathSpec
+
+type blobDataPathSpec struct {
+	digest digest.Digest
+}
 
 func (BlobDataPathSpec) pathSpec() {}
-
 // uploadDataPathSpec defines the path parameters of the data file for
 // uploads.
 type uploadDataPathSpec struct {
