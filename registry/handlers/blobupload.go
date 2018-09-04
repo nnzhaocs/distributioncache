@@ -5,7 +5,8 @@ import (
 	"net/http"
 	"net/url"
 	//log "github.com/Sirupsen/logrus"
-
+	
+	storagedriver "github.com/docker/distribution/registry/storage/driver"
 	log "github.com/Sirupsen/logrus"
 	"github.com/docker/distribution"
 	ctxu "github.com/docker/distribution/context"
