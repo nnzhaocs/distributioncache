@@ -32,7 +32,7 @@ func blobDispatcher(ctx *Context, r *http.Request) http.Handler {
 		Context: ctx,
 		Digest:  dgst,
 	}
-
+	context.GetLogger(ctx).Infof("NANNAN: blobDispatcher, uses the request context to build a blobHandler")
 	mhandler := handlers.MethodHandler{
 		"GET":  http.HandlerFunc(blobHandler.GetBlob),
 		"HEAD": http.HandlerFunc(blobHandler.GetBlob),

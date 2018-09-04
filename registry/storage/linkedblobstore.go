@@ -172,7 +172,7 @@ func (lbs *linkedBlobStore) Create(ctx context.Context, options ...distribution.
 	if err := lbs.blobStore.driver.PutContent(ctx, startedAtPath, []byte(startedAt.Format(time.RFC3339))); err != nil {
 		return nil, err
 	}
-
+	context.GetLogger(ctx).Debug("(*linkedBlobStore).Writer: call lbs.newBlobUpload")
 	return lbs.newBlobUpload(ctx, uuid, path, startedAt, false)
 }
 

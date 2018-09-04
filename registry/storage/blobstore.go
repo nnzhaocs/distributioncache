@@ -193,7 +193,7 @@ func (bs *blobStatter) Stat(ctx context.Context, dgst digest.Digest) (distributi
 	if err != nil {
 		return distribution.Descriptor{}, err
 	}
-
+	context.GetLogger(ctx).Infof("NANNAN: blobStatter: Stat, call bs.driver.stat")
 	fi, err := bs.driver.Stat(ctx, path)
 	if err != nil {
 		switch err := err.(type) {

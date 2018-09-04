@@ -54,6 +54,7 @@ func (bs *blobServer) URLWriter(ctx context.Context, w http.ResponseWriter, r *h
 }
 
 func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *http.Request, dgst digest.Digest) error {
+	context.GetLogger(ctx).Infof("NANNAN: ServeBlob")
 	desc, err := bs.statter.Stat(ctx, dgst)
 	if err != nil {
 		return err

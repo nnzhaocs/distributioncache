@@ -25,13 +25,13 @@ func blobUploadDispatcher(ctx *Context, r *http.Request) http.Handler {
 	}
 
 	//log.Warnf("IBM: blobUploadDispatcher")
-
 	handler := handlers.MethodHandler{
 		"GET":  http.HandlerFunc(buh.GetUploadStatus),
 		"HEAD": http.HandlerFunc(buh.GetUploadStatus),
 	}
 
 	if !ctx.readOnly {
+		ctxu.GetLogger(ctx).Infof("NANNAN: blobUploadDispatcher"）
 		handler["POST"] = http.HandlerFunc(buh.StartBlobUpload)
 		handler["PATCH"] = http.HandlerFunc(buh.PatchBlobData)
 		handler["PUT"] = http.HandlerFunc(buh.PutBlobUploadComplete)
@@ -63,6 +63,7 @@ func blobUploadDispatcher(ctx *Context, r *http.Request) http.Handler {
 		}
 
 		blobs := ctx.Repository.Blobs(buh)
+		ctxu.GetLogger(ctx).Infof("NANNAN: blobs.Resume"）
 		upload, err := blobs.Resume(buh, buh.UUID)
 		if err != nil {
 			ctxu.GetLogger(ctx).Errorf("error resolving upload: %v", err)
@@ -122,8 +123,11 @@ func (buh *blobUploadHandler) StartBlobUpload(w http.ResponseWriter, r *http.Req
 			options = append(options, opt)
 		}
 	}
-
+	//context.GetLogger(ctx).Infof("NANNAN: StartBlobUpload: blob object")
+	log.Warnf("NANNAN: StartBlobUpload: blob object")
 	blobs := buh.Repository.Blobs(buh)
+	//context.GetLogger(ctx).Infof("NANNAN: StartBlobUpload: create blob object")
+	log.Warnf("NANNAN: StartBlobUpload: create blob object")
 	upload, err := blobs.Create(buh, options...)
 
 	if err != nil {
@@ -171,6 +175,7 @@ func (buh *blobUploadHandler) GetUploadStatus(w http.ResponseWriter, r *http.Req
 
 // PatchBlobData writes data to an upload.
 func (buh *blobUploadHandler) PatchBlobData(w http.ResponseWriter, r *http.Request) {
+	log.Warnf("NANNAN: PatchBlobData")
 	if buh.Upload == nil {
 		buh.Errors = append(buh.Errors, v2.ErrorCodeBlobUploadUnknown)
 		return
@@ -184,12 +189,12 @@ func (buh *blobUploadHandler) PatchBlobData(w http.ResponseWriter, r *http.Reque
 	}
 
 	// TODO(dmcgowan): support Content-Range header to seek and write range
-
+	log.Warnf("NANNAN: PatchBlobData: copyFullPayload")
 	if err := copyFullPayload(w, r, buh.Upload, buh, "blob PATCH", &buh.Errors); err != nil {
 		// copyFullPayload reports the error if necessary
 		return
 	}
-
+	log.Warnf("NANNAN: PatchBlobData: blobUploadResponse")
 	if err := buh.blobUploadResponse(w, r, false); err != nil {
 		buh.Errors = append(buh.Errors, errcode.ErrorCodeUnknown.WithDetail(err))
 		return
@@ -270,6 +275,15 @@ func (buh *blobUploadHandler) PutBlobUploadComplete(w http.ResponseWriter, r *ht
 		buh.Errors = append(buh.Errors, errcode.ErrorCodeUnknown.WithDetail(err))
 		return
 	}
+	
+	// NANNAN: Here, we send a des address to deduplication service
+	// desc distribution.Descriptor
+	blobPath, err := pathFor(blobDataPathSpec{
+		digest: desc.Digest,
+	})
+	ctxu.GetLogger(buh).Debugf("NANNAN: blob = %v:%v", blobPath, desc.Digest)
+	//log.Warnf("IBM: HTTP GET: %s", dgst)
+	//WithField("digest", desc.Digest).Warnf("attempted to move zero-length content with non-zero digest")
 }
 
 // CancelBlobUpload cancels an in-progress upload of a blob.
