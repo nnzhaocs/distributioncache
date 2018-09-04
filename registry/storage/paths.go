@@ -551,10 +551,10 @@ type blobDataPathSpec struct {
 	digest digest.Digest
 }
 
-func (BlobDataPathSpec) pathSpec() {}
-//BlobDataPathSpec
+func (blobDataPathSpec) pathSpec() {}
 
-type blobDataPathSpec struct {
+//BlobDataPathSpec
+type BlobDataPathSpec struct {
 	digest digest.Digest
 }
 
