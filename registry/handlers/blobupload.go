@@ -4,8 +4,9 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-
 	//log "github.com/Sirupsen/logrus"
+
+	log "github.com/Sirupsen/logrus"
 	"github.com/docker/distribution"
 	ctxu "github.com/docker/distribution/context"
 	"github.com/docker/distribution/reference"
@@ -31,7 +32,7 @@ func blobUploadDispatcher(ctx *Context, r *http.Request) http.Handler {
 	}
 
 	if !ctx.readOnly {
-		ctxu.GetLogger(ctx).Infof("NANNAN: blobUploadDispatcher"）
+		ctxu.GetLogger(ctx).Infof("NANNAN: blobUploadDispatcher")
 		handler["POST"] = http.HandlerFunc(buh.StartBlobUpload)
 		handler["PATCH"] = http.HandlerFunc(buh.PatchBlobData)
 		handler["PUT"] = http.HandlerFunc(buh.PutBlobUploadComplete)
@@ -63,7 +64,7 @@ func blobUploadDispatcher(ctx *Context, r *http.Request) http.Handler {
 		}
 
 		blobs := ctx.Repository.Blobs(buh)
-		ctxu.GetLogger(ctx).Infof("NANNAN: blobs.Resume"）
+		ctxu.GetLogger(ctx).Infof("NANNAN: blobs.Resume")
 		upload, err := blobs.Resume(buh, buh.UUID)
 		if err != nil {
 			ctxu.GetLogger(ctx).Errorf("error resolving upload: %v", err)
@@ -275,7 +276,7 @@ func (buh *blobUploadHandler) PutBlobUploadComplete(w http.ResponseWriter, r *ht
 		buh.Errors = append(buh.Errors, errcode.ErrorCodeUnknown.WithDetail(err))
 		return
 	}
-	
+
 	// NANNAN: Here, we send a des address to deduplication service
 	// desc distribution.Descriptor
 	blobPath, err := pathFor(blobDataPathSpec{
