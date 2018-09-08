@@ -720,7 +720,8 @@ func (bs *blobs) Create(ctx context.Context, options ...distribution.BlobCreateO
 	var opts distribution.CreateOptions
 
 	//log.Warnf("IBM: Registry creating blobs")
-
+	log.Warnf("NANNAN: repository: Registry creating blobs")
+	
 	for _, option := range options {
 		err := option.Apply(&opts)
 		if err != nil {

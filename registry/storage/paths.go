@@ -385,8 +385,9 @@ func PathFor(spec pathSpec) (string, error) {
 
 		blobPathPrefix := append(rootPrefix, "blobs")
 		return path.Join(append(blobPathPrefix, components...)...), nil
-	case blobDataPathSpec:
-		components, err := digestPathComponents(v.digest, true)
+	case BlobDataPathSpec:
+		//NANNAN
+		components, err := digestPathComponents(v.Digest, true)
 		if err != nil {
 			return "", err
 		}
@@ -410,6 +411,16 @@ func PathFor(spec pathSpec) (string, error) {
 	default:
 		// TODO(sday): This is an internal error. Ensure it doesn't escape (panic?).
 		return "", fmt.Errorf("unknown path spec: %#v", v)
+		//NANNAN
+//		log.Warnf("NANNAN: PathFor")
+//		components, err := digestPathComponents(v.digest, true)
+//		if err != nil {
+//			return "", err
+//		}
+//
+//		components = append(components, "data")
+//		blobPathPrefix := append(rootPrefix, "blobs")
+//		return path.Join(append(blobPathPrefix, components...)...), nil
 	}
 }
 
@@ -552,10 +563,10 @@ type blobDataPathSpec struct {
 }
 
 func (blobDataPathSpec) pathSpec() {}
-
+//NANNAN
 //BlobDataPathSpec
 type BlobDataPathSpec struct {
-	digest digest.Digest
+	Digest digest.Digest
 }
 
 func (BlobDataPathSpec) pathSpec() {}

@@ -33,7 +33,7 @@ type blobWriter struct {
 	startedAt time.Time
 	digester  digest.Digester
 	written   int64 // track the contiguous write
-
+	//NANNAN: filewriter
 	fileWriter storagedriver.FileWriter
 	driver     storagedriver.StorageDriver
 	path       string

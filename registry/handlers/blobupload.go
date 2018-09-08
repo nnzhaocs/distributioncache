@@ -6,7 +6,7 @@ import (
 	"net/url"
 	//log "github.com/Sirupsen/logrus"
 	
-	storagedriver "github.com/docker/distribution/registry/storage/driver"
+	//storagedriver "github.com/docker/distribution/registry/storage/driver"
 	log "github.com/Sirupsen/logrus"
 	"github.com/docker/distribution"
 	ctxu "github.com/docker/distribution/context"
@@ -281,9 +281,11 @@ func (buh *blobUploadHandler) PutBlobUploadComplete(w http.ResponseWriter, r *ht
 	// NANNAN: Here, we send a des address to deduplication service
 	// desc distribution.Descriptor
 	blobPath, err := storage.PathFor(storage.BlobDataPathSpec{
-		digest: desc.Digest,
+		Digest: desc.Digest,
 	})
 	ctxu.GetLogger(buh).Debugf("NANNAN: blob = %v:%v", blobPath, desc.Digest)
+	
+	storage.DedupLayersFromPath(blobPath)
 	//log.Warnf("IBM: HTTP GET: %s", dgst)
 	//WithField("digest", desc.Digest).Warnf("attempted to move zero-length content with non-zero digest")
 }
