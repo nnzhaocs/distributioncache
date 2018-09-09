@@ -3,17 +3,21 @@ package storage
 import (
 	"fmt"
 	"path"
-	"strings"
+//	"strings"
 
-	"github.com/opencontainers/go-digest"
+//	"github.com/opencontainers/go-digest"
 	
 	//NANNAN
+	"io"
+	"archive"
 	"os"
+	log "github.com/Sirupsen/logrus"
 	"crypto/sha512"
     "io/ioutil"
 	"path/filepath"
 	"github.com/docker/docker/pkg/chrootarchive"
 	"github.com/docker/docker/pkg/idtools"
+	"github.com/docker/docker/pkg/archive"
 )
 
 
@@ -76,7 +80,7 @@ func DedupLayersFromPath(layerPath string) (error){
     if err != nil {
         log.Fatal(err)
     }
-	
+	return err
 //	gzf, err := gzip.NewReader(f)
 //	if err != nil{
 //		fmt.Println(err)
