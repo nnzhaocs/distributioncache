@@ -12,12 +12,13 @@ ARG GOARCH=amd64
 WORKDIR $DISTRIBUTION_DIR
 COPY . $DISTRIBUTION_DIR
 
-RUN mkdir -p /go/src/bitbucket.com/milit93/ && mkdir -p ~/.ssh/
+RUN mkdir -p /go/src/bitbucket.com/milit93/ && mkdir -p ~/.ssh/ && mkdir -p /go/src/github.com/docker/docker
 
 RUN ssh-keyscan -t rsa github.com > ~/.ssh/known_hosts
 
 #RUN  cd /go/src/bitbucket.com/milit93/ 
 RUN git clone https://github.com/nnzhaocs/consistenthash_sha256 /go/src/bitbucket.com/milit93/consistenthash_sha256/
+RUN git clone https://github.com/moby/moby.git /go/src/github.com/docker/docker
 #https://github.com/nnzhaocs/consistenthash_sha256
 
 RUN apt-get update && apt-get install -y libzookeeper-mt-dev
