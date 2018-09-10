@@ -3,39 +3,39 @@ package storage
 import (
 	"fmt"
 	"path"
-//	"strings"
+	//	"strings"
 
-//	"github.com/opencontainers/go-digest"
-	
+	//	"github.com/opencontainers/go-digest"
+
 	//NANNAN
 	"io"
-//	"archive"
-	"os"
-	log "github.com/Sirupsen/logrus"
+	//	"archive"
 	"crypto/sha512"
-    "io/ioutil"
+	"io/ioutil"
+	"os"
 	"path/filepath"
+
+	log "github.com/Sirupsen/logrus"
+	archive "github.com/docker/docker/pkg/archive"
+	//"github.com/docker/docker/pkg/archive"
 	"github.com/docker/docker/pkg/chrootarchive"
 	"github.com/docker/docker/pkg/idtools"
-	"github.com/docker/docker/pkg/archive"
 )
-
-
 
 //NANNAN: dedup operation
 //once a layer or manifest is recieved, do dedup:
-// read tarfile -> decompress -> unpack -> file digest -> check redis index table -> 
+// read tarfile -> decompress -> unpack -> file digest -> check redis index table ->
 // if not -> save, -> update redis index table
 // else: -> drop
 // update -> redis layer recipe
-//  
+//
 //			==== file level dedup: on disk storage ===
 //			1. directory hierarchy, where unique files are saved
 //				file_sha256/hex[:1]/sha256digest/filename.extension
-//			2. directory, 
-//				sha256/hex[:1]/sha256digest/data -> 
+//			2. directory,
+//				sha256/hex[:1]/sha256digest/data ->
 //				sha256/hex[:1]/sha256digest/layer_dirs_hierachy/link_to_uniq_file
-//			===== file level dedup: table on redis memory ==== 
+//			===== file level dedup: table on redis memory ====
 //			added two table:
 //					1. index table:
 //								 |					|						|
@@ -53,84 +53,93 @@ import (
 //								 |					|						|
 //					3. cache files and cache layers
 //
-// 
+//
 //
 
-func DedupLayersFromPath(layerPath string) (error){
+func DedupLayersFromPath(absPath string) error {
 	//NANNAN: stat layerPath and read gzip file
-	var f io.Reader
-	f, err := os.Open(layerPath)
-	if err != nil{
-		fmt.Println(err)
-		os.Exit(1)
-	}
-//	defer f.Close()
-	inflatedLayerData, err := archive.DecompressStream(f)
-	defer inflatedLayerData.Close()
-	if err != nil {
-		fmt.Println("could not get decompression stream: %v", err)
-		return err
-	}
+	//var f io.Reader
+	layerPath := path.Join("/var/lib/registry", absPath)
+	fmt.Println("NANNAN: START DEDUPLICATION FROM PATH:%v", absPath)
+	//f, err := os.Open(layerPath)
+	//if err != nil {
+	//	fmt.Println(err)
+	//	os.Exit(1)
+	//}
+	//	defer f.Close()
+	//fmt.Println("NANNAN: start decompressing layer")
+	//inflatedLayerData, err := archive.DecompressStream(f)
+	//defer inflatedLayerData.Close()
+	//if err != nil {
+	//	fmt.Println("NANNAN: could not get decompression stream: %v", err)
+	//	return err
+	//}
 	//Decompression
-	err = applyDiff(layerPath, inflatedLayerData)
+	parentDir := path.Dir(layerPath)
+	unpackPath := path.Join(parentDir, "diff")
+	err := archive.NewDefaultArchiver().UntarPath(layerPath, unpackPath)
 	if err != nil {
+		fmt.Println(err)
 		return err
 	}
-	
+	//parentDir := path.Dir(layerPath)
 	//walk through directory
-	path := path.Join(layerPath, "diff")
-	
+	//unpackPath := path.Join(parentDir, "diff")
+
 	//	filepath.Walk
-	err = filepath.Walk(path, checkDuplicate)
-    if err != nil {
-        log.Fatal(err)
-    }
+	err = filepath.Walk(unpackPath, checkDuplicate)
+	if err != nil {
+		log.Fatal(err)
+	}
 	return err
-//	gzf, err := gzip.NewReader(f)
-//	if err != nil{
-//		fmt.Println(err)
-//		os.Exit(1)
-//	}
-//	
-//	tarReader := tar.NewReader(gzf)
-//	
-//	i := 0
-//	for
-	
+	//	gzf, err := gzip.NewReader(f)
+	//	if err != nil{
+	//		fmt.Println(err)
+	//		os.Exit(1)
+	//	}
+	//
+	//	tarReader := tar.NewReader(gzf)
+	//
+	//	i := 0
+	//	for
+
 	//NANNAN: dedup
 }
 
 var files = make(map[[sha512.Size]byte]string)
 
 func checkDuplicate(path string, info os.FileInfo, err error) error {
-    if err != nil {
-        fmt.Println(err)
-        return nil
-    }
-    if info.IsDir() {
-        return nil
-    }
+	fmt.Printf("NANNAN: START CHECK DUPLICATE========>")
+	if err != nil {
+		fmt.Println(err)
+		return nil
+	}
+	if info.IsDir() {
+		return nil
+	}
 
-    data, err := ioutil.ReadFile(path)
-    if err != nil {
-        fmt.Println(err)
-        return nil
-    }
-    digest := sha512.Sum512(data)
-    if v, ok := files[digest]; ok {
-        fmt.Printf("%q is a duplicate of %q\n", path, v)
-    } else {
-    	//check redis file
-        files[digest] = path
-    }
+	data, err := ioutil.ReadFile(path)
+	if err != nil {
+		fmt.Println(err)
+		return nil
+	}
+	digest := sha512.Sum512(data)
+	if v, ok := files[digest]; ok {
+		fmt.Printf("%q is a duplicate of %q\n", path, v)
+	} else {
+		//check redis file
+		files[digest] = path
+	}
 
-    return nil
+	return nil
 }
 
-
 func applyDiff(layerPath string, diff io.Reader) error {
-	path := path.Join(layerPath, "diff")
-	
+	//path := path.Join(layerPath, "diff")
+	fmt.Println("NANNAN: start unpacking layer")
+	parentDir := path.Dir(layerPath)
+	diffPath := path.Join(parentDir, "diff")
+
 	uidMap := []idtools.IDMap{
 		{
 			ContainerID: 0,
@@ -145,8 +154,8 @@ func applyDiff(layerPath string, diff io.Reader) error {
 			Size:        1,
 		},
 	}
-//	options := graphdriver.Options{Root: td, UIDMaps: uidMap, GIDMaps: gidMap}
-	return chrootarchive.UntarUncompressed(diff, path, &archive.TarOptions{
+	//	options := graphdriver.Options{Root: td, UIDMaps: uidMap, GIDMaps: gidMap}
+	return chrootarchive.UntarUncompressed(diff, diffPath, &archive.TarOptions{
 		UIDMaps: uidMap,
 		GIDMaps: gidMap,
 	})
@@ -154,7 +163,7 @@ func applyDiff(layerPath string, diff io.Reader) error {
 
 //	uidMaps       []idtools.IDMap
 //	gidMaps       []idtools.IDMap
-	
+
 // ApplyDiff extracts the changeset from the given diff into the
 // layer with the specified id and parent, returning the size of the
 // new layer in bytes.
