@@ -16,7 +16,7 @@ import (
 	"path/filepath"
 
 	log "github.com/Sirupsen/logrus"
-	archive "github.com/docker/docker/pkg/archive"
+	"github.com/docker/docker/pkg/archive"
 	//"github.com/docker/docker/pkg/archive"
 	"github.com/docker/docker/pkg/chrootarchive"
 	"github.com/docker/docker/pkg/idtools"
@@ -60,7 +60,7 @@ func DedupLayersFromPath(absPath string) error {
 	//NANNAN: stat layerPath and read gzip file
 	//var f io.Reader
 	layerPath := path.Join("/var/lib/registry", absPath)
-	fmt.Println("NANNAN: START DEDUPLICATION FROM PATH:%v", absPath)
+	fmt.Println("NANNAN: START DEDUPLICATION FROM PATH:%v", layerPath)
 	//f, err := os.Open(layerPath)
 	//if err != nil {
 	//	fmt.Println(err)
@@ -77,7 +77,20 @@ func DedupLayersFromPath(absPath string) error {
 	//Decompression
 	parentDir := path.Dir(layerPath)
 	unpackPath := path.Join(parentDir, "diff")
-	err := archive.NewDefaultArchiver().UntarPath(layerPath, unpackPath)
+	
+	archiver := archive.NewDefaultArchiver()
+	options := &TarOptions{
+		UIDMaps: archiver.IDMapping.UIDs(),
+		GIDMaps: archiver.IDMapping.GIDs(),
+	}
+	idMapping := idtools.NewIDMappingsFromMaps(options.UIDMaps, options.GIDMaps)
+	rootIDs := idMapping.RootPair()
+	err = idtools.MkdirAllAndChownNew(unpackPath, 0777, rootIDs)
+	if err != nil {
+		return err
+	}
+	
+	err := archiver.UntarPath(layerPath, unpackPath)
 	if err != nil {
 		fmt.Println(err)
 		return err
