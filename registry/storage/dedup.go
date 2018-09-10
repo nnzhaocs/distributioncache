@@ -77,20 +77,20 @@ func DedupLayersFromPath(absPath string) error {
 	//Decompression
 	parentDir := path.Dir(layerPath)
 	unpackPath := path.Join(parentDir, "diff")
-	
+
 	archiver := archive.NewDefaultArchiver()
-	options := &TarOptions{
+	options := &archive.TarOptions{
 		UIDMaps: archiver.IDMapping.UIDs(),
 		GIDMaps: archiver.IDMapping.GIDs(),
 	}
 	idMapping := idtools.NewIDMappingsFromMaps(options.UIDMaps, options.GIDMaps)
 	rootIDs := idMapping.RootPair()
-	err = idtools.MkdirAllAndChownNew(unpackPath, 0777, rootIDs)
+	err := idtools.MkdirAllAndChownNew(unpackPath, 0777, rootIDs)
 	if err != nil {
 		return err
 	}
-	
-	err := archiver.UntarPath(layerPath, unpackPath)
+
+	err = archiver.UntarPath(layerPath, unpackPath)
 	if err != nil {
 		fmt.Println(err)
 		return err
