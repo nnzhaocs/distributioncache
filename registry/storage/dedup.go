@@ -9,7 +9,7 @@ import (
 	
 	//NANNAN
 	"io"
-	"archive"
+//	"archive"
 	"os"
 	log "github.com/Sirupsen/logrus"
 	"crypto/sha512"
@@ -64,10 +64,15 @@ func DedupLayersFromPath(layerPath string) (error){
 		fmt.Println(err)
 		os.Exit(1)
 	}
-	defer f.Close()
-	
+//	defer f.Close()
+	inflatedLayerData, err := archive.DecompressStream(f)
+	defer inflatedLayerData.Close()
+	if err != nil {
+		fmt.Println("could not get decompression stream: %v", err)
+		return err
+	}
 	//Decompression
-	applySize, err := applyDiff(layerPath, f)
+	err = applyDiff(layerPath, inflatedLayerData)
 	if err != nil {
 		return err
 	}
@@ -76,7 +81,7 @@ func DedupLayersFromPath(layerPath string) (error){
 	path := path.Join(layerPath, "diff")
 	
 	//	filepath.Walk
-	err := filepath.Walk(path, checkDuplicate)
+	err = filepath.Walk(path, checkDuplicate)
     if err != nil {
         log.Fatal(err)
     }
