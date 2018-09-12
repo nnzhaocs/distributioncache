@@ -36,6 +36,8 @@ http:
         X-Content-Type-Options: [nosniff]
 redis:
   addr: 192.168.0.170:6379
+  # NANNAN: give a name to filedescribtor
+  # db: 0
   pool:
     maxidle: 16
     maxactive: 64

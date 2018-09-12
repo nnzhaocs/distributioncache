@@ -251,7 +251,7 @@ func NewApp(ctx context.Context, config *configuration.Configuration) *App {
 			}
 		}
 	}
-
+	//  here use bigcache as blobcache; NANNAN: disabled too
 	if cc, ok := config.Storage["blobcache"]; ok {
 		fmt.Printf("hehehehehere\n\n")
 		c, ok := cc["type"]
@@ -291,12 +291,14 @@ func NewApp(ctx context.Context, config *configuration.Configuration) *App {
 	// configure storage caches
 	if cc, ok := config.Storage["cache"]; ok {
 		v, ok := cc["blobdescriptor"]
+		//NANNAN: which one is used for caching blobdescriptor.
 		if !ok {
 			// Backwards compatible: "layerinfo" == "blobdescriptor"
 			v = cc["layerinfo"]
 		}
 
 		switch v {
+			// NANNAN: store blob descriptor
 		case "redis":
 			if app.redis == nil {
 				panic("redis configuration required to use for layerinfo cache")
@@ -572,6 +574,8 @@ func (app *App) configureRedis(configuration *configuration.Configuration) {
 	}
 
 	app.redis = pool
+	//NANNAN: add redis conn in redis.go
+	rediscache.redisPool = pool
 
 	// setup expvar
 	registry := expvar.Get("registry")
