@@ -53,6 +53,14 @@ func (err ErrBlobMounted) Error() string {
 		err.From, err.Descriptor)
 }
 
+type fileDescriptor struct {
+	// Digest uniquely identifies the content. A byte stream can be verified
+	// against against this digest.
+	Digest digest.Digest `json:"digest,omitempty"`
+	
+	filePath string
+}
+
 // Descriptor describes targeted content. Used in conjunction with a blob
 // store, a descriptor can be used to fetch, store and target any kind of
 // blob. The struct also describes the wire protocol format. Fields should
@@ -75,6 +83,9 @@ type Descriptor struct {
 	// NOTE: Before adding a field here, please ensure that all
 	// other options have been exhausted. Much of the type relationships
 	// depend on the simplicity of this type.
+	
+	// NANNAN: if it's a layer, then, we add it's containning files'descriptor
+	
 }
 
 // Descriptor returns the descriptor, to make it satisfy the Describable

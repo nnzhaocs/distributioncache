@@ -11,6 +11,130 @@ import (
 	"github.com/opencontainers/go-digest"
 )
 
+
+//NANNAN: for deduplication
+// a pool embedding the original pool and adding adbno state
+//type DedupRedisPool struct {
+//   Pool redis.Pool
+//   dbno int
+//}
+
+
+// "overriding" the Get method
+//func (drp *DedupRedisPool)Get() Connection {
+//   conn := drp.Pool.Get()
+//   conn.Do("SELECT", drp.dbno)
+//   return conn
+//}
+
+//var fileDigestPool DedupRedisPool
+
+//var background = &instanceContext{
+//	Context: context.Background(),
+//}
+//fileDigestPool := &DedupRedisPool {
+//    redis.Pool{
+//        MaxIdle:   80,
+//        MaxActive: 12000, // max number of connections
+//        Dial: func() (redis.Conn, error) {
+//        c, err := redis.Dial("tcp", host+":"+port)
+//        if err != nil {
+//            panic(err.Error())
+//        }
+//        return c, err
+//    },
+//    3, // the db number
+//}
+//    //now you call it normally
+//conn := fileDigestPool.Get()
+//defer conn.Close()
+
+//func (app *App) configureRedis(configuration *configuration.Configuration, dbno int) {
+//	if configuration.Redis.Addr == "" {
+//		dcontext.GetLogger(app).Infof("redis not configured")
+//		return
+//	}
+//
+//	fileDigestPool := &DedupRedisPool {
+//		pool := &redis.Pool{
+//			Dial: func() (redis.Conn, error) {
+//				// TODO(stevvooe): Yet another use case for contextual timing.
+//				ctx := context.WithValue(app, redisStartAtKey{}, time.Now())
+//	
+//				done := func(err error) {
+//					logger := dcontext.GetLoggerWithField(ctx, "redis.connect.duration",
+//						dcontext.Since(ctx, redisStartAtKey{}))
+//					if err != nil {
+//						logger.Errorf("redis: error connecting: %v", err)
+//					} else {
+//						logger.Infof("redis: connect %v", configuration.Redis.Addr)
+//					}
+//				}
+//	
+//				conn, err := redis.DialTimeout("tcp",
+//					configuration.Redis.Addr,
+//					configuration.Redis.DialTimeout,
+//					configuration.Redis.ReadTimeout,
+//					configuration.Redis.WriteTimeout)
+//				if err != nil {
+//					dcontext.GetLogger(app).Errorf("error connecting to redis instance %s: %v",
+//						configuration.Redis.Addr, err)
+//					done(err)
+//					return nil, err
+//				}
+//	
+//				// authorize the connection
+//				if configuration.Redis.Password != "" {
+//					if _, err = conn.Do("AUTH", configuration.Redis.Password); err != nil {
+//						defer conn.Close()
+//						done(err)
+//						return nil, err
+//					}
+//				}
+//	
+//				// select the database to use
+//				if configuration.Redis.DB != 0 {
+//					if _, err = conn.Do("SELECT", configuration.Redis.DB); err != nil {
+//						defer conn.Close()
+//						done(err)
+//						return nil, err
+//					}
+//				}
+//	
+//				done(nil)
+//				return conn, nil
+//			},
+//			MaxIdle:     configuration.Redis.Pool.MaxIdle,
+//			MaxActive:   configuration.Redis.Pool.MaxActive,
+//			IdleTimeout: configuration.Redis.Pool.IdleTimeout,
+//			TestOnBorrow: func(c redis.Conn, t time.Time) error {
+//				// TODO(stevvooe): We can probably do something more interesting
+//				// here with the health package.
+//				_, err := c.Do("PING")
+//				return err
+//			},
+//			Wait: false, // if a connection is not avialable, proceed without cache.
+//		},
+//		dbno, // the db number
+//		
+//	}
+//
+//	app.redis = pool
+//
+//	// setup expvar
+//	registry := expvar.Get("registry")
+//	if registry == nil {
+//		registry = expvar.NewMap("registry")
+//	}
+//
+//	registry.(*expvar.Map).Set("redis", expvar.Func(func() interface{} {
+//		return map[string]interface{}{
+//			"Config": configuration.Redis,
+//			"Active": app.redis.ActiveCount(),
+//		}
+//	}))
+//}
+
 // redisBlobStatService provides an implementation of
 // BlobDescriptorCacheProvider based on redis. Blob descriptors are stored in
 // two parts. The first provide fast access to repository membership through a
@@ -30,6 +154,8 @@ type redisBlobDescriptorService struct {
 	// for each operation. Once we have better lifecycle management of the
 	// request objects, we can change this to a connection.
 }
+
+var redisPool *redis.Pool
 
 // NewRedisBlobDescriptorCacheProvider returns a new redis-based
 // BlobDescriptorCacheProvider using the provided redis connection pool.
