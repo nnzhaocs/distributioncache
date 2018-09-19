@@ -31,6 +31,7 @@ import (
 	"github.com/docker/distribution/registry/storage"
 	memorycache "github.com/docker/distribution/registry/storage/cache/memory"
 	rediscache "github.com/docker/distribution/registry/storage/cache/redis"
+//	redisDedup "github.com/docker/distribution/registry/storage/cache/redisDedup"
 	storagedriver "github.com/docker/distribution/registry/storage/driver"
 	"github.com/docker/distribution/registry/storage/driver/factory"
 	storagemiddleware "github.com/docker/distribution/registry/storage/driver/middleware"
@@ -304,7 +305,11 @@ func NewApp(ctx context.Context, config *configuration.Configuration) *App {
 				panic("redis configuration required to use for layerinfo cache")
 			}
 			cacheProvider := rediscache.NewRedisBlobDescriptorCacheProvider(app.redis)
-			localOptions := append(options, storage.BlobDescriptorCacheProvider(cacheProvider))
+			
+			//NANNAN
+			filecacheProvider := rediscache.NewRedisFileDescriptorCacheProvider(app.redis)
+			
+			localOptions := append(options, storage.BlobDescriptorCacheProviderWithFileCache(cacheProvider, filecacheProvider))
 			app.registry, err = storage.NewRegistry(app, app.driver, localOptions...)
 			if err != nil {
 				panic("could not create registry: " + err.Error())
@@ -312,6 +317,7 @@ func NewApp(ctx context.Context, config *configuration.Configuration) *App {
 			ctxu.GetLogger(app).Infof("using redis blob descriptor cache")
 		case "inmemory":
 			cacheProvider := memorycache.NewInMemoryBlobDescriptorCacheProvider()
+					
 			localOptions := append(options, storage.BlobDescriptorCacheProvider(cacheProvider))
 			app.registry, err = storage.NewRegistry(app, app.driver, localOptions...)
 			if err != nil {
@@ -575,7 +581,7 @@ func (app *App) configureRedis(configuration *configuration.Configuration) {
 
 	app.redis = pool
 	//NANNAN: add redis conn in redis.go
-	rediscache.redisPool = pool
+//	redisDedup.RedisPool = pool
 
 	// setup expvar
 	registry := expvar.Get("registry")

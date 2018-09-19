@@ -22,6 +22,11 @@ type registry struct {
 	blobServer                   *blobServer
 	statter                      *blobStatter // global statter service.
 	blobDescriptorCacheProvider  cache.BlobDescriptorCacheProvider
+	
+	//NANNAN: add a fileDescriptorCacheProvider for dedup
+	
+	fileDescriptorCacheProvider  cache.FileDescriptorCacheProvider
+	
 	deleteEnabled                bool
 	resumableDigestEnabled       bool
 	schema1SigningKey            libtrust.PrivateKey
@@ -117,6 +122,28 @@ func BlobDescriptorServiceFactory(factory distribution.BlobDescriptorServiceFact
 // BlobDescriptorCacheProvider returns a functional option for
 // NewRegistry. It creates a cached blob statter for use by the
 // registry.
+func BlobDescriptorCacheProviderWithFileCache(blobDescriptorCacheProvider cache.BlobDescriptorCacheProvider, fileDescriptorCacheProvider cache.FileDescriptorCacheProvider) RegistryOption {
+	// TODO(aaronl): The duplication of statter across several objects is
+	// ugly, and prevents us from using interface types in the registry
+	// struct. Ideally, blobStore and blobServer should be lazily
+	// initialized, and use the current value of
+	// blobDescriptorCacheProvider.
+	//NANNAN: statter == inmemory or redis
+	return func(registry *registry) error {
+		if blobDescriptorCacheProvider != nil {
+			statter := cache.NewCachedBlobStatterWithFileCache(blobDescriptorCacheProvider, fileDescriptorCacheProvider, registry.statter)
+			registry.blobStore.statter = statter
+			registry.blobServer.statter = statter
+			registry.blobDescriptorCacheProvider = blobDescriptorCacheProvider
+			registry.fileDescriptorCacheProvider = fileDescriptorCacheProvider 
+		}
+		return nil
+	}
+}
+
+//// BlobDescriptorCacheProvider returns a functional option for
+//// NewRegistry. It creates a cached blob statter for use by the
+//// registry.
 func BlobDescriptorCacheProvider(blobDescriptorCacheProvider cache.BlobDescriptorCacheProvider) RegistryOption {
 	// TODO(aaronl): The duplication of statter across several objects is
 	// ugly, and prevents us from using interface types in the registry
@@ -134,27 +161,6 @@ func BlobDescriptorCacheProvider(blobDescriptorCacheProvider cache.BlobDescripto
 		return nil
 	}
 }
-
-//// BlobDescriptorCacheProvider returns a functional option for
-//// NewRegistry. It creates a cached blob statter for use by the
-//// registry.
-//func BlobDescriptorCacheProvider(blobDescriptorCacheProvider cache.BlobDescriptorCacheProvider) RegistryOption {
-//	// TODO(aaronl): The duplication of statter across several objects is
-//	// ugly, and prevents us from using interface types in the registry
-//	// struct. Ideally, blobStore and blobServer should be lazily
-//	// initialized, and use the current value of
-//	// blobDescriptorCacheProvider.
-//	//NANNAN: statter == inmemory or redis
-//	return func(registry *registry) error {
-//		if blobDescriptorCacheProvider != nil {
-//			statter := cache.NewCachedBlobStatter(blobDescriptorCacheProvider, registry.statter)
-//			registry.blobStore.statter = statter
-//			registry.blobServer.statter = statter
-//			registry.blobDescriptorCacheProvider = blobDescriptorCacheProvider
-//		}
-//		return nil
-//	}
-//}
 
 // NewRegistry creates a new registry instance from the provided driver. The
 // resulting registry may be shared by multiple goroutines but is cheap to

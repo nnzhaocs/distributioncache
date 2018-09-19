@@ -12,10 +12,19 @@ import (
 	"github.com/docker/distribution/context"
 	storagedriver "github.com/docker/distribution/registry/storage/driver"
 	"github.com/opencontainers/go-digest"
+//NANNAN	
+	"github.com/docker/docker/pkg/archive"
+	"github.com/docker/docker/pkg/idtools"
+	"path/filepath"
+	"github.com/docker/distribution/registry/storage/cache"
+	"os"
+	
 )
 
 var (
 	errResumableDigestNotAvailable = errors.New("resumable digest not available")
+	//NANNAN
+	algorithm   = digest.Canonical
 )
 
 const (
@@ -90,6 +99,125 @@ func (bw *blobWriter) Commit(ctx context.Context, desc distribution.Descriptor) 
 	bw.committed = true
 	return canonical, nil
 }
+
+//NANNAN: after finishing commit, start do deduplication
+
+func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) (error) {
+	
+	context.GetLogger(ctx).Debug("NANNAN: (*blobWriter).Dedup")
+
+	blobPath, err := PathFor(BlobDataPathSpec{
+		Digest: desc.Digest,
+	})
+	context.GetLogger(ctx).Debugf("NANNAN: blob = %v:%v", blobPath, desc.Digest)
+	
+	//DedupLayersFromPath(blobPath)
+	//log.Warnf("IBM: HTTP GET: %s", dgst)
+	//WithField("digest", desc.Digest).Warnf("attempted to move zero-length content with non-zero digest")
+	
+	layerPath := path.Join("/var/lib/registry", blobPath)
+	
+	context.GetLogger(ctx).Debug("NANNAN: START DEDUPLICATION FROM PATH :=>%s", layerPath)
+
+	parentDir := path.Dir(layerPath)
+	unpackPath := path.Join(parentDir, "diff")
+
+	archiver := archive.NewDefaultArchiver()
+	options := &archive.TarOptions{
+		UIDMaps: archiver.IDMapping.UIDs(),
+		GIDMaps: archiver.IDMapping.GIDs(),
+	}
+	idMapping := idtools.NewIDMappingsFromMaps(options.UIDMaps, options.GIDMaps)
+	rootIDs := idMapping.RootPair()
+	err = idtools.MkdirAllAndChownNew(unpackPath, 0777, rootIDs)
+	if err != nil {
+		context.GetLogger(ctx).Errorf("NANNAN: %s", err)
+		return err
+	}
+
+	err = archiver.UntarPath(layerPath, unpackPath)
+	if err != nil {
+		context.GetLogger(ctx).Errorf("NANNAN: %s", err)
+		return err
+	}
+	
+	err = filepath.Walk(unpackPath, bw.CheckDuplicate(ctx, desc, bw.blobStore.registry.fileDescriptorCacheProvider))
+	if err != nil {
+		context.GetLogger(ctx).Errorf("NANNAN: %s", err)
+	}
+	return err
+}
+
+//NANNAN check dedup
+
+func (bw *blobWriter) CheckDuplicate(ctx context.Context, desc distribution.Descriptor, db cache.FileDescriptorCacheProvider) filepath.WalkFunc {
+	return func(path string, info os.FileInfo, err error) error {
+		context.GetLogger(ctx).Debug("NANNAN: START CHECK DUPLICATES :=>")
+
+		if err != nil {
+			context.GetLogger(ctx).Errorf("NANNAN: %s", err)
+			return nil
+		}
+		
+		if info.IsDir() {
+			context.GetLogger(ctx).Debug("NANNAN: TODO process directories")
+			return nil
+		}
+	
+		fp, err := os.Open(path)
+		if err != nil {
+			context.GetLogger(ctx).Errorf("NANNAN: %s", err)
+			return nil
+		}
+		
+		defer fp.Close()
+		
+		digestFn := algorithm.FromReader
+		dgst, err := digestFn(fp)
+		if err != nil {
+			context.GetLogger(ctx).Errorf("%s: %v", path, err)
+			return nil
+		}
+		
+		_, err = db.StatFile(ctx, dgst)
+		if err == nil {
+			// file content already present	
+			//first update layer metadata
+			//delete this file		
+			err := os.Remove(path)
+			if err != nil {
+			  context.GetLogger(ctx).Errorf("NANNAN: %s", err)
+			  return err
+			}
+			return nil
+		} else if err != distribution.ErrBlobUnknown {
+			context.GetLogger(ctx).Errorf("NANNAN: checkDuplicate: error stating content (%v): %v", dgst, err)
+			// real error, return it
+//			fmt.Println(err)
+			return err
+			//return distribution.Descriptor{}, err
+		}
+		
+	//	var desc distribution.FileDescriptor	
+		des := distribution.FileDescriptor{
+			
+	//		Size: int64(len(p)),
+			// NOTE(stevvooe): The central blob store firewalls media types from
+			// other users. The caller should look this up and override the value
+			// for the specific repository.
+			FilePath: path,
+			Digest:    dgst,
+		}
+		
+		err = db.SetFileDescriptor(ctx, dgst, des)
+		if err != nil {
+			return err
+		}
+		
+		return nil
+	}
+}
+
 
 // Cancel the blob upload process, releasing any resources associated with
 // the writer and canceling the operation.

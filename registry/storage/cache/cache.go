@@ -16,6 +16,13 @@ type BlobDescriptorCacheProvider interface {
 	RepositoryScoped(repo string) (distribution.BlobDescriptorService, error)
 }
 
+//NANNAN
+type FileDescriptorCacheProvider interface {
+	distribution.FileDescriptorService
+
+//	RepositoryScoped(repo string) (distribution.FileDescriptorService, error)
+}
+
 // ValidateDescriptor provides a helper function to ensure that caches have
 // common criteria for admitting descriptors.
 func ValidateDescriptor(desc distribution.Descriptor) error {

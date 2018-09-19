@@ -53,14 +53,6 @@ func (err ErrBlobMounted) Error() string {
 		err.From, err.Descriptor)
 }
 
-type fileDescriptor struct {
-	// Digest uniquely identifies the content. A byte stream can be verified
-	// against against this digest.
-	Digest digest.Digest `json:"digest,omitempty"`
-	
-	filePath string
-}
-
 // Descriptor describes targeted content. Used in conjunction with a blob
 // store, a descriptor can be used to fetch, store and target any kind of
 // blob. The struct also describes the wire protocol format. Fields should
@@ -86,6 +78,17 @@ type Descriptor struct {
 	
 	// NANNAN: if it's a layer, then, we add it's containning files'descriptor
 	
+}
+
+// NANNAN: if it's a layer, then, we add it's containning files'descriptor
+
+type FileDescriptor struct {
+	Descriptor
+	// Digest uniquely identifies the content. A byte stream can be verified
+	// against against this digest.
+	Digest digest.Digest `json:"digest,omitempty"`
+
+	FilePath string
 }
 
 // Descriptor returns the descriptor, to make it satisfy the Describable
@@ -136,6 +139,15 @@ type BlobDescriptorService interface {
 
 	// Clear enables descriptors to be unlinked
 	Clear(ctx context.Context, dgst digest.Digest) error
+}
+
+// NANNAN: FileDescriptorService
+
+type FileDescriptorService interface {
+	
+	StatFile(ctx context.Context, dgst digest.Digest) (FileDescriptor, error)
+	SetFileDescriptor(ctx context.Context, dgst digest.Digest, desc FileDescriptor) error
+
 }
 
 // BlobDescriptorServiceFactory creates middleware for BlobDescriptorService.
@@ -254,6 +266,7 @@ type BlobWriter interface {
 	// result in a no-op. This allows use of Cancel in a defer statement,
 	// increasing the assurance that it is correctly called.
 	Cancel(ctx context.Context) error
+	Dedup(ctx context.Context, desc Descriptor) (error)
 }
 
 // BlobService combines the operations to access, read and write blobs. This

@@ -11,130 +11,6 @@ import (
 	"github.com/opencontainers/go-digest"
 )
 
-
-//NANNAN: for deduplication
-// a pool embedding the original pool and adding adbno state
-//type DedupRedisPool struct {
-//   Pool redis.Pool
-//   dbno int
-//}
-
-
-// "overriding" the Get method
-//func (drp *DedupRedisPool)Get() Connection {
-//   conn := drp.Pool.Get()
-//   conn.Do("SELECT", drp.dbno)
-//   return conn
-//}
-
-//var fileDigestPool DedupRedisPool
-
-//var background = &instanceContext{
-//	Context: context.Background(),
-//}
-//fileDigestPool := &DedupRedisPool {
-//    redis.Pool{
-//        MaxIdle:   80,
-//        MaxActive: 12000, // max number of connections
-//        Dial: func() (redis.Conn, error) {
-//        c, err := redis.Dial("tcp", host+":"+port)
-//        if err != nil {
-//            panic(err.Error())
-//        }
-//        return c, err
-//    },
-//    3, // the db number
-//}
-//    //now you call it normally
-//conn := fileDigestPool.Get()
-//defer conn.Close()
-
-//func (app *App) configureRedis(configuration *configuration.Configuration, dbno int) {
-//	if configuration.Redis.Addr == "" {
-//		dcontext.GetLogger(app).Infof("redis not configured")
-//		return
-//	}
-//
-//	fileDigestPool := &DedupRedisPool {
-//		pool := &redis.Pool{
-//			Dial: func() (redis.Conn, error) {
-//				// TODO(stevvooe): Yet another use case for contextual timing.
-//				ctx := context.WithValue(app, redisStartAtKey{}, time.Now())
-//	
-//				done := func(err error) {
-//					logger := dcontext.GetLoggerWithField(ctx, "redis.connect.duration",
-//						dcontext.Since(ctx, redisStartAtKey{}))
-//					if err != nil {
-//						logger.Errorf("redis: error connecting: %v", err)
-//					} else {
-//						logger.Infof("redis: connect %v", configuration.Redis.Addr)
-//					}
-//				}
-//	
-//				conn, err := redis.DialTimeout("tcp",
-//					configuration.Redis.Addr,
-//					configuration.Redis.DialTimeout,
-//					configuration.Redis.ReadTimeout,
-//					configuration.Redis.WriteTimeout)
-//				if err != nil {
-//					dcontext.GetLogger(app).Errorf("error connecting to redis instance %s: %v",
-//						configuration.Redis.Addr, err)
-//					done(err)
-//					return nil, err
-//				}
-//	
-//				// authorize the connection
-//				if configuration.Redis.Password != "" {
-//					if _, err = conn.Do("AUTH", configuration.Redis.Password); err != nil {
-//						defer conn.Close()
-//						done(err)
-//						return nil, err
-//					}
-//				}
-//	
-//				// select the database to use
-//				if configuration.Redis.DB != 0 {
-//					if _, err = conn.Do("SELECT", configuration.Redis.DB); err != nil {
-//						defer conn.Close()
-//						done(err)
-//						return nil, err
-//					}
-//				}
-//	
-//				done(nil)
-//				return conn, nil
-//			},
-//			MaxIdle:     configuration.Redis.Pool.MaxIdle,
-//			MaxActive:   configuration.Redis.Pool.MaxActive,
-//			IdleTimeout: configuration.Redis.Pool.IdleTimeout,
-//			TestOnBorrow: func(c redis.Conn, t time.Time) error {
-//				// TODO(stevvooe): We can probably do something more interesting
-//				// here with the health package.
-//				_, err := c.Do("PING")
-//				return err
-//			},
-//			Wait: false, // if a connection is not avialable, proceed without cache.
-//		},
-//		dbno, // the db number
-//		
-//	}
-//
-//	app.redis = pool
-//
-//	// setup expvar
-//	registry := expvar.Get("registry")
-//	if registry == nil {
-//		registry = expvar.NewMap("registry")
-//	}
-//
-//	registry.(*expvar.Map).Set("redis", expvar.Func(func() interface{} {
-//		return map[string]interface{}{
-//			"Config": configuration.Redis,
-//			"Active": app.redis.ActiveCount(),
-//		}
-//	}))
-//}
-
 // redisBlobStatService provides an implementation of
 // BlobDescriptorCacheProvider based on redis. Blob descriptors are stored in
 // two parts. The first provide fast access to repository membership through a
@@ -146,6 +22,14 @@ import (
 //
 // Note that there is no implied relationship between these two caches. The
 // layer may exist in one, both or none and the code must be written this way.
+
+var (
+	dbNoBlob = 0 
+	dbNoFile = 1
+)
+
+	
+
 type redisBlobDescriptorService struct {
 	pool *redis.Pool
 
@@ -154,8 +38,6 @@ type redisBlobDescriptorService struct {
 	// for each operation. Once we have better lifecycle management of the
 	// request objects, we can change this to a connection.
 }
-
-var redisPool *redis.Pool
 
 // NewRedisBlobDescriptorCacheProvider returns a new redis-based
 // BlobDescriptorCacheProvider using the provided redis connection pool.
@@ -185,6 +67,11 @@ func (rbds *redisBlobDescriptorService) Stat(ctx context.Context, dgst digest.Di
 
 	conn := rbds.pool.Get()
 	defer conn.Close()
+	//NANNAN
+	if _, err := conn.Do("SELECT", dbNoBlob); err != nil {
+//		defer conn.Close()
+		return distribution.Descriptor{}, err
+	}
 
 	return rbds.stat(ctx, conn, dgst)
 }
@@ -196,6 +83,11 @@ func (rbds *redisBlobDescriptorService) Clear(ctx context.Context, dgst digest.D
 
 	conn := rbds.pool.Get()
 	defer conn.Close()
+	//NANNAN
+	if _, err := conn.Do("SELECT", dbNoBlob); err != nil {
+//		defer conn.Close()
+		return err
+	}
 
 	// Not atomic in redis <= 2.3
 	reply, err := conn.Do("HDEL", rbds.blobDescriptorHashKey(dgst), "digest", "length", "mediatype")
@@ -247,6 +139,11 @@ func (rbds *redisBlobDescriptorService) SetDescriptor(ctx context.Context, dgst 
 
 	conn := rbds.pool.Get()
 	defer conn.Close()
+	//NANNAN
+	if _, err := conn.Do("SELECT", dbNoBlob); err != nil {
+//		defer conn.Close()
+		return err
+	}
 
 	return rbds.setDescriptor(ctx, conn, dgst, desc)
 }
@@ -287,8 +184,13 @@ func (rsrbds *repositoryScopedRedisBlobDescriptorService) Stat(ctx context.Conte
 	}
 
 	conn := rsrbds.upstream.pool.Get()
+	//NANNAN
 	defer conn.Close()
-
+	if _, err := conn.Do("SELECT", dbNoBlob); err != nil {
+//		defer conn.Close()
+		return distribution.Descriptor{}, err
+	}
+	
 	// Check membership to repository first
 	member, err := redis.Bool(conn.Do("SISMEMBER", rsrbds.repositoryBlobSetKey(rsrbds.repo), dgst))
 	if err != nil {
@@ -325,6 +227,11 @@ func (rsrbds *repositoryScopedRedisBlobDescriptorService) Clear(ctx context.Cont
 
 	conn := rsrbds.upstream.pool.Get()
 	defer conn.Close()
+	//NANNAN
+	if _, err := conn.Do("SELECT", dbNoBlob); err != nil {
+//		defer conn.Close()
+		return err
+	}
 
 	// Check membership to repository first
 	member, err := redis.Bool(conn.Do("SISMEMBER", rsrbds.repositoryBlobSetKey(rsrbds.repo), dgst))
@@ -356,6 +263,11 @@ func (rsrbds *repositoryScopedRedisBlobDescriptorService) SetDescriptor(ctx cont
 
 	conn := rsrbds.upstream.pool.Get()
 	defer conn.Close()
+	//NANNAN
+	if _, err := conn.Do("SELECT", dbNoBlob); err != nil {
+//		defer conn.Close()
+		return err
+	}
 
 	return rsrbds.setDescriptor(ctx, conn, dgst, desc)
 }
@@ -391,4 +303,115 @@ func (rsrbds *repositoryScopedRedisBlobDescriptorService) blobDescriptorHashKey(
 
 func (rsrbds *repositoryScopedRedisBlobDescriptorService) repositoryBlobSetKey(repo string) string {
 	return "repository::" + rsrbds.repo + "::blobs"
+}
+
+
+//NANNAN: for deduplication
+//var RedisPool *redis.Pool
+
+type redisFileDescriptorService struct {
+	pool *redis.Pool
+
+	// TODO(stevvooe): We use a pool because we don't have great control over
+	// the cache lifecycle to manage connections. A new connection if fetched
+	// for each operation. Once we have better lifecycle management of the
+	// request objects, we can change this to a connection.
+}
+
+// NewRedisBlobDescriptorCacheProvider returns a new redis-based
+// BlobDescriptorCacheProvider using the provided redis connection pool.
+func NewRedisFileDescriptorCacheProvider(pool *redis.Pool) cache.FileDescriptorCacheProvider {
+	return &redisFileDescriptorService{
+		pool: pool,
+	}
+}
+
+//"files::sha256:7173b809ca12ec5dee4506cd86be934c4596dd234ee82c0662eac04a8c2c71dc"
+func (rfds *redisFileDescriptorService) fileDescriptorHashKey(dgst digest.Digest) string {
+	return "files::" + dgst.String()
+}
+//func (rbds *redisBlobDescriptorService) blobDescriptorHashKey(dgst digest.Digest) string {
+//	return "blobs::" + dgst.String()
+//}
+
+//type repositoryScopedRedisBlobDescriptorService struct {
+//	repo     string
+//	upstream *redisBlobDescriptorService
+//}
+
+var _ distribution.FileDescriptorService = &redisFileDescriptorService{}
+
+//func (rsrbds *repositoryScopedRedisBlobDescriptorService) blobDescriptorHashKey(dgst digest.Digest) string {
+//	return "repository::" + rsrbds.repo + "::blobs::" + dgst.String()
+//}
+//
+//func (rsrbds *repositoryScopedRedisBlobDescriptorService) repositoryBlobSetKey(repo string) string {
+//	return "repository::" + rsrbds.repo + "::blobs"
+//}
+//
+//type repositoryScopedRedisBlobDescriptorService struct {
+//	repo     string
+//	upstream *redisBlobDescriptorService
+//}
+
+//func (cbds *redisFileDescriptorService) Stat(ctx context.Context, dgst digest.Digest) (distribution.Descriptor, error) {
+//	func (cbds *cachedBlobStatter) SetDescriptor(ctx context.Context, dgst digest.Digest, desc distribution.Descriptor) error {
+//}
+//func (rfds *redisFileDescriptorService) StatFileDesriptor(dgst digest.Digest) (distribution.FileDescriptor, error) {
+//	func (rfds *redisFileDescriptorService) SetFileDescriptor(dgst digest.Digest, desc distribution.FileDescriptor) error {
+//}	
+
+func (rfds *redisFileDescriptorService) StatFile(ctx context.Context, dgst digest.Digest) (distribution.FileDescriptor, error) {
+	conn := rfds.pool.Get()
+	defer conn.Close()
+	
+	if _, err := conn.Do("SELECT", dbNoFile); err != nil {
+//		defer conn.Close()
+		return distribution.FileDescriptor{}, err
+	}
+    
+    reply, err := redis.Values(conn.Do("HMGET", rfds.fileDescriptorHashKey(dgst), "digest", "filePath"))
+    	//, "fileSize", "layerDescriptor"
+	if err != nil {
+		return distribution.FileDescriptor{}, err
+	}
+
+	// NOTE(stevvooe): The "size" field used to be "length". We treat a
+	// missing "size" field here as an unknown blob, which causes a cache
+	// miss, effectively migrating the field.
+	if len(reply) < 2 || reply[0] == nil || reply[1] == nil { // don't care if mediatype is nil
+		return distribution.FileDescriptor{}, distribution.ErrBlobUnknown
+	}
+
+	var desc distribution.FileDescriptor
+	if _, err = redis.Scan(reply, &desc.Digest, &desc.FilePath); err != nil {
+		return distribution.FileDescriptor{}, err
+	}
+
+	return desc, nil
+}
+
+func (rfds *redisFileDescriptorService) SetFileDescriptor(ctx context.Context, dgst digest.Digest, desc distribution.FileDescriptor) error {
+	
+	conn := rfds.pool.Get()
+	defer conn.Close()
+	
+	if _, err := conn.Do("SELECT", dbNoFile); err != nil {
+//		defer conn.Close()
+		return err
+	}
+	
+	if _, err := conn.Do("HMSET", rfds.fileDescriptorHashKey(dgst),
+		"digest", desc.Digest,
+		"filePath", desc.FilePath); err != nil {
+		return err
+	}
+
+//	// Only set mediatype if not already set.
+//	if _, err := conn.Do("HSETNX", rbds.blobDescriptorHashKey(dgst),
+//		"mediatype", desc.MediaType); err != nil {
+//		return err
+//	}
+
+	return nil
 }

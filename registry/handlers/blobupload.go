@@ -280,14 +280,14 @@ func (buh *blobUploadHandler) PutBlobUploadComplete(w http.ResponseWriter, r *ht
 
 	// NANNAN: Here, we send a des address to deduplication service
 	// desc distribution.Descriptor
-	blobPath, err := storage.PathFor(storage.BlobDataPathSpec{
-		Digest: desc.Digest,
-	})
-	ctxu.GetLogger(buh).Debugf("NANNAN: blob = %v:%v", blobPath, desc.Digest)
 	
-	storage.DedupLayersFromPath(blobPath)
-	//log.Warnf("IBM: HTTP GET: %s", dgst)
-	//WithField("digest", desc.Digest).Warnf("attempted to move zero-length content with non-zero digest")
+	buh.Upload.Dedup(buh, distribution.Descriptor{
+		Digest: dgst,
+
+		// TODO(stevvooe): This isn't wildly important yet, but we should
+		// really set the mediatype. For now, we can let the backend take care
+		// of this.
+	})
 }
 
 // CancelBlobUpload cancels an in-progress upload of a blob.
