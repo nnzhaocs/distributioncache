@@ -18,6 +18,7 @@ import (
 	"path/filepath"
 	"github.com/docker/distribution/registry/storage/cache"
 	"os"
+//	"ioutil"
 	
 )
 
@@ -149,22 +150,39 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) (
 }
 
 //NANNAN check dedup
+// Metrics: lock
 
 func (bw *blobWriter) CheckDuplicate(ctx context.Context, desc distribution.Descriptor, db cache.FileDescriptorCacheProvider) filepath.WalkFunc {
+//	totalFiles := 0
+//	sameFiles := 0
+//	reguFiles := 0
+//	rmFiles := 0
+	
 	return func(path string, info os.FileInfo, err error) error {
 		context.GetLogger(ctx).Debug("NANNAN: START CHECK DUPLICATES :=>")
 
 		if err != nil {
-			context.GetLogger(ctx).Errorf("NANNAN: %s", err)
+			context.GetLogger(ctx).Errorf("NANNAN: ", err)
+			return err
+		}
+//		context.GetLogger(ctx).Debug("NANNAN: totalFiles,sameFiles,reguFiles,rmFiles", totalFiles, sameFiles, reguFiles, rmFiles)
+//		if info.IsDir() {
+//			context.GetLogger(ctx).Debug("NANNAN: TODO process directories")
+//			
+//			return nil
+//		}
+		
+		//NANNAN: CHECK file stat, skip symlink and hardlink
+//		totalFiles = totalFiles + 1
+		
+		if ! (info.Mode().IsRegular()){
+			context.GetLogger(ctx).Debug("NANNAN: TODO process sysmlink and othrs")
 			return nil
 		}
 		
-		if info.IsDir() {
-			context.GetLogger(ctx).Debug("NANNAN: TODO process directories")
-			return nil
-		}
-	
-		fp, err := os.Open(path)
+//		reguFiles = reguFiles + 1
+			
+		fp, err := os.Open(path) 
 		if err != nil {
 			context.GetLogger(ctx).Errorf("NANNAN: %s", err)
 			return nil
@@ -175,20 +193,23 @@ func (bw *blobWriter) CheckDuplicate(ctx context.Context, desc distribution.Desc
 		digestFn := algorithm.FromReader
 		dgst, err := digestFn(fp)
 		if err != nil {
-			context.GetLogger(ctx).Errorf("%s: %v", path, err)
-			return nil
+			context.GetLogger(ctx).Errorf("NANNAN: %s: %v", path, err)
+			return err
 		}
 		
 		_, err = db.StatFile(ctx, dgst)
 		if err == nil {
 			// file content already present	
 			//first update layer metadata
-			//delete this file		
+			//delete this file
+//			sameFiles = sameFiles + 1		
 			err := os.Remove(path)
 			if err != nil {
 			  context.GetLogger(ctx).Errorf("NANNAN: %s", err)
 			  return err
 			}
+//			rmFiles = rmFiles + 1
+			context.GetLogger(ctx).Debug("NANNAN: REMVE file %s", path)
 			return nil
 		} else if err != distribution.ErrBlobUnknown {
 			context.GetLogger(ctx).Errorf("NANNAN: checkDuplicate: error stating content (%v): %v", dgst, err)
@@ -216,6 +237,7 @@ func (bw *blobWriter) CheckDuplicate(ctx context.Context, desc distribution.Desc
 		
 		return nil
 	}
+	
 }
 
 

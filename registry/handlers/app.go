@@ -533,10 +533,10 @@ func (app *App) configureRedis(configuration *configuration.Configuration) {
 					logger.Infof("redis: connect %v", configuration.Redis.Addr)
 				}
 			}
-
+//NANNAN: 30 * 30*configuration.Redis.DialTimeout
 			conn, err := redis.DialTimeout("tcp",
 				configuration.Redis.Addr,
-				configuration.Redis.DialTimeout,
+				30*configuration.Redis.DialTimeout,
 				configuration.Redis.ReadTimeout,
 				configuration.Redis.WriteTimeout)
 			if err != nil {
