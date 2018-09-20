@@ -536,7 +536,7 @@ func (app *App) configureRedis(configuration *configuration.Configuration) {
 //NANNAN: 30 * 30*configuration.Redis.DialTimeout
 			conn, err := redis.DialTimeout("tcp",
 				configuration.Redis.Addr,
-				30*configuration.Redis.DialTimeout,
+				30*30*configuration.Redis.DialTimeout,
 				configuration.Redis.ReadTimeout,
 				configuration.Redis.WriteTimeout)
 			if err != nil {

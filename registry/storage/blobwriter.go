@@ -22,6 +22,9 @@ import (
 	
 )
 
+//NANNAN: TODO LIST
+//1. when storing to recipe, remove prefix-:/var/lib/registry/docker/registry/v2/blobs/sha256/ for redis space savings.
+
 var (
 	errResumableDigestNotAvailable = errors.New("resumable digest not available")
 	//NANNAN
@@ -140,14 +143,15 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) (
 
 	err = archiver.UntarPath(layerPath, unpackPath)
 	if err != nil {
-		context.GetLogger(ctx).Errorf("NANNAN: %s", err)
+		//TODO: process manifest file
+		context.GetLogger(ctx).Errorf("NANNAN: %s, This may be a manifest file", err)
 		return err
 	}
 	
 //	bfmap := make(BFmap) 
 	var bfdescriptors [] distribution.BFDescriptor
 	
-	err = filepath.Walk(unpackPath, bw.CheckDuplicate(ctx, desc, bw.blobStore.registry.fileDescriptorCacheProvider, bfdescriptors))
+	err = filepath.Walk(unpackPath, bw.CheckDuplicate(ctx, desc, bw.blobStore.registry.fileDescriptorCacheProvider, &bfdescriptors))
 	if err != nil {
 		context.GetLogger(ctx).Errorf("NANNAN: %s", err)
 	}
@@ -168,14 +172,14 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) (
 //NANNAN check dedup
 // Metrics: lock
 
-func (bw *blobWriter) CheckDuplicate(ctx context.Context, desc distribution.Descriptor, db cache.FileDescriptorCacheProvider, bfdescriptors [] distribution.BFDescriptor) filepath.WalkFunc {
+func (bw *blobWriter) CheckDuplicate(ctx context.Context, desc distribution.Descriptor, db cache.FileDescriptorCacheProvider, bfdescriptors *[] distribution.BFDescriptor) filepath.WalkFunc {
 //	totalFiles := 0
 //	sameFiles := 0
 //	reguFiles := 0
 //	rmFiles := 0
 	
 	return func(path string, info os.FileInfo, err error) error {
-		context.GetLogger(ctx).Debug("NANNAN: START CHECK DUPLICATES :=>")
+//		context.GetLogger(ctx).Debug("NANNAN: START CHECK DUPLICATES :=>")
 
 		if err != nil {
 			context.GetLogger(ctx).Errorf("NANNAN: ", err)
@@ -249,7 +253,7 @@ func (bw *blobWriter) CheckDuplicate(ctx context.Context, desc distribution.Desc
 				DigestFilePath: dfp,
 			}
 			
-			bfdescriptors = append(bfdescriptors, bfdescriptor)
+			*bfdescriptors = append(*bfdescriptors, bfdescriptor)
 			
 			return nil
 		} else if err != distribution.ErrBlobUnknown {
@@ -283,7 +287,7 @@ func (bw *blobWriter) CheckDuplicate(ctx context.Context, desc distribution.Desc
 			DigestFilePath: dfp,
 		}
 		
-		bfdescriptors = append(bfdescriptors, bfdescriptor)
+		*bfdescriptors = append(*bfdescriptors, bfdescriptor)
 		
 		return nil
 	}
