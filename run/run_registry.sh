@@ -23,8 +23,17 @@ docker push nnzhaocs/distribution:latest
 
 docker run -p 5000:5000 -e MEMORY="100" --cpus 1 -e HOST="hulk0:5000" -v /home/nannan/dockerimages/layers:/var/lib/registry  -t nnzhaocs/distribution:latest
 
-#===========
-docker run -d -p 6379:6379 redis
+#=========================> HOW TO RUN REDIS WITH REGISTRY <=====================
+#docker run -d -p 6379:6379 redis
+
+docker run -p 6379:6379 --name redis-rejson redislabs/rejson:latest
+
+goto nitishm/go-rejson
+./install-redis-rejson.sh
+./start-redis-rejson.sh
+
+go get github.com/gomodule/redigo/redis
+go get github.com/nitishm/go-rejson
 
 sudo netstat -plnto
 

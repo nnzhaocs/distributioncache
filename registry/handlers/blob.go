@@ -54,6 +54,7 @@ type blobHandler struct {
 
 // GetBlob fetches the binary data from backend storage returns it in the
 // response.
+//Resume stars here in GetBlob
 func (bh *blobHandler) GetBlob(w http.ResponseWriter, r *http.Request) {
 	context.GetLogger(bh).Debug("GetBlob")
 	blobs := bh.Repository.Blobs(bh)

@@ -9,6 +9,13 @@ import (
 	"github.com/docker/distribution/registry/storage/cache"
 	"github.com/garyburd/redigo/redis"
 	"github.com/opencontainers/go-digest"
+	//NANNAN
+	"encoding/json"
+	"flag"
+	rejson "github.com/nitishm/go-rejson"
+//	"log"
+
+	"github.com/gomodule/redigo/redis"
 )
 
 // redisBlobStatService provides an implementation of
@@ -26,6 +33,7 @@ import (
 var (
 	dbNoBlob = 0 
 	dbNoFile = 1
+	dbNoBFRecipe = 2
 )
 
 	
@@ -404,6 +412,103 @@ func (rfds *redisFileDescriptorService) SetFileDescriptor(ctx context.Context, d
 	if _, err := conn.Do("HMSET", rfds.fileDescriptorHashKey(dgst),
 		"digest", desc.Digest,
 		"filePath", desc.FilePath); err != nil {
+		return err
+	}
+
+//	// Only set mediatype if not already set.
+//	if _, err := conn.Do("HSETNX", rbds.blobDescriptorHashKey(dgst),
+//		"mediatype", desc.MediaType); err != nil {
+//		return err
+//	}
+
+	return nil
+}
+
+//"files::sha256:7173b809ca12ec5dee4506cd86be934c4596dd234ee82c0662eac04a8c2c71dc"
+func (rfds *redisFileDescriptorService) BFRecipeHashKey(dgst digest.Digest) string {
+	return "Blob:File:Recipe::" + dgst.String()
+}
+
+func (rfds *redisFileDescriptorService) StatBFRecipe(ctx context.Context, dgst digest.Digest) (desc distribution.BFRecipeDescriptor, error) {
+	conn := rfds.pool.Get()
+	defer conn.Close()
+	
+	if _, err := conn.Do("SELECT", dbNoBFRecipe); err != nil {
+//		defer conn.Close()
+		return distribution.BFRecipeDescriptor{}, err
+	}
+    
+//    reply, err := redis.Values(conn.Do("HMGET", rfds.BFRecipeHashKey(dgst), "blobdigest", "filedescriptors"))
+//    	//, "fileSize", "layerDescriptor"
+//	if err != nil {
+//		return distribution.BFRecipeDescriptor{}, err
+//	}
+
+	bfrJSON, err := redis.Bytes(rejson.JSONGet(conn, rfds.BFRecipeHashKey(dgst),
+	""))
+	if err != nil{
+		return distribution.BFRecipeDescriptor{}, err
+	}
+
+	// NOTE(stevvooe): The "size" field used to be "length". We treat a
+	// missing "size" field here as an unknown blob, which causes a cache
+	// miss, effectively migrating the field.
+//	if len(reply) < 2 || reply[0] == nil || reply[1] == nil { // don't care if mediatype is nil
+//		return distribution.BFRecipeDescriptor{}, distribution.ErrBlobUnknown
+//	}
+
+//	var desc distribution.FileDescriptor
+//	if _, err = redis.Scan(reply, &desc.BlobDigest, &desc.FileDescriptor); err != nil {
+//		return distribution.BFRecipeDescriptor{}, err
+//	}
+
+	desc := distribution.BFRecipeDescriptor{}
+	err = json.Unmarshal(bfrJSON, &desc)
+	if err != nil{
+		return distribution.BFRecipeDescriptor{}, distribution.ErrBlobUnknown
+	}
+	
+
+	return desc, nil
+}
+
+`
+type BFRecipeDescriptor struct{
+
+	BlobDigest      Digest.digest
+	BFDescriptors   []distribution.BFDescriptor
+}
+
+type BFDescriptor struct{
+
+	BlobFilePath    string
+	Digest          Digest.digest,
+	DigestFilePath  string	
+}
+`
+
+func (rfds *redisFileDescriptorService) SetBFRecipe(ctx context.Context, dgst digest.Digest, desc distribution.BFRecipeDescriptor) error {
+	
+	conn := rfds.pool.Get()
+	defer conn.Close()
+	
+	if _, err := conn.Do("SELECT", dbNoBFRecipe); err != nil {
+//		defer conn.Close()
+		return err
+	}
+	
+//	if _, err := conn.Do("HMSET", rfds.BFRecipeHashKey(dgst),
+//		"blobdigest", desc.BlobDigest,
+//		"bfdescriptors", desc.BFDescriptors); err != nil {
+//		return err
+//	}
+
+	//NANNAN: use re-json
+	
+	res, err := rejson.JSONSet(conn, rfds.BFRecipeHashKey(dgst), 
+	".", 
+	desc, false, false)
+	if err != nil{
 		return err
 	}
 

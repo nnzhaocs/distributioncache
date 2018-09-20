@@ -182,7 +182,45 @@ fallback:
 
 func (cbds *cachedBlobStatter) SetFileDescriptor(ctx context.Context, dgst digest.Digest, desc distribution.FileDescriptor) error {
 	if err := cbds.filecache.SetFileDescriptor(ctx, dgst, desc); err != nil {
-		context.GetLogger(ctx).Errorf("error adding descriptor %v to cache: %v", desc.Digest, err)
+		context.GetLogger(ctx).Errorf("error adding file descriptor %v to cache: %v", desc.Digest, err)
+	}
+	return nil
+}
+
+func (cbds *cachedBlobStatter) StatBFRecipe(ctx context.Context, dgst digest.Digest) (desc distribution.BFRecipeDescriptor, error) {
+	desc, err := cbds.filecache.StatBFRecipe(ctx, dgst)
+	if err != nil {
+		if err != distribution.ErrBlobUnknown {
+			context.GetLogger(ctx).Errorf("error retrieving descriptor from cache: %v", err)
+		}
+
+		goto fallback
+	}
+
+	if cbds.tracker != nil {
+		cbds.tracker.Hit()
+	}
+	return desc, nil
+fallback:
+	if cbds.tracker != nil {
+		cbds.tracker.Miss()
+	}
+	//filecache no backend
+//	desc, err = cbds.backend.Stat(ctx, dgst)
+//	if err != nil {
+//		return desc, err
+//	}
+//
+//	if err := cbds.filecache.SetFileDescriptor(ctx, dgst, desc); err != nil {
+//		context.GetLogger(ctx).Errorf("error adding descriptor %v to cache: %v", desc.Digest, err)
+//	}
+
+	return desc, err
+}
+
+func (cbds *cachedBlobStatter) SetBFRecipe(ctx context.Context, dgst digest.Digest, desc distribution.BFRecipeDescriptor) error {
+		if err := cbds.filecache.SetBFRecipe(ctx, dgst, desc); err != nil {
+		context.GetLogger(ctx).Errorf("error adding blob file recipe descriptor %v to cache: %v", desc.Digest, err)
 	}
 	return nil
 }

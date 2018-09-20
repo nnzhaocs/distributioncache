@@ -103,6 +103,8 @@ func (bw *blobWriter) Commit(ctx context.Context, desc distribution.Descriptor) 
 
 //NANNAN: after finishing commit, start do deduplication
 
+//type BFmap map[digest.Digest][]distribution.FileDescriptor
+
 func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) (error) {
 	
 	context.GetLogger(ctx).Debug("NANNAN: (*blobWriter).Dedup")
@@ -142,9 +144,23 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) (
 		return err
 	}
 	
-	err = filepath.Walk(unpackPath, bw.CheckDuplicate(ctx, desc, bw.blobStore.registry.fileDescriptorCacheProvider))
+//	bfmap := make(BFmap) 
+	var bfdescriptors [] distribution.BFDescriptor
+	
+	err = filepath.Walk(unpackPath, bw.CheckDuplicate(ctx, desc, bw.blobStore.registry.fileDescriptorCacheProvider, bfdescriptors))
 	if err != nil {
 		context.GetLogger(ctx).Errorf("NANNAN: %s", err)
+	}
+	
+	//update bfrecipe db
+	des = distribution.BFRecipeDescriptor{
+		BlobDigest: desc.Digest,
+		BFDescriptors: bfdescriptors,
+	}
+	context.GetLogger(ctx).Debug("NANNAN: %v", des)
+	err = db.SetBFRecipe(ctx, dgst, des)
+	if err != nil {
+		return err
 	}
 	return err
 }
@@ -152,7 +168,7 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) (
 //NANNAN check dedup
 // Metrics: lock
 
-func (bw *blobWriter) CheckDuplicate(ctx context.Context, desc distribution.Descriptor, db cache.FileDescriptorCacheProvider) filepath.WalkFunc {
+func (bw *blobWriter) CheckDuplicate(ctx context.Context, desc distribution.Descriptor, db cache.FileDescriptorCacheProvider, bfdescriptors [] distribution.BFDescriptor) filepath.WalkFunc {
 //	totalFiles := 0
 //	sameFiles := 0
 //	reguFiles := 0
@@ -197,7 +213,22 @@ func (bw *blobWriter) CheckDuplicate(ctx context.Context, desc distribution.Desc
 			return err
 		}
 		
-		_, err = db.StatFile(ctx, dgst)
+		//NANNAN: add file to map	
+`
+type BFRecipeDescriptor struct{
+
+	BlobDigest      Digest.digest
+	BFDescriptors   []distribution.BFDescriptor
+}
+
+type BFDescriptor struct{
+
+	BlobFilePath    string
+	Digest          Digest.digest,
+	DigestFilePath  string	
+}
+`
+		des, err = db.StatFile(ctx, dgst)
 		if err == nil {
 			// file content already present	
 			//first update layer metadata
@@ -210,6 +241,16 @@ func (bw *blobWriter) CheckDuplicate(ctx context.Context, desc distribution.Desc
 			}
 //			rmFiles = rmFiles + 1
 			context.GetLogger(ctx).Debug("NANNAN: REMVE file %s", path)
+			
+			dfp := des.FilePath
+			bfdescriptor := distribution.BFDescriptor{
+				BlobFilePath: path,
+				Digest:    dgst,
+				DigestFilePath: dfp
+			}
+			
+			bfdescriptors = append(bfdescriptors, bfdescriptor)
+			
 			return nil
 		} else if err != distribution.ErrBlobUnknown {
 			context.GetLogger(ctx).Errorf("NANNAN: checkDuplicate: error stating content (%v): %v", dgst, err)
@@ -220,7 +261,7 @@ func (bw *blobWriter) CheckDuplicate(ctx context.Context, desc distribution.Desc
 		}
 		
 	//	var desc distribution.FileDescriptor	
-		des := distribution.FileDescriptor{
+		des = distribution.FileDescriptor{
 			
 	//		Size: int64(len(p)),
 			// NOTE(stevvooe): The central blob store firewalls media types from
@@ -234,6 +275,15 @@ func (bw *blobWriter) CheckDuplicate(ctx context.Context, desc distribution.Desc
 		if err != nil {
 			return err
 		}
+		
+		dfp = des.FilePath
+		bfdescriptor = distribution.BFDescriptor{
+			BlobFilePath: path,
+			Digest:    dgst,
+			DigestFilePath: dfp
+		}
+		
+		bfdescriptors = append(bfdescriptors, bfdescriptor)
 		
 		return nil
 	}

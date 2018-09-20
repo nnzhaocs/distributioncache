@@ -100,6 +100,21 @@ func (d Descriptor) Descriptor() Descriptor {
 	return d
 }
 
+// NANNAN: Descriptors for blob-file recipe
+type BFRecipeDescriptor struct{
+
+	BlobDigest      digest.Digest
+	BFDescriptors   []BFDescriptor
+}
+
+//NANNAN: for blob-files info
+type BFDescriptor struct{
+
+	BlobFilePath    string
+	Digest          digest.Digest
+	DigestFilePath  string	
+}
+
 // BlobStatter makes blob descriptors available by digest. The service may
 // provide a descriptor of a different digest if the provided digest is not
 // canonical.
@@ -142,11 +157,15 @@ type BlobDescriptorService interface {
 }
 
 // NANNAN: FileDescriptorService
+// and recipeservice
 
 type FileDescriptorService interface {
 	
 	StatFile(ctx context.Context, dgst digest.Digest) (FileDescriptor, error)
 	SetFileDescriptor(ctx context.Context, dgst digest.Digest, desc FileDescriptor) error
+	
+	StatBFRecipe(ctx context.Context, dgst digest.Digest) (BFRecipeDescriptor, error) 
+	SetBFRecipe(ctx context.Context, dgst digest.Digest, desc BFRecipeDescriptor) error
 
 }
 
@@ -266,7 +285,7 @@ type BlobWriter interface {
 	// result in a no-op. This allows use of Cancel in a defer statement,
 	// increasing the assurance that it is correctly called.
 	Cancel(ctx context.Context) error
-	Dedup(ctx context.Context, desc Descriptor) (error)
+	Dedup(ctx context.Context, desc Descriptor, [] BFDescriptor) (error)
 }
 
 // BlobService combines the operations to access, read and write blobs. This
