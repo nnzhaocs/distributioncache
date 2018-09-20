@@ -285,7 +285,7 @@ type BlobWriter interface {
 	// result in a no-op. This allows use of Cancel in a defer statement,
 	// increasing the assurance that it is correctly called.
 	Cancel(ctx context.Context) error
-	Dedup(ctx context.Context, desc Descriptor, [] BFDescriptor) (error)
+	Dedup(ctx context.Context, desc Descriptor) (error)
 }
 
 // BlobService combines the operations to access, read and write blobs. This

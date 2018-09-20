@@ -11,11 +11,11 @@ import (
 	"github.com/opencontainers/go-digest"
 	//NANNAN
 	"encoding/json"
-	"flag"
+//	"flag"
 	rejson "github.com/nitishm/go-rejson"
 //	"log"
 
-	"github.com/gomodule/redigo/redis"
+//	"github.com/gomodule/redigo/redis"
 )
 
 // redisBlobStatService provides an implementation of
@@ -429,7 +429,7 @@ func (rfds *redisFileDescriptorService) BFRecipeHashKey(dgst digest.Digest) stri
 	return "Blob:File:Recipe::" + dgst.String()
 }
 
-func (rfds *redisFileDescriptorService) StatBFRecipe(ctx context.Context, dgst digest.Digest) (desc distribution.BFRecipeDescriptor, error) {
+func (rfds *redisFileDescriptorService) StatBFRecipe(ctx context.Context, dgst digest.Digest) (distribution.BFRecipeDescriptor, error) {
 	conn := rfds.pool.Get()
 	defer conn.Close()
 	
@@ -472,20 +472,20 @@ func (rfds *redisFileDescriptorService) StatBFRecipe(ctx context.Context, dgst d
 	return desc, nil
 }
 
-`
-type BFRecipeDescriptor struct{
-
-	BlobDigest      Digest.digest
-	BFDescriptors   []distribution.BFDescriptor
-}
-
-type BFDescriptor struct{
-
-	BlobFilePath    string
-	Digest          Digest.digest,
-	DigestFilePath  string	
-}
-`
+//`
+//type BFRecipeDescriptor struct{
+//
+//	BlobDigest      Digest.digest
+//	BFDescriptors   []distribution.BFDescriptor
+//}
+//
+//type BFDescriptor struct{
+//
+//	BlobFilePath    string
+//	Digest          Digest.digest,
+//	DigestFilePath  string	
+//}
+//`
 
 func (rfds *redisFileDescriptorService) SetBFRecipe(ctx context.Context, dgst digest.Digest, desc distribution.BFRecipeDescriptor) error {
 	
@@ -505,7 +505,7 @@ func (rfds *redisFileDescriptorService) SetBFRecipe(ctx context.Context, dgst di
 
 	//NANNAN: use re-json
 	
-	res, err := rejson.JSONSet(conn, rfds.BFRecipeHashKey(dgst), 
+	_, err := rejson.JSONSet(conn, rfds.BFRecipeHashKey(dgst), 
 	".", 
 	desc, false, false)
 	if err != nil{

@@ -153,12 +153,12 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) (
 	}
 	
 	//update bfrecipe db
-	des = distribution.BFRecipeDescriptor{
+	des := distribution.BFRecipeDescriptor{
 		BlobDigest: desc.Digest,
 		BFDescriptors: bfdescriptors,
 	}
 	context.GetLogger(ctx).Debug("NANNAN: %v", des)
-	err = db.SetBFRecipe(ctx, dgst, des)
+	err = bw.blobStore.registry.fileDescriptorCacheProvider.SetBFRecipe(ctx, desc.Digest, des)
 	if err != nil {
 		return err
 	}
@@ -214,21 +214,21 @@ func (bw *blobWriter) CheckDuplicate(ctx context.Context, desc distribution.Desc
 		}
 		
 		//NANNAN: add file to map	
-`
-type BFRecipeDescriptor struct{
-
-	BlobDigest      Digest.digest
-	BFDescriptors   []distribution.BFDescriptor
-}
-
-type BFDescriptor struct{
-
-	BlobFilePath    string
-	Digest          Digest.digest,
-	DigestFilePath  string	
-}
-`
-		des, err = db.StatFile(ctx, dgst)
+//`
+//type BFRecipeDescriptor struct{
+//
+//	BlobDigest      Digest.digest
+//	BFDescriptors   []distribution.BFDescriptor
+//}
+//
+//type BFDescriptor struct{
+//
+//	BlobFilePath    string
+//	Digest          Digest.digest,
+//	DigestFilePath  string	
+//}
+//`
+		des, err := db.StatFile(ctx, dgst)
 		if err == nil {
 			// file content already present	
 			//first update layer metadata
@@ -246,7 +246,7 @@ type BFDescriptor struct{
 			bfdescriptor := distribution.BFDescriptor{
 				BlobFilePath: path,
 				Digest:    dgst,
-				DigestFilePath: dfp
+				DigestFilePath: dfp,
 			}
 			
 			bfdescriptors = append(bfdescriptors, bfdescriptor)
@@ -276,11 +276,11 @@ type BFDescriptor struct{
 			return err
 		}
 		
-		dfp = des.FilePath
-		bfdescriptor = distribution.BFDescriptor{
+		dfp := des.FilePath
+		bfdescriptor := distribution.BFDescriptor{
 			BlobFilePath: path,
 			Digest:    dgst,
-			DigestFilePath: dfp
+			DigestFilePath: dfp,
 		}
 		
 		bfdescriptors = append(bfdescriptors, bfdescriptor)

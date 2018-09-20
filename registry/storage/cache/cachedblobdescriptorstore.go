@@ -187,7 +187,7 @@ func (cbds *cachedBlobStatter) SetFileDescriptor(ctx context.Context, dgst diges
 	return nil
 }
 
-func (cbds *cachedBlobStatter) StatBFRecipe(ctx context.Context, dgst digest.Digest) (desc distribution.BFRecipeDescriptor, error) {
+func (cbds *cachedBlobStatter) StatBFRecipe(ctx context.Context, dgst digest.Digest) (distribution.BFRecipeDescriptor, error) {
 	desc, err := cbds.filecache.StatBFRecipe(ctx, dgst)
 	if err != nil {
 		if err != distribution.ErrBlobUnknown {
@@ -220,7 +220,7 @@ fallback:
 
 func (cbds *cachedBlobStatter) SetBFRecipe(ctx context.Context, dgst digest.Digest, desc distribution.BFRecipeDescriptor) error {
 		if err := cbds.filecache.SetBFRecipe(ctx, dgst, desc); err != nil {
-		context.GetLogger(ctx).Errorf("error adding blob file recipe descriptor %v to cache: %v", desc.Digest, err)
+		context.GetLogger(ctx).Errorf("error adding blob file recipe descriptor %v to cache: %v", desc.BlobDigest, err)
 	}
 	return nil
 }
