@@ -124,6 +124,13 @@ type BlobStatter interface {
 	Stat(ctx context.Context, dgst digest.Digest) (Descriptor, error)
 }
 
+////NANNAN: filestatter distribution.FileStatter
+//type FileStatter interface {
+//	// Stat provides metadata about a blob identified by the digest. If the
+//	// blob is unknown to the describer, ErrBlobUnknown will be returned.
+//	Stat(ctx context.Context, dgst digest.Digest) (Descriptor, error)
+//}
+
 // BlobDeleter enables deleting blobs from storage.
 type BlobDeleter interface {
 	Delete(ctx context.Context, dgst digest.Digest) error

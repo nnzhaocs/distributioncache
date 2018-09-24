@@ -21,6 +21,10 @@ type registry struct {
 	blobStore                    *blobStore
 	blobServer                   *blobServer
 	statter                      *blobStatter // global statter service.
+	
+	//NANNAN: add a filestatter
+	filestatter					 *FileStatter
+	
 	blobDescriptorCacheProvider  cache.BlobDescriptorCacheProvider
 	
 	//NANNAN: add a fileDescriptorCacheProvider for dedup
@@ -136,6 +140,7 @@ func BlobDescriptorCacheProviderWithFileCache(blobDescriptorCacheProvider cache.
 			registry.blobServer.statter = statter
 			registry.blobDescriptorCacheProvider = blobDescriptorCacheProvider
 			registry.fileDescriptorCacheProvider = fileDescriptorCacheProvider 
+//			registry.blobServer.filestatter = statter
 		}
 		return nil
 	}
@@ -184,6 +189,7 @@ func NewRegistry(ctx context.Context, driver storagedriver.StorageDriver, option
 			statter: statter,
 			pathFn:  bs.path,
 			cache:   new(blobcache.MemCache),
+//			filecache: 
 		},
 		statter:                statter,
 		resumableDigestEnabled: true,
