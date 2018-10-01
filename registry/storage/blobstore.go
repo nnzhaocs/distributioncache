@@ -241,56 +241,56 @@ func (bs *blobStatter) SetDescriptor(ctx context.Context, dgst digest.Digest, de
 	return distribution.ErrUnsupported
 }
 
-// Stat implements BlobStatter.Stat by returning the descriptor for the blob
-// in the main blob store. If this method returns successfully, there is
-// strong guarantee that the blob exists and is available.
-func (bs *blobStatter) Stat(ctx context.Context, dgst digest.Digest) (distribution.Descriptor, error) {
-	path, err := pathFor(blobDataPathSpec{
-		digest: dgst,
-	})
-
-	if err != nil {
-		return distribution.Descriptor{}, err
-	}
-	context.GetLogger(ctx).Infof("NANNAN: blobStatter: Stat, call bs.driver.stat")
-	fi, err := bs.driver.Stat(ctx, path)
-	if err != nil {
-		switch err := err.(type) {
-		case driver.PathNotFoundError:
-			return distribution.Descriptor{}, distribution.ErrBlobUnknown
-		default:
-			return distribution.Descriptor{}, err
-		}
-	}
-
-	if fi.IsDir() {
-		// NOTE(stevvooe): This represents a corruption situation. Somehow, we
-		// calculated a blob path and then detected a directory. We log the
-		// error and then error on the side of not knowing about the blob.
-		context.GetLogger(ctx).Warnf("blob path should not be a directory: %q", path)
-		return distribution.Descriptor{}, distribution.ErrBlobUnknown
-	}
-
-	// TODO(stevvooe): Add method to resolve the mediatype. We can store and
-	// cache a "global" media type for the blob, even if a specific repo has a
-	// mediatype that overrides the main one.
-
-	return distribution.Descriptor{
-		Size: fi.Size(),
-
-		// NOTE(stevvooe): The central blob store firewalls media types from
-		// other users. The caller should look this up and override the value
-		// for the specific repository.
-		MediaType: "application/octet-stream",
-		Digest:    dgst,
-	}, nil
-}
-
-func (bs *blobStatter) Clear(ctx context.Context, dgst digest.Digest) error {
-	return distribution.ErrUnsupported
-}
-
-func (bs *blobStatter) SetDescriptor(ctx context.Context, dgst digest.Digest, desc distribution.Descriptor) error {
-	return distribution.ErrUnsupported
-}
+//// Stat implements BlobStatter.Stat by returning the descriptor for the blob
+//// in the main blob store. If this method returns successfully, there is
+//// strong guarantee that the blob exists and is available.
+//func (bs *blobStatter) Stat(ctx context.Context, dgst digest.Digest) (distribution.Descriptor, error) {
+//	path, err := pathFor(blobDataPathSpec{
+//		digest: dgst,
+//	})
+//
+//	if err != nil {
+//		return distribution.Descriptor{}, err
+//	}
+//	context.GetLogger(ctx).Infof("NANNAN: blobStatter: Stat, call bs.driver.stat")
+//	fi, err := bs.driver.Stat(ctx, path)
+//	if err != nil {
+//		switch err := err.(type) {
+//		case driver.PathNotFoundError:
+//			return distribution.Descriptor{}, distribution.ErrBlobUnknown
+//		default:
+//			return distribution.Descriptor{}, err
+//		}
+//	}
+//
+//	if fi.IsDir() {
+//		// NOTE(stevvooe): This represents a corruption situation. Somehow, we
+//		// calculated a blob path and then detected a directory. We log the
+//		// error and then error on the side of not knowing about the blob.
+//		context.GetLogger(ctx).Warnf("blob path should not be a directory: %q", path)
+//		return distribution.Descriptor{}, distribution.ErrBlobUnknown
+//	}
+//
+//	// TODO(stevvooe): Add method to resolve the mediatype. We can store and
+//	// cache a "global" media type for the blob, even if a specific repo has a
+//	// mediatype that overrides the main one.
+//
+//	return distribution.Descriptor{
+//		Size: fi.Size(),
+//
+//		// NOTE(stevvooe): The central blob store firewalls media types from
+//		// other users. The caller should look this up and override the value
+//		// for the specific repository.
+//		MediaType: "application/octet-stream",
+//		Digest:    dgst,
+//	}, nil
+//}
+//
+//func (bs *blobStatter) Clear(ctx context.Context, dgst digest.Digest) error {
+//	return distribution.ErrUnsupported
+//}
+//
+//func (bs *blobStatter) SetDescriptor(ctx context.Context, dgst digest.Digest, desc distribution.Descriptor) error {
+//	return distribution.ErrUnsupported
+//}
 

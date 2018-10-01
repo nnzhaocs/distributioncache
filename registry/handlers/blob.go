@@ -34,8 +34,8 @@ func blobDispatcher(ctx *Context, r *http.Request) http.Handler {
 	}
 	context.GetLogger(ctx).Infof("NANNAN: blobDispatcher, uses the request context to build a blobHandler")
 	mhandler := handlers.MethodHandler{
-		"GET":  http.HandlerFunc(blobHandler.GetBlob),
-		"HEAD": http.HandlerFunc(blobHandler.GetBlob),
+		"GET":  http.HandlerFunc(blobHandler.GetBlob), //Head Blob GetBlob
+		"HEAD": http.HandlerFunc(blobHandler.HeadBlob),
 	}
 
 	if !ctx.readOnly {
@@ -50,6 +50,27 @@ type blobHandler struct {
 	*Context
 
 	Digest digest.Digest
+}
+
+func (bh *blobHandler) HeadBlob(w http.ResponseWriter, r *http.Request) {
+	context.GetLogger(bh).Debug("GetBlob")
+	blobs := bh.Repository.Blobs(bh)
+	//log.Warnf("FAST2: handler blob.go GetBlob")
+	desc, err := blobs.Stat(bh, bh.Digest)
+	if err != nil {
+		if err == distribution.ErrBlobUnknown {
+			bh.Errors = append(bh.Errors, v2.ErrorCodeBlobUnknown.WithDetail(bh.Digest))
+		} else {
+			bh.Errors = append(bh.Errors, errcode.ErrorCodeUnknown.WithDetail(err))
+		}
+		return
+	}
+
+	if err := blobs.ServeHeadBlob(bh, w, r, desc.Digest); err != nil {
+		context.GetLogger(bh).Debugf("unexpected error getting blob HTTP handler: %v", err)
+		bh.Errors = append(bh.Errors, errcode.ErrorCodeUnknown.WithDetail(err))
+		return
+	}
 }
 
 // GetBlob fetches the binary data from backend storage returns it in the

@@ -6,6 +6,7 @@ import (
 	"io"
 	"path"
 	"time"
+	"strings"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/docker/distribution"
@@ -105,7 +106,7 @@ func (bw *blobWriter) Commit(ctx context.Context, desc distribution.Descriptor) 
 }
 
 //NANNAN: after finishing commit, start do deduplication
-
+//TODO delete tarball
 //type BFmap map[digest.Digest][]distribution.FileDescriptor
 
 func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) (error) {
@@ -116,6 +117,12 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) (
 		Digest: desc.Digest,
 	})
 	context.GetLogger(ctx).Debugf("NANNAN: blob = %v:%v", blobPath, desc.Digest)
+	
+	_, err = bw.blobStore.registry.fileDescriptorCacheProvider.StatBFRecipe(ctx, desc.Digest)
+	if err == nil{
+		context.GetLogger(ctx).Debug("NANNAN: THIS LAYER TARBALL ALREADY DEDUPED :=>%v", desc.Digest)
+		return nil
+	}
 	
 	//DedupLayersFromPath(blobPath)
 	//log.Warnf("IBM: HTTP GET: %s", dgst)
@@ -148,7 +155,6 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) (
 		return err
 	}
 	
-//	bfmap := make(BFmap) 
 	var bfdescriptors [] distribution.BFDescriptor
 	
 	err = filepath.Walk(unpackPath, bw.CheckDuplicate(ctx, desc, bw.blobStore.registry.fileDescriptorCacheProvider, &bfdescriptors))
@@ -156,12 +162,11 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) (
 		context.GetLogger(ctx).Errorf("NANNAN: %s", err)
 	}
 	
-	//update bfrecipe db
 	des := distribution.BFRecipeDescriptor{
 		BlobDigest: desc.Digest,
 		BFDescriptors: bfdescriptors,
 	}
-	context.GetLogger(ctx).Debug("NANNAN: %v", des)
+//	context.GetLogger(ctx).Debug("NANNAN: %v", des)
 	err = bw.blobStore.registry.fileDescriptorCacheProvider.SetBFRecipe(ctx, desc.Digest, des)
 	if err != nil {
 		return err
@@ -178,7 +183,7 @@ func (bw *blobWriter) CheckDuplicate(ctx context.Context, desc distribution.Desc
 //	reguFiles := 0
 //	rmFiles := 0
 	
-	return func(path string, info os.FileInfo, err error) error {
+	return func(fpath string, info os.FileInfo, err error) error {
 //		context.GetLogger(ctx).Debug("NANNAN: START CHECK DUPLICATES :=>")
 
 		if err != nil {
@@ -196,13 +201,13 @@ func (bw *blobWriter) CheckDuplicate(ctx context.Context, desc distribution.Desc
 //		totalFiles = totalFiles + 1
 		
 		if ! (info.Mode().IsRegular()){
-			context.GetLogger(ctx).Debug("NANNAN: TODO process sysmlink and othrs")
+//			context.GetLogger(ctx).Debug("NANNAN: TODO process sysmlink and othrs")
 			return nil
 		}
 		
 //		reguFiles = reguFiles + 1
 			
-		fp, err := os.Open(path) 
+		fp, err := os.Open(fpath) 
 		if err != nil {
 			context.GetLogger(ctx).Errorf("NANNAN: %s", err)
 			return nil
@@ -213,7 +218,7 @@ func (bw *blobWriter) CheckDuplicate(ctx context.Context, desc distribution.Desc
 		digestFn := algorithm.FromReader
 		dgst, err := digestFn(fp)
 		if err != nil {
-			context.GetLogger(ctx).Errorf("NANNAN: %s: %v", path, err)
+			context.GetLogger(ctx).Errorf("NANNAN: %s: %v", fpath, err)
 			return err
 		}
 		
@@ -237,18 +242,22 @@ func (bw *blobWriter) CheckDuplicate(ctx context.Context, desc distribution.Desc
 			// file content already present	
 			//first update layer metadata
 			//delete this file
-//			sameFiles = sameFiles + 1		
-			err := os.Remove(path)
+//			sameFiles = sameFiles + 1
+			if fpath == des.FilePath{
+				context.GetLogger(ctx).Debug("NANNAN: This layer tarball has already deduped: %v!\n", dgst)
+				return nil
+			}
+			err := os.Remove(fpath)
 			if err != nil {
 			  context.GetLogger(ctx).Errorf("NANNAN: %s", err)
 			  return err
 			}
 //			rmFiles = rmFiles + 1
-			context.GetLogger(ctx).Debug("NANNAN: REMVE file %s", path)
+//			context.GetLogger(ctx).Debug("NANNAN: REMVE file %s", path)
 			
 			dfp := des.FilePath
 			bfdescriptor := distribution.BFDescriptor{
-				BlobFilePath: path,
+				BlobFilePath: fpath,
 				Digest:    dgst,
 				DigestFilePath: dfp,
 			}
@@ -261,8 +270,19 @@ func (bw *blobWriter) CheckDuplicate(ctx context.Context, desc distribution.Desc
 			// real error, return it
 //			fmt.Println(err)
 			return err
-			//return distribution.Descriptor{}, err
+			//return distribution.Descriptor{}, err	
 		}
+		
+		//to avoid invalid filepath, rename the original file to digest //tarfpath := strings.SplitN(dgst.String(), ":", 2)[1]
+		
+		reFPath := path.Join(path.Dir(fpath), strings.SplitN(dgst.String(), ":", 2)[1])
+		err = os.Rename(fpath, reFPath)
+		if err != nil{
+			context.GetLogger(ctx).Errorf("NANNAN: fail to rename path (%v): %v", fpath, reFPath)
+			return err
+		}
+		
+		fpath = reFPath
 		
 	//	var desc distribution.FileDescriptor	
 		des = distribution.FileDescriptor{
@@ -271,7 +291,7 @@ func (bw *blobWriter) CheckDuplicate(ctx context.Context, desc distribution.Desc
 			// NOTE(stevvooe): The central blob store firewalls media types from
 			// other users. The caller should look this up and override the value
 			// for the specific repository.
-			FilePath: path,
+			FilePath: fpath,
 			Digest:    dgst,
 		}
 		
@@ -282,7 +302,7 @@ func (bw *blobWriter) CheckDuplicate(ctx context.Context, desc distribution.Desc
 		
 		dfp := des.FilePath
 		bfdescriptor := distribution.BFDescriptor{
-			BlobFilePath: path,
+			BlobFilePath: fpath,
 			Digest:    dgst,
 			DigestFilePath: dfp,
 		}

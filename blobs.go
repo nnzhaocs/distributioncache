@@ -110,9 +110,9 @@ type BFRecipeDescriptor struct{
 //NANNAN: for blob-files info
 type BFDescriptor struct{
 
-	BlobFilePath    string
+	BlobFilePath    string // filepath of this blobfile
 	Digest          digest.Digest
-	DigestFilePath  string	
+	DigestFilePath  string	// digest file path
 }
 
 // BlobStatter makes blob descriptors available by digest. The service may
@@ -214,6 +214,7 @@ type BlobServer interface {
 	// domain. The appropriate headers will be set for the blob, unless they
 	// have already been set by the caller.
 	ServeBlob(ctx context.Context, w http.ResponseWriter, r *http.Request, dgst digest.Digest) error
+	ServeHeadBlob(ctx context.Context, w http.ResponseWriter, r *http.Request, dgst digest.Digest) error
 }
 
 //Used by registry request to return list of registries

@@ -145,7 +145,7 @@ func (d *driver) Name() string {
 // GetContent retrieves the content stored at "path" as a []byte.
 func (d *driver) GetContent(ctx context.Context, path string) ([]byte, error) {
 
-	log.Warnf("IBM: Get content %s", path)
+//	log.Warnf("IBM: Get content %s", path)
 	rc, err := d.Reader(ctx, path, 0)
 	if err != nil {
 		return nil, err
@@ -162,7 +162,7 @@ func (d *driver) GetContent(ctx context.Context, path string) ([]byte, error) {
 
 // PutContent stores the []byte content at a location designated by "path".
 func (d *driver) PutContent(ctx context.Context, subPath string, contents []byte) error {
-	log.Warnf("IBM: Put content %s", subPath)
+//	log.Warnf("IBM: Put content %s", subPath)
 	writer, err := d.Writer(ctx, subPath, false)
 	if err != nil {
 		return err

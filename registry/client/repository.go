@@ -668,6 +668,11 @@ func (bs *blobs) ServeBlob(ctx context.Context, w http.ResponseWriter, r *http.R
 	panic("not implemented")
 }
 
+func (bs *blobs) ServeHeadBlob(ctx context.Context, w http.ResponseWriter, r *http.Request, dgst digest.Digest) error {
+	panic("not implemented")
+}
+
+
 func (bs *blobs) Put(ctx context.Context, mediaType string, p []byte) (distribution.Descriptor, error) {
 
 	//log.Warnf("IBM: Registry putting  blobs")

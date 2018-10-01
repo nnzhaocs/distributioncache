@@ -84,6 +84,20 @@ func (lbs *linkedBlobStore) ServeBlob(ctx context.Context, w http.ResponseWriter
 	return lbs.blobServer.ServeBlob(ctx, w, r, canonical.Digest)
 }
 
+func (lbs *linkedBlobStore)ServeHeadBlob(ctx context.Context, w http.ResponseWriter, r *http.Request, dgst digest.Digest) error {
+	canonical, err := lbs.Stat(ctx, dgst) // access check
+	if err != nil {
+		return err
+	}
+
+	if canonical.MediaType != "" {
+		// Set the repository local content type.
+		w.Header().Set("Content-Type", canonical.MediaType)
+	}
+
+	return lbs.blobServer.ServeHeadBlob(ctx, w, r, canonical.Digest)	
+}
+
 func (lbs *linkedBlobStore) Put(ctx context.Context, mediaType string, p []byte) (distribution.Descriptor, error) {
 	dgst := digest.FromBytes(p)
 	// Place the data in the blob store first.

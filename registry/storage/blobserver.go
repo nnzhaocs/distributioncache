@@ -1,7 +1,7 @@
 package storage
 
 import (
-	"bytes"
+//	"bytes"
 
 	"encoding/json"
 
@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	log "github.com/Sirupsen/logrus"
+//	log "github.com/Sirupsen/logrus"
 	"github.com/docker/distribution"
 	"github.com/docker/distribution/context"
 	"github.com/docker/distribution/registry/storage/driver"
@@ -18,7 +18,12 @@ import (
 	"github.com/opencontainers/go-digest"
 	//NANNAN
 	"path"
-	storagedriver "github.com/docker/distribution/registry/storage/driver"
+	"os"
+	"io"
+	"github.com/docker/docker/pkg/archive"
+	storagecache"github.com/docker/distribution/registry/storage/cache"
+	"regexp"
+//	storagedriver "github.com/docker/distribution/registry/storage/driver"
 )
 
 // TODO(stevvooe): This should configurable in the future.
@@ -29,8 +34,11 @@ const blobCacheControlMaxAge = 365 * 24 * time.Hour
 type blobServer struct {
 	driver   driver.StorageDriver
 	statter  distribution.BlobStatter
-	//NANNAN: add filestatter
-//	filestatter distribution.FileStatter
+	
+	//NANNAN: add a fileDescriptorCacheProvider for restore
+	
+	fileDescriptorCacheProvider  storagecache.FileDescriptorCacheProvider
+	
 	pathFn   func(dgst digest.Digest) (string, error)
 	redirect bool // allows disabling URLFor redirects
 	cache    *cache.MemCache
@@ -58,115 +66,12 @@ func (bs *blobServer) URLWriter(ctx context.Context, w http.ResponseWriter, r *h
 	return nil
 }
 
-func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *http.Request, dgst digest.Digest) error {
-	
-	//NANNAN: recursively read file from backend.
-	context.GetLogger(ctx).Debug("NANNAN: (*blobServer).ServeBlob")
-	
+func (bs *blobServer) ServeHeadBlob(ctx context.Context, w http.ResponseWriter, r *http.Request, dgst digest.Digest) error {
 	desc, err := bs.statter.Stat(ctx, dgst)
 	if err != nil {
 		return err
 	}
-	
-	// get filepaths from redis
-	desc, err := bs.statter.StatBFRecipe(ctx, dgst)
-//	var BFDescriptors   []BFDescriptor
-//	BFDescriptors = desc.BFDescriptors
-//type BFDescriptor struct{
-//
-//	BlobFilePath    string
-//	Digest          digest.Digest
-//	DigestFilePath  string	
-//}
 
-	blobPath, err := PathFor(BlobDataPathSpec{
-		Digest: desc.Digest,
-	})
-	context.GetLogger(ctx).Debugf("NANNAN: blob = %v:%v", blobPath, desc.Digest)
-	
-//	layerPath := path.Join("/var/lib/registry", blobPath)
-	layerPath := blobPath
-	
-	context.GetLogger(ctx).Debug("NANNAN: START RESTORING FROM :=>%s", layerPath)
-
-	parentDir := path.Dir(layerPath)
-	packPath := path.Join(parentDir, "tmp_dir")
-
-	archiver := archive.NewDefaultArchiver()
-	
-//	options := &archive.TarOptions{
-//		UIDMaps: archiver.IDMapping.UIDs(),
-//		GIDMaps: archiver.IDMapping.GIDs(),
-//	}
-//	idMapping := idtools.NewIDMappingsFromMaps(options.UIDMaps, options.GIDMaps)
-//	rootIDs := idMapping.RootPair()
-//	err = idtools.MkdirAllAndChownNew(unpackPath, 0777, rootIDs)
-//	if err != nil {
-//		context.GetLogger(ctx).Errorf("NANNAN: %s", err)
-//		return err
-//	}	
-
-	for _, bfdescriptor := range desc.BFDescriptors {
-	
-		// copy 
-		// make a tmp_layer dir and copy all needed files here
-//		if err := copyFullPayload(w, r, buh.Upload, ctx, "blob FILE READ", &ctx.Errors); err != nil {
-//			// copyFullPayload reports the error if necessary
-//			return
-//		}
-//		bs.driver.read
-
-		context.GetLogger(ctx).Debug("NANNAN: START COPY FILE FROM :=>%s", bfdescriptor.DigestFilePath)
-
-		source := bfdescriptor.DigestFilePath //bs.driver.fullPath(sourcePath)
-		dest := path.Join(packPath, path.Dir(source)) //packPath // bs.driver.fullPath(destPath)
-	
-		if _, err := os.Stat(bs.driver.fullPath(source)); os.IsNotExist(err) {
-			return storagedriver.PathNotFoundError{Path: sourcePath}
-		}
-	
-		if err := os.MkdirAll(bs.driver.fullPath(path.Dir(dest)), 0755); err != nil {
-			return err
-		}
-	
-		contents, err := bs.driver.GetContent(ctx, source)//, dest)
-		if err != nil {
-			context.GetLogger(ctx).Errorf("NANNAN: %s, ", err)
-			return err
-		}
-		
-		err := bs.driver.PutContent(ctx, dest, contents)
-		if err != nil {
-			context.GetLogger(ctx).Errorf("NANNAN: %s, ", err)
-			return err
-		}		
-		
-	}
-	
-	packpath := path.Join("/var/lib/registry", packPath)
-	
-	data, err = archiver.Tar(packpath, archiver.Gzip)
-	if err != nil {
-		//TODO: process manifest file
-		context.GetLogger(ctx).Errorf("NANNAN: %s, ", err)
-		return err
-	}
-	err := data.Close()
-	
-//	content = ioutils.NewReadCloserWrapper(data, func() error {
-//	err := data.Close()
-//	container.DetachAndUnmount(daemon.LogVolumeEvent)
-//	daemon.Unmount(container)
-//	container.Unlock()
-//	return err
-//	})
-	
-//	distribution.BFRecipeDescriptor
-	
-	// make a tarball
-	
-	// send to users
-	
 	path, err := bs.pathFn(desc.Digest)
 	if err != nil {
 		return err
@@ -187,8 +92,8 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 			return err
 		}
 	}
-	
-	br, err := newFileReader(ctx, bs.driver, packpath, desc.Size)
+
+	br, err := newFileReader(ctx, bs.driver, path, desc.Size)
 	if err != nil {
 		return err
 	}
@@ -212,6 +117,193 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 	}
 
 	http.ServeContent(w, r, desc.Digest.String(), time.Time{}, br)
+	return nil
+}
+
+
+//NANNAN: TODO: process manfiests
+
+func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *http.Request, dgst digest.Digest) error {
+	
+	//NANNAN: recursively read file from backend.
+	context.GetLogger(ctx).Debug("NANNAN: (*blobServer).ServeBlob")
+	
+	_desc, err := bs.statter.Stat(ctx, dgst)
+	if err != nil {
+		return err
+	}
+	
+	// get filepaths from redis
+	desc, err := bs.fileDescriptorCacheProvider.StatBFRecipe(ctx, dgst)
+	if err != nil {
+		// get from traditional registry, this is a manifest
+		context.GetLogger(ctx).Warnf("NANNAN: THIS IS A MANIFEST OR COMPRESSED TAR %s", err)
+		
+		path, err := bs.pathFn(_desc.Digest)
+		if err != nil {
+			return err
+		}
+	
+		if bs.redirect {
+			redirectURL, err := bs.driver.URLFor(ctx, path, map[string]interface{}{"method": r.Method})
+			switch err.(type) {
+			case nil:
+				// Redirect to storage URL.
+				http.Redirect(w, r, redirectURL, http.StatusTemporaryRedirect)
+				return err
+	
+			case driver.ErrUnsupportedMethod:
+				// Fallback to serving the content directly.
+			default:
+				// Some unexpected error.
+				return err
+			}
+		}
+		
+		br, err := newFileReader(ctx, bs.driver, path, _desc.Size)//stat.Size())
+		if err != nil {
+			return err
+		}
+		defer br.Close()
+	
+		w.Header().Set("ETag", fmt.Sprintf(`"%s"`, _desc.Digest)) // If-None-Match handled by ServeContent
+		w.Header().Set("Cache-Control", fmt.Sprintf("max-age=%.f", blobCacheControlMaxAge.Seconds()))
+	
+		if w.Header().Get("Docker-Content-Digest") == "" {
+			w.Header().Set("Docker-Content-Digest", _desc.Digest.String())
+		}
+	
+		if w.Header().Get("Content-Type") == "" {
+			// Set the content type if not already set.
+			w.Header().Set("Content-Type", _desc.MediaType)
+		}
+	
+		if w.Header().Get("Content-Length") == "" {
+			// Set the content length if not already set.
+			w.Header().Set("Content-Length", fmt.Sprint(_desc.Size))
+		}
+	
+		http.ServeContent(w, r, _desc.Digest.String(), time.Time{}, br)
+		return nil
+	}
+//	var BFDescriptors   []BFDescriptor
+//	BFDescriptors = desc.BFDescriptors
+//type BFDescriptor struct{
+//
+//	BlobFilePath    string
+//	Digest          digest.Digest
+//	DigestFilePath  string	
+//}
+
+	blobPath, err := PathFor(BlobDataPathSpec{
+		Digest: _desc.Digest,
+	})
+//	context.GetLogger(ctx).Debugf("NANNAN: blob = %v:%v", blobPath, _desc.Digest)
+	
+	layerPath := blobPath
+	
+//	context.GetLogger(ctx).Debug("NANNAN: START RESTORING FROM :=>%s", layerPath)
+
+	parentDir := path.Dir(layerPath)
+	packPath := path.Join(parentDir, "tmp_dir")
+
+//	context.GetLogger(ctx).Debug("NANNAN GET: %v", desc)
+
+	reg, err := regexp.Compile("[^a-zA-Z0-9/.-]+")
+	if err != nil{
+		context.GetLogger(ctx).Errorf("NANNAN: %s, ", err)
+		return err
+	}
+
+	for _, bfdescriptor := range desc.BFDescriptors {
+	
+		// copy 
+
+		tarfpath := reg.ReplaceAllString(strings.SplitN(bfdescriptor.BlobFilePath, "diff", 2)[1], "") // replace alphanumeric
+		
+//		context.GetLogger(ctx).Debug("NANNAN: START COPY FILE FROM %s TO %s", bfdescriptor.DigestFilePath, bfdescriptor.BlobFilePath)
+	
+		contents, err := bs.driver.GetContent(ctx, strings.TrimPrefix(bfdescriptor.DigestFilePath, "/var/lib/registry"))//, dest)
+		if err != nil {
+			context.GetLogger(ctx).Errorf("NANNAN: STILL SEND TAR %s, ", err)
+			continue
+//			return err
+		}
+		
+		destfpath := path.Join(packPath, tarfpath)
+		
+		err = bs.driver.PutContent(ctx, destfpath, contents)
+		if err != nil {
+			context.GetLogger(ctx).Warnf("NANNAN: STILL SEND TAR %s, ", err)
+			continue
+//			return err
+		}		
+	}
+	
+	packpath := path.Join("/var/lib/registry", packPath)
+	
+	data, err := archive.Tar(packpath, archive.Gzip)
+	if err != nil {
+		//TODO: process manifest file
+		context.GetLogger(ctx).Warnf("NANNAN: %s, ", err)
+		return err
+	}
+	
+	defer data.Close()
+	
+	packFile, err := os.Create(path.Join("/var/lib/registry", path.Join(parentDir, "tmp_tar.tar.gz")))
+	if err != nil{
+		context.GetLogger(ctx).Errorf("NANNAN: %s, ", err)
+		return err
+	}
+	
+	defer packFile.Close()
+	
+	size, err := io.Copy(packFile, data)
+	if err != nil{
+		context.GetLogger(ctx).Errorf("NANNAN: %s, ", err)
+		return err
+	}
+	
+	path, err := bs.pathFn(_desc.Digest)
+	if err != nil {
+		return err
+	}
+
+	if bs.redirect {
+		redirectURL, err := bs.driver.URLFor(ctx, path, map[string]interface{}{"method": r.Method})
+		switch err.(type) {
+		case nil:
+			// Redirect to storage URL.
+			http.Redirect(w, r, redirectURL, http.StatusTemporaryRedirect)
+			return err
+
+		case driver.ErrUnsupportedMethod:
+			// Fallback to serving the content directly.
+		default:
+			// Some unexpected error.
+			return err
+		}
+	}
+
+	w.Header().Set("ETag", fmt.Sprintf(`"%s"`, _desc.Digest)) // If-None-Match handled by ServeContent
+	w.Header().Set("Cache-Control", fmt.Sprintf("max-age=%.f", blobCacheControlMaxAge.Seconds()))
+
+	if w.Header().Get("Docker-Content-Digest") == "" {
+		w.Header().Set("Docker-Content-Digest", _desc.Digest.String())
+	}
+
+	if w.Header().Get("Content-Type") == "" {
+		// Set the content type if not already set.
+		w.Header().Set("Content-Type", _desc.MediaType)
+	}
+
+	if w.Header().Get("Content-Length") == "" {
+		// Set the content length if not already set.
+		w.Header().Set("Content-Length", fmt.Sprint(size))
+	}
+
+	http.ServeContent(w, r, _desc.Digest.String(), time.Time{}, packFile)
 	return nil
 }
 

@@ -467,7 +467,6 @@ func (rfds *redisFileDescriptorService) StatBFRecipe(ctx context.Context, dgst d
 	if err != nil{
 		return distribution.BFRecipeDescriptor{}, distribution.ErrBlobUnknown
 	}
-	
 
 	return desc, nil
 }

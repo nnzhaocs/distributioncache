@@ -23,7 +23,7 @@ type registry struct {
 	statter                      *blobStatter // global statter service.
 	
 	//NANNAN: add a filestatter
-	filestatter					 *FileStatter
+//	filestatter					 *FileStatter
 	
 	blobDescriptorCacheProvider  cache.BlobDescriptorCacheProvider
 	
@@ -140,6 +140,7 @@ func BlobDescriptorCacheProviderWithFileCache(blobDescriptorCacheProvider cache.
 			registry.blobServer.statter = statter
 			registry.blobDescriptorCacheProvider = blobDescriptorCacheProvider
 			registry.fileDescriptorCacheProvider = fileDescriptorCacheProvider 
+			registry.blobServer.fileDescriptorCacheProvider = fileDescriptorCacheProvider
 //			registry.blobServer.filestatter = statter
 		}
 		return nil

@@ -159,6 +159,52 @@ func (pbs *proxyBlobStore) ServeBlob(ctx context.Context, w http.ResponseWriter,
 	return nil
 }
 
+func (pbs *proxyBlobStore) ServeHeadBlob(ctx context.Context, w http.ResponseWriter, r *http.Request, dgst digest.Digest) error {
+	served, err := pbs.serveLocal(ctx, w, r, dgst)
+	if err != nil {
+		context.GetLogger(ctx).Errorf("Error serving blob from local storage: %s", err.Error())
+		return err
+	}
+
+	if served {
+		return nil
+	}
+
+	if err := pbs.authChallenger.tryEstablishChallenges(ctx); err != nil {
+		return err
+	}
+
+	mu.Lock()
+	_, ok := inflight[dgst]
+	if ok {
+		mu.Unlock()
+		_, err := pbs.copyContent(ctx, dgst, w)
+		return err
+	}
+	inflight[dgst] = struct{}{}
+	mu.Unlock()
+
+	go func(dgst digest.Digest) {
+		if err := pbs.storeLocal(ctx, dgst); err != nil {
+			context.GetLogger(ctx).Errorf("Error committing to storage: %s", err.Error())
+		}
+
+		blobRef, err := reference.WithDigest(pbs.repositoryName, dgst)
+		if err != nil {
+			context.GetLogger(ctx).Errorf("Error creating reference: %s", err)
+			return
+		}
+
+		pbs.scheduler.AddBlob(blobRef, repositoryTTL)
+	}(dgst)
+
+	_, err = pbs.copyContent(ctx, dgst, w)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func (pbs *proxyBlobStore) Stat(ctx context.Context, dgst digest.Digest) (distribution.Descriptor, error) {
 	desc, err := pbs.localStore.Stat(ctx, dgst)
 	if err == nil {
