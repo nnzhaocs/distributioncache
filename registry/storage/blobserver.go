@@ -159,7 +159,7 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 				return err
 			}
 		}
-		
+			
 		br, err := newFileReader(ctx, bs.driver, path, _desc.Size)//stat.Size())
 		if err != nil {
 			return err
@@ -222,10 +222,13 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 		tarfpath := reg.ReplaceAllString(strings.SplitN(bfdescriptor.BlobFilePath, "diff", 2)[1], "") // replace alphanumeric
 		
 //		context.GetLogger(ctx).Debug("NANNAN: START COPY FILE FROM %s TO %s", bfdescriptor.DigestFilePath, bfdescriptor.BlobFilePath)
+
+		// CheckLocalAvailable()
+		//if ture:
 	
 		contents, err := bs.driver.GetContent(ctx, strings.TrimPrefix(bfdescriptor.DigestFilePath, "/var/lib/registry"))//, dest)
 		if err != nil {
-			context.GetLogger(ctx).Errorf("NANNAN: STILL SEND TAR %s, ", err)
+			context.GetLogger(ctx).Errorf("NANNAN: STILL SEND TAR %s, ", err) // even if there is an error, meaning the dir is empty.
 			continue
 //			return err
 		}
@@ -237,8 +240,14 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 			context.GetLogger(ctx).Warnf("NANNAN: STILL SEND TAR %s, ", err)
 			continue
 //			return err
-		}		
+		}
+		//else add to server queue		
 	}
+	//TODO:
+	// for each queue{ docker pull all the files from }
+	// for each pull: check if it's pulling files or pulling layer?
+	// build url and download from remote servers.
+	
 	
 	packpath := path.Join("/var/lib/registry", packPath)
 	

@@ -19,6 +19,7 @@ import (
 	"path/filepath"
 	"github.com/docker/distribution/registry/storage/cache"
 	"os"
+
 //	"ioutil"
 	
 )
@@ -156,8 +157,9 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) (
 	}
 	
 	var bfdescriptors [] distribution.BFDescriptor
+	var serverIps []string
 	
-	err = filepath.Walk(unpackPath, bw.CheckDuplicate(ctx, desc, bw.blobStore.registry.fileDescriptorCacheProvider, &bfdescriptors))
+	err = filepath.Walk(unpackPath, bw.CheckDuplicate(ctx, desc, bw.blobStore.registry.fileDescriptorCacheProvider, &bfdescriptors, &serverIps))
 	if err != nil {
 		context.GetLogger(ctx).Errorf("NANNAN: %s", err)
 	}
@@ -177,7 +179,7 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) (
 //NANNAN check dedup
 // Metrics: lock
 
-func (bw *blobWriter) CheckDuplicate(ctx context.Context, desc distribution.Descriptor, db cache.FileDescriptorCacheProvider, bfdescriptors *[] distribution.BFDescriptor) filepath.WalkFunc {
+func (bw *blobWriter) CheckDuplicate(ctx context.Context, desc distribution.Descriptor, db cache.FileDescriptorCacheProvider, bfdescriptors *[] distribution.BFDescriptor, serverIps *[] string) filepath.WalkFunc {
 //	totalFiles := 0
 //	sameFiles := 0
 //	reguFiles := 0
@@ -237,6 +239,7 @@ func (bw *blobWriter) CheckDuplicate(ctx context.Context, desc distribution.Desc
 //	DigestFilePath  string	
 //}
 //`
+		var serverIps [] string
 		des, err := db.StatFile(ctx, dgst)
 		if err == nil {
 			// file content already present	
@@ -260,9 +263,11 @@ func (bw *blobWriter) CheckDuplicate(ctx context.Context, desc distribution.Desc
 				BlobFilePath: fpath,
 				Digest:    dgst,
 				DigestFilePath: dfp,
+				ServerIp:	des.ServerIp,
 			}
 			
 			*bfdescriptors = append(*bfdescriptors, bfdescriptor)
+			*serverIps = append(*serverIps, des.ServerIp)
 			
 			return nil
 		} else if err != distribution.ErrBlobUnknown {
@@ -305,6 +310,7 @@ func (bw *blobWriter) CheckDuplicate(ctx context.Context, desc distribution.Desc
 			BlobFilePath: fpath,
 			Digest:    dgst,
 			DigestFilePath: dfp,
+			ServerIp: "",
 		}
 		
 		*bfdescriptors = append(*bfdescriptors, bfdescriptor)

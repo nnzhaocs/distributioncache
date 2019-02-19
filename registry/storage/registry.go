@@ -194,6 +194,7 @@ func NewRegistry(ctx context.Context, driver storagedriver.StorageDriver, option
 		},
 		statter:                statter,
 		resumableDigestEnabled: true,
+		//serverIp: serverIp,
 	}
 
 	for _, option := range options {
@@ -202,6 +203,7 @@ func NewRegistry(ctx context.Context, driver storagedriver.StorageDriver, option
 		}
 	}
 	registry.blobServer.cache.Init()
+
 	return registry, nil
 }
 

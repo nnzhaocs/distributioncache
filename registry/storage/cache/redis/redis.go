@@ -11,6 +11,8 @@ import (
 	"github.com/opencontainers/go-digest"
 	//NANNAN
 	"encoding/json"
+	"net"
+	"os"
 //	"flag"
 	rejson "github.com/nitishm/go-rejson"
 //	"log"
@@ -45,13 +47,18 @@ type redisBlobDescriptorService struct {
 	// the cache lifecycle to manage connections. A new connection if fetched
 	// for each operation. Once we have better lifecycle management of the
 	// request objects, we can change this to a connection.
+	
+		//NANNAN: get host ip address
+	
 }
 
 // NewRedisBlobDescriptorCacheProvider returns a new redis-based
 // BlobDescriptorCacheProvider using the provided redis connection pool.
 func NewRedisBlobDescriptorCacheProvider(pool *redis.Pool) cache.BlobDescriptorCacheProvider {
+	
 	return &redisBlobDescriptorService{
 		pool: pool,
+//		serverIp: serverIp,
 	}
 }
 
@@ -324,13 +331,30 @@ type redisFileDescriptorService struct {
 	// the cache lifecycle to manage connections. A new connection if fetched
 	// for each operation. Once we have better lifecycle management of the
 	// request objects, we can change this to a connection.
+	serverIp   string
 }
 
 // NewRedisBlobDescriptorCacheProvider returns a new redis-based
 // BlobDescriptorCacheProvider using the provided redis connection pool.
 func NewRedisFileDescriptorCacheProvider(pool *redis.Pool) cache.FileDescriptorCacheProvider {
+	
+		//NANNAN address
+	addrs, err := net.InterfaceAddrs()
+	if err != nil{
+		os.Stderr.WriteString("NANNAN: " + err.Error() + "\n")
+	}
+	for _, a := range addrs{
+		if ipnet, ok := a.(*net.IPNet); ok && !ipnet.IP.IsLoopback(){
+			if ipnet.IP.To4() != nil{
+				os.Stdout.WriteString(ipnet.IP.String() + "\n")
+				serverIp := ipnet.IP.String()
+			}
+		}
+	}
+	
 	return &redisFileDescriptorService{
 		pool: pool,
+		serverIp: serverIp,
 	}
 }
 
@@ -393,9 +417,12 @@ func (rfds *redisFileDescriptorService) StatFile(ctx context.Context, dgst diges
 
 	var desc distribution.FileDescriptor
 	if _, err = redis.Scan(reply, &desc.Digest, &desc.FilePath); err != nil {
+		
 		return distribution.FileDescriptor{}, err
 	}
-
+	//NANNAN: find it, then add serverip to requestedserverip 
+	desc.RequestedServerIps = append(desc.RequestedServerIps, rfds.serverIp)
+	
 	return desc, nil
 }
 
@@ -408,9 +435,12 @@ func (rfds *redisFileDescriptorService) SetFileDescriptor(ctx context.Context, d
 //		defer conn.Close()
 		return err
 	}
+	var requestedServerIps []string
 	
 	if _, err := conn.Do("HMSET", rfds.fileDescriptorHashKey(dgst),
 		"digest", desc.Digest,
+		"serverIp", rfds.serverIp, //NANNAN SET TO the first registry ip address for global dedup; even for local dedup, it is correct?!
+		"RequestedServerIps", requestedServerIps, // NANNAN: set to none initially.
 		"filePath", desc.FilePath); err != nil {
 		return err
 	}
@@ -494,6 +524,13 @@ func (rfds *redisFileDescriptorService) SetBFRecipe(ctx context.Context, dgst di
 	if _, err := conn.Do("SELECT", dbNoBFRecipe); err != nil {
 //		defer conn.Close()
 		return err
+	}
+	desc.ServerIps = append(desc.ServerIps, rfds.serverIp) //NANNAN add this serverip
+	
+	for _, bfdescriptor := range desc.BFDescriptors { // set the empty ones to this serverip 
+		if bfdescriptor.ServerIp == ""{
+			bfdescriptor.ServerIp = rfds.serverIp
+		}
 	}
 	
 //	if _, err := conn.Do("HMSET", rfds.BFRecipeHashKey(dgst),

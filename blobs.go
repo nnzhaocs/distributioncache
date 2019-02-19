@@ -89,6 +89,9 @@ type FileDescriptor struct {
 	Digest digest.Digest `json:"digest,omitempty"`
 
 	FilePath string
+	//NANNAN: 
+	RequestedServerIps []string
+	
 }
 
 // Descriptor returns the descriptor, to make it satisfy the Describable
@@ -105,6 +108,8 @@ type BFRecipeDescriptor struct{
 
 	BlobDigest      digest.Digest
 	BFDescriptors   []BFDescriptor
+	ServerIps	[]string
+	
 }
 
 //NANNAN: for blob-files info
@@ -113,6 +118,8 @@ type BFDescriptor struct{
 	BlobFilePath    string // filepath of this blobfile
 	Digest          digest.Digest
 	DigestFilePath  string	// digest file path
+	
+	ServerIps		string
 }
 
 // BlobStatter makes blob descriptors available by digest. The service may

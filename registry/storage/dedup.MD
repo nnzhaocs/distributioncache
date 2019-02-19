@@ -1,28 +1,4 @@
-//package storage
-//
-//import (
-//////	"fmt"
-//////	"path"
-//////	"strings"
-////
-////	//NANNAN
-//////	"io"//	"archive"
-//////	"crypto/sha512"
-//////	"io/ioutil"
-//////	"os"
-//////	"path/filepath"
-////	
-//////	"github.com/docker/distribution"
-//////	log "github.com/Sirupsen/logrus"
-//////	"github.com/docker/docker/pkg/archive"
-//////	"github.com/docker/docker/pkg/idtools"
-//////	rediscache "github.com/docker/distribution/registry/storage/cache/redis"
-//////	redisDedup "github.com/docker/distribution/registry/storage/cache/redisDedup"
-//////	"github.com/garyburd/redigo/redis"
-//////	"github.com/docker/distribution/configuration"
-//////	"github.com/docker/distribution"
-//	"github.com/opencontainers/go-digest"
-//)
+
 
 //NANNAN: dedup operation
 //once a layer or manifest is recieved, do dedup:
@@ -61,47 +37,46 @@
 //
 //
 
-//func DedupLayersFromPath(absPath string) error {
-//	layerPath := path.Join("/var/lib/registry", absPath)
-//	
-//	fmt.Println("NANNAN: START DEDUPLICATION FROM PATH :=>", layerPath)
-//
-//	parentDir := path.Dir(layerPath)
-//	unpackPath := path.Join(parentDir, "diff")
-//
-//	archiver := archive.NewDefaultArchiver()
-//	options := &archive.TarOptions{
-//		UIDMaps: archiver.IDMapping.UIDs(),
-//		GIDMaps: archiver.IDMapping.GIDs(),
-//	}
-//	idMapping := idtools.NewIDMappingsFromMaps(options.UIDMaps, options.GIDMaps)
-//	rootIDs := idMapping.RootPair()
-//	err := idtools.MkdirAllAndChownNew(unpackPath, 0777, rootIDs)
-//	if err != nil {
-//		return err
-//	}
-//
-//	err = archiver.UntarPath(layerPath, unpackPath)
-//	if err != nil {
-//		fmt.Println(err)
-//		return err
-//	}
-//	
-//	err = filepath.Walk(unpackPath, checkDuplicate)
-//	if err != nil {
-//		log.Fatal(err)
-//	}
-//	return err
-//}
+tables defined in blobs.go
 
+three tables:
 
+1. for dedup
+type FileDescriptor struct {
+	Descriptor
+	// Digest uniquely identifies the content. A byte stream can be verified
+	// against against this digest.
+	Digest digest.Digest `json:"digest,omitempty"`
 
-//dbnoFileDidgest := 1
-//
-//
+	FilePath string
+	
+	ServerIp string // the server which stores this digest' corresponding file
+	RequestedServerIps  []string
+}
 
+2. for restoring
+// NANNAN: Descriptors for blob-file recipe
+type BFRecipeDescriptor struct{
 
-//func addFileMap(path string, )
+	BlobDigest      digest.Digest
+	BFDescriptors   []BFDescriptor  ----------------------------------------|
+	ServerIp	s		[]string // the servers that stores all these files     |
+}                                                                           |
+                                                                            |
+//NANNAN: for blob-files info                                               |
+type BFDescriptor struct{   <-----------------------------------------------|
+
+	BlobFilePath    string // filepath of this blobfile
+	Digest          digest.Digest
+	DigestFilePath  string	// digest file path
+	
+	ServerIp			string // the server which stores this digest
+}
+
+add two more for distributed dedup
+
+1. blob to server list
+
 
 
 
