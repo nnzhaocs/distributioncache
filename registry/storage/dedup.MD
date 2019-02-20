@@ -60,7 +60,7 @@ type BFRecipeDescriptor struct{
 
 	BlobDigest      digest.Digest
 	BFDescriptors   []BFDescriptor  ----------------------------------------|
-	ServerIp	s		[]string // the servers that stores all these files     |
+	ServerIp	s		[]string // the servers that stores all these files |
 }                                                                           |
                                                                             |
 //NANNAN: for blob-files info                                               |

@@ -239,7 +239,7 @@ func (bw *blobWriter) CheckDuplicate(ctx context.Context, desc distribution.Desc
 //	DigestFilePath  string	
 //}
 //`
-		var serverIps [] string
+		// var serverIps []string
 		des, err := db.StatFile(ctx, dgst)
 		if err == nil {
 			// file content already present	

@@ -14,7 +14,7 @@ import (
 	"net"
 	"os"
 //	"flag"
-	rejson "github.com/nitishm/go-rejson"
+	rejson "github.com/secondspass/go-rejson"
 //	"log"
 
 //	"github.com/gomodule/redigo/redis"
@@ -339,6 +339,7 @@ type redisFileDescriptorService struct {
 func NewRedisFileDescriptorCacheProvider(pool *redis.Pool) cache.FileDescriptorCacheProvider {
 	
 		//NANNAN address
+	var serverIp string
 	addrs, err := net.InterfaceAddrs()
 	if err != nil{
 		os.Stderr.WriteString("NANNAN: " + err.Error() + "\n")
@@ -347,7 +348,7 @@ func NewRedisFileDescriptorCacheProvider(pool *redis.Pool) cache.FileDescriptorC
 		if ipnet, ok := a.(*net.IPNet); ok && !ipnet.IP.IsLoopback(){
 			if ipnet.IP.To4() != nil{
 				os.Stdout.WriteString(ipnet.IP.String() + "\n")
-				serverIp := ipnet.IP.String()
+				serverIp = ipnet.IP.String()
 			}
 		}
 	}

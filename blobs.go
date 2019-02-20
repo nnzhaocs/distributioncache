@@ -90,6 +90,7 @@ type FileDescriptor struct {
 
 	FilePath string
 	//NANNAN: 
+	ServerIp string
 	RequestedServerIps []string
 	
 }
@@ -119,7 +120,7 @@ type BFDescriptor struct{
 	Digest          digest.Digest
 	DigestFilePath  string	// digest file path
 	
-	ServerIps		string
+	ServerIp		string
 }
 
 // BlobStatter makes blob descriptors available by digest. The service may

@@ -22,7 +22,9 @@ RUN git clone https://github.com/moby/moby.git /go/src/github.com/docker/docker
 #https://github.com/nnzhaocs/consistenthash_sha256
 
 RUN apt-get update && apt-get install -y libzookeeper-mt-dev
-RUN go get github.com/ngaut/log && go get github.com/allegro/bigcache && go get launchpad.net/gozk/zookeeper && go get github.com/nitishm/go-rejson && go get github.com/gomodule/redigo/redis
+
+# slight change. go-rejson has updated to v2.0 and broke compatibility. I made a clone of the old version and pointing to that version
+RUN go get github.com/ngaut/log && go get github.com/allegro/bigcache && go get launchpad.net/gozk/zookeeper && go get github.com/secondspass/go-rejson && go get github.com/gomodule/redigo/redis
 
 #RUN cd $DISTRIBUTION_DIR
 
