@@ -38,24 +38,6 @@ Here we run registry as a container. With the following CMD, your registry start
 
 `docker run yourreponame/registry:tag`
 
-Currently, we run different numbers of registries on different machines as a distributed system with the following CMD.
-
-`docker run -p 5000:5000  -e ZOOKEEPER="thor4:2181" -e MEMORY="100" --cpus 1 --add-host=thor4:192.168.0.204 --add-host=thor8:192.168.0.208 --add-host=thor9:192.168.0.209 --add-host=thor10:192.168.0.210 --add-host=thor11:192.168.0.211 --add-host=thor19:192.168.0.219 --add-host=thor20:192.168.0.220 --add-host=thor21:192.168.0.221 --add-host=thor1:192.168.0.201 --add-host=thor2:192.168.0.202 --add-host=thor3:192.168.0.203  -e HOST="thor8:5000" -t yourreponame/registry:tag`
-
-- -p=[]      : Publish a container᾿s port or a range of ports to the host
-               format: ip:hostPort:containerPort | ip::containerPort | hostPort:containerPort | containerPort
-               Both hostPort and containerPort can be specified as a
-               range of ports. When specifying ranges for both, the
-               number of container ports in the range must match the
-               number of host ports in the range, for example:
-                   -p 1234-1236:1234-1236/tcp
-
-- -e :  the operator can set any environment variable in the container by using one or more -e flags, even overriding those mentioned, or already defined by the developer with a Dockerfile ENV.
-
-- --cpus : --cpus=0.000	Number of CPUs. Number is a fractional number. 0.000 means no limit.
-
-- --add-host=""      : Add a line to /etc/hosts (host:IP)
-
 ### Run as a distributed registry system
 
 - Setup. please refer to google doc: https://docs.google.com/spreadsheets/d/16OhvMcFmja4sqY4Jlbpf_XxrvKJiTSAXuS8R0fDTkaI/edit#gid=0
