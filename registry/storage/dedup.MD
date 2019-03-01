@@ -17,16 +17,16 @@
 //
 //			===== file level dedup: table on redis memory ====
 //			added two table:
-//					1. fileDescriptor table:
+//					1. fileDescriptor table: [SUBIL CHECK: OK]
 //								 |					|						|
 //					files:digest |   file digest	|	location_on_disk	|
 //								 |					|						|
-//					2. recipe table
-//								 |					|								  |
-//			 layers:layer_digest |	 layer digest	|   /path/to/uniqFile.extension   |   file digest 
-//								 |					|								  |
+//					2. recipe table [SUBIL CHECK: OK]
+//								 |					|								     |
+//			 layers:layer_digest |	 layer digest	|   /path/to/uniqFile.extension      |   file digest 
+//								 |					|								     |
 //
-//			====== file level dedup: cache on redis memory ====
+//			====== file level dedup: cache on redis memory ==== [SUBIL CHECK: UNKNOWN]
 //					1. cache index table:
 //					2. see if redis memory can store all recipe table
 //								 |					|						|
@@ -41,7 +41,7 @@ tables defined in blobs.go
 
 three tables:
 
-1. for dedup
+1. for dedup [SUBIL CHECK: OK]
 type FileDescriptor struct {
 	Descriptor
 	// Digest uniquely identifies the content. A byte stream can be verified
@@ -54,7 +54,7 @@ type FileDescriptor struct {
 	RequestedServerIps  []string
 }
 
-2. for restoring
+2. for restoring [SUBIL CHECK: OK]
 // NANNAN: Descriptors for blob-file recipe
 type BFRecipeDescriptor struct{
 
@@ -63,7 +63,7 @@ type BFRecipeDescriptor struct{
 	ServerIp	s		[]string // the servers that stores all these files |
 }                                                                           |
                                                                             |
-//NANNAN: for blob-files info                                               |
+//NANNAN: for blob-files info  [SUBIL CHECK: OK]                            |
 type BFDescriptor struct{   <-----------------------------------------------|
 
 	BlobFilePath    string // filepath of this blobfile
