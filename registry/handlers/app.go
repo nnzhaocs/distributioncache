@@ -304,10 +304,11 @@ func NewApp(ctx context.Context, config *configuration.Configuration) *App {
 			if app.redis == nil {
 				panic("redis configuration required to use for layerinfo cache")
 			}
+			hostip := fmt.Sprintf("%v", cc["hostip"])
 			cacheProvider := rediscache.NewRedisBlobDescriptorCacheProvider(app.redis)
 			
 			//NANNAN
-			filecacheProvider := rediscache.NewRedisFileDescriptorCacheProvider(app.redis)
+			filecacheProvider := rediscache.NewRedisFileDescriptorCacheProvider(app.redis, hostip)
 			
 			localOptions := append(options, storage.BlobDescriptorCacheProviderWithFileCache(cacheProvider, filecacheProvider))
 			app.registry, err = storage.NewRegistry(app, app.driver, localOptions...)

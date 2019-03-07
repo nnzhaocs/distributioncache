@@ -23,6 +23,7 @@ storage:
       enabled: true
     cache:
         blobdescriptor: redis
+        hostip: 192.168.0.205
     filesystem:
         rootdirectory: /var/lib/registry
     maintenance:

@@ -11,7 +11,7 @@ import (
 	"github.com/opencontainers/go-digest"
 	//NANNAN
 	"encoding/json"
-	"net"
+	// "net"
 	"os"
 //	"flag"
 	rejson "github.com/secondspass/go-rejson"
@@ -336,22 +336,27 @@ type redisFileDescriptorService struct {
 
 // NewRedisBlobDescriptorCacheProvider returns a new redis-based
 // BlobDescriptorCacheProvider using the provided redis connection pool.
-func NewRedisFileDescriptorCacheProvider(pool *redis.Pool) cache.FileDescriptorCacheProvider {
+func NewRedisFileDescriptorCacheProvider(pool *redis.Pool, host_ip string) cache.FileDescriptorCacheProvider {
 	
 		//NANNAN address
 	var serverIp string
-	addrs, err := net.InterfaceAddrs()
-	if err != nil{
-		os.Stderr.WriteString("NANNAN: " + err.Error() + "\n")
-	}
-	for _, a := range addrs{
-		if ipnet, ok := a.(*net.IPNet); ok && !ipnet.IP.IsLoopback(){
-			if ipnet.IP.To4() != nil{
-				os.Stdout.WriteString(ipnet.IP.String() + "\n")
-				serverIp = ipnet.IP.String()
-			}
-		}
-	}
+	serverIp = host_ip
+	os.Stderr.WriteString("NANNAN: hostip: " + serverIp + "\n")
+	// addrs, err := net.InterfaceAddrs()
+	// if err != nil{
+	// 	os.Stderr.WriteString("NANNAN: " + err.Error() + "\n")
+	// }
+	// for _, a := range addrs{
+	// 	if ipnet, ok := a.(*net.IPNet); ok && !ipnet.IP.IsLoopback(){
+	// 		if ipnet.IP.To4() != nil{
+	// 			os.Stderr.Println(ipnet.IP.String())
+	// 			if ipnet.IP.To4()[0] == 192 && ipnet.IP.To4()[1] == 168 {
+	// 			    os.Stdout.WriteString(ipnet.IP.String() + "\n")
+	// 			serverIp = ipnet.IP.String()
+	// 			}
+	// 		}
+	// 	}
+	// }
 	
 	return &redisFileDescriptorService{
 		pool: pool,
@@ -528,9 +533,9 @@ func (rfds *redisFileDescriptorService) SetBFRecipe(ctx context.Context, dgst di
 	}
 	desc.ServerIps = append(desc.ServerIps, rfds.serverIp) //NANNAN add this serverip
 	
-	for _, bfdescriptor := range desc.BFDescriptors { // set the empty ones to this serverip 
-		if bfdescriptor.ServerIp == ""{
-			bfdescriptor.ServerIp = rfds.serverIp
+	for i, bfdescriptor := range desc.BFDescriptors { // set the empty ones to this serverip 
+		if bfdescriptor.ServerIp == "" {
+			desc.BFDescriptors[i].ServerIp = rfds.serverIp
 		}
 	}
 	
