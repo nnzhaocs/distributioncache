@@ -408,7 +408,7 @@ func (rfds *redisFileDescriptorService) StatFile(ctx context.Context, dgst diges
 		return distribution.FileDescriptor{}, err
 	}
     
-    reply, err := redis.Values(conn.Do("HMGET", rfds.fileDescriptorHashKey(dgst), "digest", "filePath"))
+    reply, err := redis.Values(conn.Do("HMGET", rfds.fileDescriptorHashKey(dgst), "digest", "filePath", "serverIp", "requestedServerIps"))
     	//, "fileSize", "layerDescriptor"
 	if err != nil {
 		return distribution.FileDescriptor{}, err
@@ -446,7 +446,7 @@ func (rfds *redisFileDescriptorService) SetFileDescriptor(ctx context.Context, d
 	if _, err := conn.Do("HMSET", rfds.fileDescriptorHashKey(dgst),
 		"digest", desc.Digest,
 		"serverIp", rfds.serverIp, //NANNAN SET TO the first registry ip address for global dedup; even for local dedup, it is correct?!
-		"RequestedServerIps", requestedServerIps, // NANNAN: set to none initially.
+		"requestedServerIps", requestedServerIps, // NANNAN: set to none initially.
 		"filePath", desc.FilePath); err != nil {
 		return err
 	}

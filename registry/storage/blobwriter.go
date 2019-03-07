@@ -106,6 +106,25 @@ func (bw *blobWriter) Commit(ctx context.Context, desc distribution.Descriptor) 
 	return canonical, nil
 }
 
+//NANNAN: utility function. to remove duplicate ips from serverips
+func RemoveDuplicateIpsFromIps(s []string) []string {
+      m := make(map[string]bool)
+      for _, item := range s {
+              if _, ok := m[item]; ok {
+                      // duplicate item
+                      fmt.Println(item, "is a duplicate")
+              } else {
+                      m[item] = true
+              }
+      }
+
+      var result []string
+      for item, _ := range m {
+              result = append(result, item)
+      }
+      return result
+}
+
 //NANNAN: after finishing commit, start do deduplication
 //TODO delete tarball
 //type BFmap map[digest.Digest][]distribution.FileDescriptor
@@ -167,7 +186,7 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) (
 	des := distribution.BFRecipeDescriptor{
 		BlobDigest: desc.Digest,
 		BFDescriptors: bfdescriptors,
-		ServerIps: serverIps,
+		ServerIps: RemoveDuplicatesFromSlice(serverIps),
 	}
 	context.GetLogger(ctx).Debug("NANNAN: %v", des)
 	err = bw.blobStore.registry.fileDescriptorCacheProvider.SetBFRecipe(ctx, desc.Digest, des)
