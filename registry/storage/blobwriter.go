@@ -167,6 +167,7 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) (
 	des := distribution.BFRecipeDescriptor{
 		BlobDigest: desc.Digest,
 		BFDescriptors: bfdescriptors,
+		ServerIps: serverIps,
 	}
 //	context.GetLogger(ctx).Debug("NANNAN: %v", des)
 	err = bw.blobStore.registry.fileDescriptorCacheProvider.SetBFRecipe(ctx, desc.Digest, des)
