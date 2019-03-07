@@ -408,7 +408,7 @@ func (rfds *redisFileDescriptorService) StatFile(ctx context.Context, dgst diges
 		return distribution.FileDescriptor{}, err
 	}
     
-    reply, err := redis.Values(conn.Do("HMGET", rfds.fileDescriptorHashKey(dgst), "digest", "filePath", "serverIp", "requestedServerIps"))
+    reply, err := redis.Values(conn.Do("HMGET", rfds.fileDescriptorHashKey(dgst), "digest", "filePath", "serverIp"))
     	//, "fileSize", "layerDescriptor"
 	if err != nil {
 		return distribution.FileDescriptor{}, err
@@ -422,7 +422,7 @@ func (rfds *redisFileDescriptorService) StatFile(ctx context.Context, dgst diges
 	}
 
 	var desc distribution.FileDescriptor
-	if _, err = redis.Scan(reply, &desc.Digest, &desc.FilePath, &desc.serverIp, &desc.requestedServerIps); err != nil {
+	if _, err = redis.Scan(reply, &desc.Digest, &desc.FilePath, &desc.ServerIp); err != nil {
 		
 		return distribution.FileDescriptor{}, err
 	}

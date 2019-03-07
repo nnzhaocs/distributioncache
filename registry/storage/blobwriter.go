@@ -186,7 +186,7 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) (
 	des := distribution.BFRecipeDescriptor{
 		BlobDigest: desc.Digest,
 		BFDescriptors: bfdescriptors,
-		ServerIps: RemoveDuplicatesFromSlice(serverIps),
+		ServerIps: serverIps, //RemoveDuplicateIpsFromIps(serverIps),
 	}
 	context.GetLogger(ctx).Debug("NANNAN: %v", des)
 	err = bw.blobStore.registry.fileDescriptorCacheProvider.SetBFRecipe(ctx, desc.Digest, des)
@@ -266,10 +266,10 @@ func (bw *blobWriter) CheckDuplicate(ctx context.Context, desc distribution.Desc
 			//first update layer metadata
 			//delete this file
 //			sameFiles = sameFiles + 1
-			if fpath == des.FilePath{
-				context.GetLogger(ctx).Debug("NANNAN: This layer tarball has already deduped: %v!\n", dgst)
-				return nil
-			}
+			//if fpath == des.FilePath{
+			//	context.GetLogger(ctx).Debug("NANNAN: This layer tarball has already deduped: %v!\n", dgst)
+			//	return nil
+			//}
 			err := os.Remove(fpath)
 			if err != nil {
 			  context.GetLogger(ctx).Errorf("NANNAN: %s", err)
