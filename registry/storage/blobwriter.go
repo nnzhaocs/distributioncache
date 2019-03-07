@@ -169,7 +169,7 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) (
 		BFDescriptors: bfdescriptors,
 		ServerIps: serverIps,
 	}
-//	context.GetLogger(ctx).Debug("NANNAN: %v", des)
+	context.GetLogger(ctx).Debug("NANNAN: %v", des)
 	err = bw.blobStore.registry.fileDescriptorCacheProvider.SetBFRecipe(ctx, desc.Digest, des)
 	if err != nil {
 		return err
