@@ -23,6 +23,7 @@ import (
 	"github.com/docker/docker/pkg/archive"
 	storagecache"github.com/docker/distribution/registry/storage/cache"
 	"regexp"
+	"runtime"
 //	storagedriver "github.com/docker/distribution/registry/storage/driver"
 )
 
@@ -186,13 +187,14 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 		http.ServeContent(w, r, _desc.Digest.String(), time.Time{}, br)
 		return nil
 	}
-//	var BFDescriptors   []BFDescriptor
-//	BFDescriptors = desc.BFDescriptors
+////NANNAN: for blob-files info
 //type BFDescriptor struct{
 //
-//	BlobFilePath    string
+//	BlobFilePath    string // filepath of this blobfile
 //	Digest          digest.Digest
-//	DigestFilePath  string	
+//	DigestFilePath  string	// digest file path
+//	
+//	ServerIp		string
 //}
 
 	blobPath, err := PathFor(BlobDataPathSpec{
@@ -215,39 +217,59 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 		return err
 	}
 
+	//make for loop parallel by using Limiting Concurrency like semaphore
+	cores := runtime.GOMAXPROCS(0)
+	limChan := make(chan bool, cores)
+	errChan := make(chan error, len(desc.BFDescriptors))
+	defer close(limChan)
+	defer close(errChan)
+	for i := 0; i < cores; i++ {
+		limChan <- true
+	}
+
 	for _, bfdescriptor := range desc.BFDescriptors {
+		<-limChan
 	
 		// copy 
-
-		tarfpath := reg.ReplaceAllString(strings.SplitN(bfdescriptor.BlobFilePath, "diff", 2)[1], "") // replace alphanumeric
+		go func(bfdescriptor distribution.BFDescriptor, packPath string){
+			if bfdescriptor.ServerIp != bs.fileDescriptorCacheProvider.serverIp{
+				context.GetLogger(ctx).Debug("NANNAN: this is not a locally available file, ", bfdescriptor.ServerIp) // not locally available
+				continue
+			
+			}
+			tarfpath := reg.ReplaceAllString(strings.SplitN(bfdescriptor.BlobFilePath, "diff", 2)[1], "") // replace alphanumeric
+			
+	//		context.GetLogger(ctx).Debug("NANNAN: START COPY FILE FROM %s TO %s", bfdescriptor.DigestFilePath, bfdescriptor.BlobFilePath)
 		
-//		context.GetLogger(ctx).Debug("NANNAN: START COPY FILE FROM %s TO %s", bfdescriptor.DigestFilePath, bfdescriptor.BlobFilePath)
-
-		// CheckLocalAvailable()
-		//if ture:
-	
-		contents, err := bs.driver.GetContent(ctx, strings.TrimPrefix(bfdescriptor.DigestFilePath, "/var/lib/registry"))//, dest)
-		if err != nil {
-			context.GetLogger(ctx).Errorf("NANNAN: STILL SEND TAR %s, ", err) // even if there is an error, meaning the dir is empty.
-			continue
-//			return err
-		}
+			contents, err := bs.driver.GetContent(ctx, strings.TrimPrefix(bfdescriptor.DigestFilePath, "/var/lib/registry"))//, dest)
+			if err != nil {
+				context.GetLogger(ctx).Errorf("NANNAN: STILL SEND TAR %s, ", err) // even if there is an error, meaning the dir is empty.
+				errChan <- err
+				limChan <- true
+//				continue
+			}else{
+			
+				destfpath := path.Join(packPath, tarfpath)
+				
+				err = bs.driver.PutContent(ctx, destfpath, contents)
+				if err != nil {
+					context.GetLogger(ctx).Warnf("NANNAN: STILL SEND TAR %s, ", err)
+					errChan <- err
+					limChan <- true
+				}else{
+					limChan <- true
+				}
+			}
 		
-		destfpath := path.Join(packPath, tarfpath)
-		
-		err = bs.driver.PutContent(ctx, destfpath, contents)
-		if err != nil {
-			context.GetLogger(ctx).Warnf("NANNAN: STILL SEND TAR %s, ", err)
-			continue
-//			return err
-		}
-		//else add to server queue		
+		}(bfdescriptor, packPath)
 	}
-	//TODO:
-	// for each queue{ docker pull all the files from }
-	// for each pull: check if it's pulling files or pulling layer?
-	// build url and download from remote servers.
-	
+	// leave the errChan
+	for i := 0; i < cap(limChan); i++{
+		<-limChan 
+		context.GetLogger(ctx).Debug("NANNAN: one goroutine is joined") 
+	}
+	// all goroutines finished here
+	context.GetLogger(ctx).Debug("NANNAN: all goroutines finished here") // not locally available
 	
 	packpath := path.Join("/var/lib/registry", packPath)
 	
