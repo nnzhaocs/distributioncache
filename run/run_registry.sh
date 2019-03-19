@@ -23,6 +23,8 @@ docker push nnzhaocs/distribution:latest
 
 docker run -p 5000:5000 -e MEMORY="100" --cpus 1 -e HOST="hulk0:5000" -v /home/nannan/dockerimages/layers:/var/lib/registry  -t nnzhaocs/distribution:latest
 
+docker run -p 5000:5000 -v /home/lustre/dockerimages/layers:/var/lib/registry -e REGISTRY_REDIS_ADDR=192.168.0.209:6379 -e REGISTRY_STORAGE_CACHE_HOSTIP=192.168.0.203 --name nnregistry -t nnzhaocs/distribution:latest
+
 #=========================> HOW TO RUN REDIS WITH REGISTRY <=====================
 #docker run -d -p 6379:6379 redis
 
