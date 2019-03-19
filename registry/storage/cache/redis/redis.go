@@ -531,13 +531,6 @@ func (rfds *redisFileDescriptorService) SetBFRecipe(ctx context.Context, dgst di
 //		defer conn.Close()
 		return err
 	}
-	desc.ServerIps = append(desc.ServerIps, rfds.serverIp) //NANNAN add this serverip
-	
-	for i, bfdescriptor := range desc.BFDescriptors { // set the empty ones to this serverip 
-		if bfdescriptor.ServerIp == "" {
-			desc.BFDescriptors[i].ServerIp = rfds.serverIp
-		}
-	}
 	
 //	if _, err := conn.Do("HMSET", rfds.BFRecipeHashKey(dgst),
 //		"blobdigest", desc.BlobDigest,

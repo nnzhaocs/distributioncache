@@ -183,10 +183,12 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) (
 		context.GetLogger(ctx).Errorf("NANNAN: %s", err)
 	}
 	
+	serverIps = append(serverIps, bw.blobStore.registry.fileDescriptorCacheProvider.serverIp) //NANNAN add this serverip
+	
 	des := distribution.BFRecipeDescriptor{
 		BlobDigest: desc.Digest,
 		BFDescriptors: bfdescriptors,
-		ServerIps: serverIps, //RemoveDuplicateIpsFromIps(serverIps),
+		ServerIps: RemoveDuplicateIpsFromIps(serverIps),
 	}
 	context.GetLogger(ctx).Debug("NANNAN: %v", des)
 	err = bw.blobStore.registry.fileDescriptorCacheProvider.SetBFRecipe(ctx, desc.Digest, des)
@@ -245,20 +247,7 @@ func (bw *blobWriter) CheckDuplicate(ctx context.Context, desc distribution.Desc
 		}
 		
 		//NANNAN: add file to map	
-//`
-//type BFRecipeDescriptor struct{
-//
-//	BlobDigest      Digest.digest
-//	BFDescriptors   []distribution.BFDescriptor
-//}
-//
-//type BFDescriptor struct{
-//
-//	BlobFilePath    string
-//	Digest          Digest.digest,
-//	DigestFilePath  string	
-//}
-//`
+
 		// var serverIps []string
 		des, err := db.StatFile(ctx, dgst)
 		if err == nil {
@@ -330,9 +319,9 @@ func (bw *blobWriter) CheckDuplicate(ctx context.Context, desc distribution.Desc
 			BlobFilePath: fpath,
 			Digest:    dgst,
 			DigestFilePath: dfp,
-			ServerIp: "",
+			ServerIp: db.serverIp,
 		}
-		
+				
 		*bfdescriptors = append(*bfdescriptors, bfdescriptor)
 		
 		return nil
