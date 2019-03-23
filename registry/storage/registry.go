@@ -190,6 +190,7 @@ func NewRegistry(ctx context.Context, serverIp string, driver storagedriver.Stor
 			statter: statter,
 			pathFn:  bs.path,
 			cache:   new(blobcache.MemCache),
+			serverIp: serverIp,
 //			filecache: 
 		},
 		statter:                statter,

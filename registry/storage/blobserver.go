@@ -39,7 +39,7 @@ type blobServer struct {
 	//NANNAN: add a fileDescriptorCacheProvider for restore
 	
 	fileDescriptorCacheProvider  storagecache.FileDescriptorCacheProvider
-	
+	serverIp string,
 	pathFn   func(dgst digest.Digest) (string, error)
 	redirect bool // allows disabling URLFor redirects
 	cache    *cache.MemCache
@@ -232,7 +232,7 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 	
 		// copy 
 		go func(bfdescriptor distribution.BFDescriptor, packPath string){
-			if bfdescriptor.ServerIp != bs.fileDescriptorCacheProvider.serverIp{
+			if bfdescriptor.ServerIp != bs.serverIp{
 				context.GetLogger(ctx).Debug("NANNAN: this is not a locally available file, ", bfdescriptor.ServerIp) // not locally available
 				continue
 			
