@@ -39,7 +39,7 @@ type blobServer struct {
 	//NANNAN: add a fileDescriptorCacheProvider for restore
 	
 	fileDescriptorCacheProvider  storagecache.FileDescriptorCacheProvider
-	serverIp string,
+	serverIp string
 	pathFn   func(dgst digest.Digest) (string, error)
 	redirect bool // allows disabling URLFor redirects
 	cache    *cache.MemCache
@@ -234,33 +234,33 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 		go func(bfdescriptor distribution.BFDescriptor, packPath string){
 			if bfdescriptor.ServerIp != bs.serverIp{
 				context.GetLogger(ctx).Debug("NANNAN: this is not a locally available file, ", bfdescriptor.ServerIp) // not locally available
-				continue
-			
-			}
-			tarfpath := reg.ReplaceAllString(strings.SplitN(bfdescriptor.BlobFilePath, "diff", 2)[1], "") // replace alphanumeric
-			
-	//		context.GetLogger(ctx).Debug("NANNAN: START COPY FILE FROM %s TO %s", bfdescriptor.DigestFilePath, bfdescriptor.BlobFilePath)
-		
-			contents, err := bs.driver.GetContent(ctx, strings.TrimPrefix(bfdescriptor.DigestFilePath, "/var/lib/registry"))//, dest)
-			if err != nil {
-				context.GetLogger(ctx).Errorf("NANNAN: STILL SEND TAR %s, ", err) // even if there is an error, meaning the dir is empty.
-				errChan <- err
 				limChan <- true
-//				continue
-			}else{
 			
-				destfpath := path.Join(packPath, tarfpath)
+			}else{
+				tarfpath := reg.ReplaceAllString(strings.SplitN(bfdescriptor.BlobFilePath, "diff", 2)[1], "") // replace alphanumeric
 				
-				err = bs.driver.PutContent(ctx, destfpath, contents)
+		//		context.GetLogger(ctx).Debug("NANNAN: START COPY FILE FROM %s TO %s", bfdescriptor.DigestFilePath, bfdescriptor.BlobFilePath)
+			
+				contents, err := bs.driver.GetContent(ctx, strings.TrimPrefix(bfdescriptor.DigestFilePath, "/var/lib/registry"))//, dest)
 				if err != nil {
-					context.GetLogger(ctx).Warnf("NANNAN: STILL SEND TAR %s, ", err)
+					context.GetLogger(ctx).Errorf("NANNAN: STILL SEND TAR %s, ", err) // even if there is an error, meaning the dir is empty.
 					errChan <- err
 					limChan <- true
+	//				continue
 				}else{
-					limChan <- true
-				}
+				
+					destfpath := path.Join(packPath, tarfpath)
+					
+					err = bs.driver.PutContent(ctx, destfpath, contents)
+					if err != nil {
+						context.GetLogger(ctx).Warnf("NANNAN: STILL SEND TAR %s, ", err)
+						errChan <- err
+						limChan <- true
+					}else{
+						limChan <- true
+					}
+				}		
 			}
-		
 		}(bfdescriptor, packPath)
 	}
 	// leave the errChan
