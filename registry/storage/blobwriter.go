@@ -178,7 +178,7 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) (
 	var bfdescriptors [] distribution.BFDescriptor
 	var serverIps []string
 	
-	err = filepath.Walk(unpackPath, bw.CheckDuplicate(ctx, desc, bw.blobStore.registry.fileDescriptorCacheProvider, &bfdescriptors, &serverIps))
+	err = filepath.Walk(unpackPath, bw.CheckDuplicate(ctx, bw.blobStore.registry.serverIp, desc, bw.blobStore.registry.fileDescriptorCacheProvider, &bfdescriptors, &serverIps))
 	if err != nil {
 		context.GetLogger(ctx).Errorf("NANNAN: %s", err)
 	}
@@ -201,7 +201,7 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) (
 //NANNAN check dedup
 // Metrics: lock
 
-func (bw *blobWriter) CheckDuplicate(ctx context.Context, desc distribution.Descriptor, db cache.FileDescriptorCacheProvider, bfdescriptors *[] distribution.BFDescriptor, serverIps *[] string) filepath.WalkFunc {
+func (bw *blobWriter) CheckDuplicate(ctx context.Context, serverIp string, desc distribution.Descriptor, db cache.FileDescriptorCacheProvider, bfdescriptors *[] distribution.BFDescriptor, serverIps *[] string) filepath.WalkFunc {
 //	totalFiles := 0
 //	sameFiles := 0
 //	reguFiles := 0
@@ -319,7 +319,7 @@ func (bw *blobWriter) CheckDuplicate(ctx context.Context, desc distribution.Desc
 			BlobFilePath: fpath,
 			Digest:    dgst,
 			DigestFilePath: dfp,
-			ServerIp: db.serverIp,
+			ServerIp: serverIp,
 		}
 				
 		*bfdescriptors = append(*bfdescriptors, bfdescriptor)
