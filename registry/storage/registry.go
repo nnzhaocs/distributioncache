@@ -28,7 +28,7 @@ type registry struct {
 	blobDescriptorCacheProvider  cache.BlobDescriptorCacheProvider
 	
 	//NANNAN: add a fileDescriptorCacheProvider for dedup
-	
+	serverIp   string
 	fileDescriptorCacheProvider  cache.FileDescriptorCacheProvider
 	
 	deleteEnabled                bool
@@ -172,7 +172,7 @@ func BlobDescriptorCacheProvider(blobDescriptorCacheProvider cache.BlobDescripto
 // resulting registry may be shared by multiple goroutines but is cheap to
 // allocate. If the Redirect option is specified, the backend blob server will
 // attempt to use (StorageDriver).URLFor to serve all blobs.
-func NewRegistry(ctx context.Context, driver storagedriver.StorageDriver, options ...RegistryOption) (distribution.Namespace, error) {
+func NewRegistry(ctx context.Context, serverIp string, driver storagedriver.StorageDriver, options ...RegistryOption) (distribution.Namespace, error) {
 	// create global statter
 	statter := &blobStatter{
 		driver: driver,
@@ -194,7 +194,7 @@ func NewRegistry(ctx context.Context, driver storagedriver.StorageDriver, option
 		},
 		statter:                statter,
 		resumableDigestEnabled: true,
-		//serverIp: serverIp,
+		serverIp: serverIp,
 	}
 
 	for _, option := range options {

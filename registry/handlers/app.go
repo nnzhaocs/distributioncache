@@ -297,14 +297,15 @@ func NewApp(ctx context.Context, config *configuration.Configuration) *App {
 			// Backwards compatible: "layerinfo" == "blobdescriptor"
 			v = cc["layerinfo"]
 		}
-
+		//NANNAN: put here for redis and registry
+		hostip := fmt.Sprintf("%v", cc["hostip"])
 		switch v {
 			// NANNAN: store blob descriptor
 		case "redis":
 			if app.redis == nil {
 				panic("redis configuration required to use for layerinfo cache")
 			}
-			hostip := fmt.Sprintf("%v", cc["hostip"])
+			
 			cacheProvider := rediscache.NewRedisBlobDescriptorCacheProvider(app.redis)
 			
 			//NANNAN
@@ -334,7 +335,7 @@ func NewApp(ctx context.Context, config *configuration.Configuration) *App {
 
 	if app.registry == nil {
 		// configure the registry if no cache section is available.
-		app.registry, err = storage.NewRegistry(app.Context, app.driver, options...)
+		app.registry, err = storage.NewRegistry(app.Context, hostip, app.driver, options...)
 		if err != nil {
 			panic("could not create registry: " + err.Error())
 		}

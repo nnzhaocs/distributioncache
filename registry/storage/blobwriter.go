@@ -183,7 +183,7 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) (
 		context.GetLogger(ctx).Errorf("NANNAN: %s", err)
 	}
 	
-	serverIps = append(serverIps, bw.blobStore.registry.fileDescriptorCacheProvider.serverIp) //NANNAN add this serverip
+	serverIps = append(serverIps, bw.blobStore.registry.serverIp) //NANNAN add this serverip
 	
 	des := distribution.BFRecipeDescriptor{
 		BlobDigest: desc.Digest,
