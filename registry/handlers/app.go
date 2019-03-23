@@ -288,7 +288,8 @@ func NewApp(ctx context.Context, config *configuration.Configuration) *App {
 			}
 		}
 	}
-
+	
+	hostip := fmt.Sprintf("%v", cc["hostip"])
 	// configure storage caches
 	if cc, ok := config.Storage["cache"]; ok {
 		v, ok := cc["blobdescriptor"]
@@ -298,7 +299,7 @@ func NewApp(ctx context.Context, config *configuration.Configuration) *App {
 			v = cc["layerinfo"]
 		}
 		//NANNAN: put here for redis and registry
-		hostip := fmt.Sprintf("%v", cc["hostip"])
+		
 		switch v {
 			// NANNAN: store blob descriptor
 		case "redis":
@@ -312,7 +313,7 @@ func NewApp(ctx context.Context, config *configuration.Configuration) *App {
 			filecacheProvider := rediscache.NewRedisFileDescriptorCacheProvider(app.redis, hostip)
 			
 			localOptions := append(options, storage.BlobDescriptorCacheProviderWithFileCache(cacheProvider, filecacheProvider))
-			app.registry, err = storage.NewRegistry(app, app.driver, localOptions...)
+			app.registry, err = storage.NewRegistry(app, hostip, app.driver, localOptions...)
 			if err != nil {
 				panic("could not create registry: " + err.Error())
 			}
@@ -321,7 +322,7 @@ func NewApp(ctx context.Context, config *configuration.Configuration) *App {
 			cacheProvider := memorycache.NewInMemoryBlobDescriptorCacheProvider()
 					
 			localOptions := append(options, storage.BlobDescriptorCacheProvider(cacheProvider))
-			app.registry, err = storage.NewRegistry(app, app.driver, localOptions...)
+			app.registry, err = storage.NewRegistry(app, hostip, app.driver, localOptions...)
 			if err != nil {
 				panic("could not create registry: " + err.Error())
 			}
