@@ -43,9 +43,9 @@ redis:
     maxidle: 16
     maxactive: 64
     idletimeout: 300s
-  dialtimeout: 10ms
-  readtimeout: 10ms
-  writetimeout: 10ms
+  dialtimeout: 1000ms
+  readtimeout: 1000ms
+  writetimeout: 1000ms
 notifications:
     endpoints:
         - name: local-5003
