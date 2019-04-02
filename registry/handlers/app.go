@@ -294,6 +294,7 @@ func NewApp(ctx context.Context, config *configuration.Configuration) *App {
 	}
 	
 	// configure storage caches
+	var hostip string
 	if cc, ok := config.Storage["cache"]; ok {
 		v, ok := cc["blobdescriptor"]
 		//NANNAN: which one is used for caching blobdescriptor.
@@ -302,7 +303,8 @@ func NewApp(ctx context.Context, config *configuration.Configuration) *App {
 			v = cc["layerinfo"]
 		}
 		//NANNAN: put here for redis and registry
-		hostip := fmt.Sprintf("%v", cc["hostip"])
+		
+		hostip = fmt.Sprintf("%v", cc["hostip"])
 		switch v {
 			// NANNAN: store blob descriptor
 		case "redis":
