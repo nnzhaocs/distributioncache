@@ -7,7 +7,7 @@ import (
 	"github.com/docker/distribution/context"
 	"github.com/docker/distribution/reference"
 	"github.com/docker/distribution/registry/storage/cache"
-	"github.com/garyburd/redigo/redis"
+//	redis "github.com/garyburd/redigo/redis"
 	"github.com/opencontainers/go-digest"
 	//NANNAN
 	"encoding/json"
@@ -16,8 +16,8 @@ import (
 //	"flag"
 	rejson "github.com/secondspass/go-rejson"
 //	"log"
-
-//	"github.com/gomodule/redigo/redis"
+	redis "github.com/gomodule/redigo/redis"
+	redisc "github.com/mna/redisc"
 )
 
 // redisBlobStatService provides an implementation of
@@ -32,9 +32,11 @@ import (
 // Note that there is no implied relationship between these two caches. The
 // layer may exist in one, both or none and the code must be written this way.
 
+// HERE, we store dbNoBlobl and dbNoBFRecipe on a redis standalone
+// we store dbNoFile on a redis cluster
 var (
 	dbNoBlob = 0 
-	dbNoFile = 1
+	dbNoFile = 1 
 	dbNoBFRecipe = 2
 )
 
@@ -48,7 +50,7 @@ type redisBlobDescriptorService struct {
 	// for each operation. Once we have better lifecycle management of the
 	// request objects, we can change this to a connection.
 	
-		//NANNAN: get host ip address
+	//NANNAN: get host ip address
 	
 }
 
@@ -332,16 +334,18 @@ type redisFileDescriptorService struct {
 	// for each operation. Once we have better lifecycle management of the
 	// request objects, we can change this to a connection.
 	serverIp   string
+	
+	cluster redisc.Cluster
 }
 
 // NewRedisBlobDescriptorCacheProvider returns a new redis-based
 // BlobDescriptorCacheProvider using the provided redis connection pool.
-func NewRedisFileDescriptorCacheProvider(pool *redis.Pool, host_ip string) cache.FileDescriptorCacheProvider {
+func NewRedisFileDescriptorCacheProvider(pool *redis.Pool, cluster redisc.Cluster, host_ip string) cache.FileDescriptorCacheProvider {
 	
-		//NANNAN address
+	//NANNAN address
 	var serverIp string
 	serverIp = host_ip
-	os.Stderr.WriteString("NANNAN: hostip: " + serverIp + "\n")
+	os.Stdout.WriteString("NANNAN: hostip: " + serverIp + "\n")
 	// addrs, err := net.InterfaceAddrs()
 	// if err != nil{
 	// 	os.Stderr.WriteString("NANNAN: " + err.Error() + "\n")
@@ -358,8 +362,14 @@ func NewRedisFileDescriptorCacheProvider(pool *redis.Pool, host_ip string) cache
 	// 	}
 	// }
 	
+	if err := cluster.Refresh(); err != nil {
+		os.Stdout.WriteString("NANNAN: Refresh failed: " + err.Error() + "\n")
+//	    log.Fatalf("Refresh failed: %v", err)
+	}
+	
 	return &redisFileDescriptorService{
 		pool: pool,
+		cluster: cluster,
 		serverIp: serverIp,
 	}
 }
@@ -368,45 +378,17 @@ func NewRedisFileDescriptorCacheProvider(pool *redis.Pool, host_ip string) cache
 func (rfds *redisFileDescriptorService) fileDescriptorHashKey(dgst digest.Digest) string {
 	return "files::" + dgst.String()
 }
-//func (rbds *redisBlobDescriptorService) blobDescriptorHashKey(dgst digest.Digest) string {
-//	return "blobs::" + dgst.String()
-//}
-
-//type repositoryScopedRedisBlobDescriptorService struct {
-//	repo     string
-//	upstream *redisBlobDescriptorService
-//}
 
 var _ distribution.FileDescriptorService = &redisFileDescriptorService{}
 
-//func (rsrbds *repositoryScopedRedisBlobDescriptorService) blobDescriptorHashKey(dgst digest.Digest) string {
-//	return "repository::" + rsrbds.repo + "::blobs::" + dgst.String()
-//}
-//
-//func (rsrbds *repositoryScopedRedisBlobDescriptorService) repositoryBlobSetKey(repo string) string {
-//	return "repository::" + rsrbds.repo + "::blobs"
-//}
-//
-//type repositoryScopedRedisBlobDescriptorService struct {
-//	repo     string
-//	upstream *redisBlobDescriptorService
-//}
-
-//func (cbds *redisFileDescriptorService) Stat(ctx context.Context, dgst digest.Digest) (distribution.Descriptor, error) {
-//	func (cbds *cachedBlobStatter) SetDescriptor(ctx context.Context, dgst digest.Digest, desc distribution.Descriptor) error {
-//}
-//func (rfds *redisFileDescriptorService) StatFileDesriptor(dgst digest.Digest) (distribution.FileDescriptor, error) {
-//	func (rfds *redisFileDescriptorService) SetFileDescriptor(dgst digest.Digest, desc distribution.FileDescriptor) error {
-//}	
-
 func (rfds *redisFileDescriptorService) StatFile(ctx context.Context, dgst digest.Digest) (distribution.FileDescriptor, error) {
-	conn := rfds.pool.Get()
+	conn := rfds.cluster.Get()
 	defer conn.Close()
 	
-	if _, err := conn.Do("SELECT", dbNoFile); err != nil {
-//		defer conn.Close()
-		return distribution.FileDescriptor{}, err
-	}
+//	if _, err := conn.Do("SELECT", dbNoFile); err != nil {
+////		defer conn.Close()
+//		return distribution.FileDescriptor{}, err
+//	}
     
     reply, err := redis.Values(conn.Do("HMGET", rfds.fileDescriptorHashKey(dgst), "digest", "filePath", "serverIp"))
     	//, "fileSize", "layerDescriptor"
@@ -434,13 +416,13 @@ func (rfds *redisFileDescriptorService) StatFile(ctx context.Context, dgst diges
 
 func (rfds *redisFileDescriptorService) SetFileDescriptor(ctx context.Context, dgst digest.Digest, desc distribution.FileDescriptor) error {
 	
-	conn := rfds.pool.Get()
+	conn := rfds.cluster.Get()
 	defer conn.Close()
 	
-	if _, err := conn.Do("SELECT", dbNoFile); err != nil {
-//		defer conn.Close()
-		return err
-	}
+//	if _, err := conn.Do("SELECT", dbNoFile); err != nil {
+////		defer conn.Close()
+//		return err
+//	}
 	var requestedServerIps []string
 	
 	if _, err := conn.Do("HMSET", rfds.fileDescriptorHashKey(dgst),

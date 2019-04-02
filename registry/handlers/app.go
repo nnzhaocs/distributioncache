@@ -40,6 +40,9 @@ import (
 	"github.com/garyburd/redigo/redis"
 	"github.com/gorilla/mux"
 	"golang.org/x/net/context"
+	//redis cluster
+//	"github.com/chasex/redis-go-cluster"
+	redisc "github.com/mna/redisc"
 )
 
 // randomSecretSize is the number of random bytes to generate if no secret
@@ -73,6 +76,7 @@ type App struct {
 	}
 
 	redis *redis.Pool
+	cluster redisc.Cluster
 
 	// trustKey is a deprecated key used to sign manifests converted to
 	// schema1 for backward compatibility. It should not be used for any
@@ -289,7 +293,6 @@ func NewApp(ctx context.Context, config *configuration.Configuration) *App {
 		}
 	}
 	
-	hostip := fmt.Sprintf("%v", cc["hostip"])
 	// configure storage caches
 	if cc, ok := config.Storage["cache"]; ok {
 		v, ok := cc["blobdescriptor"]
@@ -299,7 +302,7 @@ func NewApp(ctx context.Context, config *configuration.Configuration) *App {
 			v = cc["layerinfo"]
 		}
 		//NANNAN: put here for redis and registry
-		
+		hostip := fmt.Sprintf("%v", cc["hostip"])
 		switch v {
 			// NANNAN: store blob descriptor
 		case "redis":
@@ -583,9 +586,26 @@ func (app *App) configureRedis(configuration *configuration.Configuration) {
 	}
 
 	app.redis = pool
-	//NANNAN: add redis conn in redis.go
-//	redisDedup.RedisPool = pool
-
+	//NANNAN: add redisc cluster
+	cluster := redisc.Cluster{
+	     StartupNodes: []string{"172.19.0.2:6379", "172.19.0.3:6379", "172.19.0.4:6379", "172.19.0.5:6379", "172.19.0.6:6379", "172.19.0.7:6379"},
+	     DialOptions:  []redis.DialOption{redis.DialConnectTimeout(5 * time.Second)},
+	     CreatePool: func (addr string, opts ...redis.DialOption) (*redis.Pool, error) {
+					    return &redis.Pool{
+					        MaxIdle:     5,
+					        MaxActive:   10,
+					        IdleTimeout: time.Minute,
+					        Dial: func() (redis.Conn, error) {
+					            return redis.Dial("tcp", addr, opts...)
+					        },
+					        TestOnBorrow: func(c redis.Conn, t time.Time) error {
+					            _, err := c.Do("PING")
+					            return err
+					        },
+					    }, nil
+					},
+    }
+	app.cluster = cluster
 	// setup expvar
 	registry := expvar.Get("registry")
 	if registry == nil {
