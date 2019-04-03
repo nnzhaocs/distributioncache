@@ -28,9 +28,10 @@ docker run -p 5000:5000 --rm --net redis_cluster -v /home/lustre/dockerimages/la
 #========================> HOW TO RUN A REDIS CLUSTER WITH DOCKER <=============
 $PWD is distribution/run dir
 
-create a network
-docker network create redis_cluster
-create redis containers
+#create a network
+#docker network create redis_cluster
+#create redis containers
+(1) start redis instance
 docker run -p 7000:7000 -d -v $PWD/redis-cluster-7000.conf:/usr/local/etc/redis/redis.conf -v $PWD/rejson.so:/home/rejson.so --name redis-0 --net host redis redis-server /usr/local/etc/redis/redis.conf
 docker run -p 7001:7001 -d -v $PWD/redis-cluster-7001.conf:/usr/local/etc/redis/redis.conf -v $PWD/rejson.so:/home/rejson.so --name redis-1 --net host  redis redis-server /usr/local/etc/redis/redis.conf
 docker run -p 7002:7002 -d -v $PWD/redis-cluster-7002.conf:/usr/local/etc/redis/redis.conf -v $PWD/rejson.so:/home/rejson.so --name redis-2 --net host redis redis-server /usr/local/etc/redis/redis.conf
@@ -38,10 +39,15 @@ docker run -p 7003:7003 -d -v $PWD/redis-cluster-7003.conf:/usr/local/etc/redis/
 docker run -p 7004:7004 -d -v $PWD/redis-cluster-7004.conf:/usr/local/etc/redis/redis.conf -v $PWD/rejson.so:/home/rejson.so --name redis-4 --net host redis redis-server /usr/local/etc/redis/redis.conf
 docker run -p 7005:7005 -d -v $PWD/redis-cluster-7005.conf:/usr/local/etc/redis/redis.conf -v $PWD/rejson.so:/home/rejson.so --name redis-5 --net host redis redis-server /usr/local/etc/redis/redis.conf
 
-create a cluster
+(2) create a cluster
 docker exec -ti redis-0 redis-cli --cluster create 127.0.0.1:7000 127.0.0.1:7001 127.0.0.1:7002 127.0.0.1:7003 127.0.0.1:7004 127.0.0.1:7005 --cluster-replicas 1
-check?
+
+(3) check?
 docker exec -ti  redis-rejson-2 redis-cli
+
+(4) and check and init cluster
+go run ../test/redis_cluster.go
+
 #=========================> HOW TO RUN REDIS WITH REGISTRY <=====================
 #docker run -d -p 6379:6379 redis
 docker run -p 6379:6379 --name redis-rejson redislabs/rejson:latest
