@@ -361,11 +361,11 @@ func NewRedisFileDescriptorCacheProvider(pool *redis.Pool, cluster redisc.Cluste
 	// 		}
 	// 	}
 	// }
-	
-	if err := cluster.Refresh(); err != nil {
-		os.Stdout.WriteString("NANNAN: Refresh failed: " + err.Error() + "\n")
-//	    log.Fatalf("Refresh failed: %v", err)
-	}
+	//NANNAN only refresh once
+//	if err := cluster.Refresh(); err != nil {
+//		os.Stdout.WriteString("NANNAN: Refresh failed: " + err.Error() + "\n")
+////	    log.Fatalf("Refresh failed: %v", err)
+//	}
 	
 	return &redisFileDescriptorService{
 		pool: pool,
