@@ -5,7 +5,7 @@ import (
     "fmt"
     //"sync"
     "time"
-    //"log"
+    "log"
     //redissingle "github.com/go-redis/redis"
     "github.com/gomodule/redigo/redis"
     //rediscluster "github.com/chasex/redis-go-cluster"
@@ -75,9 +75,9 @@ func main() {
 	redisdb := Newclusterredisc()
 	defer redisdb.Close()
 
-	//if err := redisdb.Refresh(); err != nil {
-        //	log.Fatalf("Refresh failed: %v", err)
-    	//}
+	if err := redisdb.Refresh(); err != nil {
+        	log.Fatalf("Refresh failed: %v", err)
+    	}
 
 	fmt.Println("hello")
 
