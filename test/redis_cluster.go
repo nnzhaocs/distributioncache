@@ -57,7 +57,7 @@ func createPool(addr string, opts ...redis.DialOption) (*redis.Pool, error) {
 
 func Newclusterredisc() redisc.Cluster{
 	cluster := redisc.Cluster{
-        	StartupNodes: []string{"172.19.0.2:6379", "172.19.0.3:6379", "172.19.0.4:6379", "172.19.0.5:6379", "172.19.0.6:6379", "172.19.0.7:6379"},
+        	StartupNodes: []string{"192.168.0.213:7000", "192.168.0.213:7001", "192.168.0.213:7002", "192.168.0.213:7003", "192.168.0.213:7004", "192.168.0.213:7005"},
         	DialOptions:  []redis.DialOption{redis.DialConnectTimeout(5 * time.Second)},
         	CreatePool:   createPool,
     	}
