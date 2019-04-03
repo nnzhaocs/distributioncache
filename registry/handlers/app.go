@@ -37,12 +37,13 @@ import (
 	storagemiddleware "github.com/docker/distribution/registry/storage/driver/middleware"
 	"github.com/docker/distribution/version"
 	"github.com/docker/libtrust"
-	"github.com/garyburd/redigo/redis"
+	//"github.com/garyburd/redigo/redis"
 	"github.com/gorilla/mux"
 	"golang.org/x/net/context"
 	//redis cluster
 //	"github.com/chasex/redis-go-cluster"
 	redisc "github.com/mna/redisc"
+	"github.com/gomodule/redigo/redis"
 )
 
 // randomSecretSize is the number of random bytes to generate if no secret
@@ -315,7 +316,7 @@ func NewApp(ctx context.Context, config *configuration.Configuration) *App {
 			cacheProvider := rediscache.NewRedisBlobDescriptorCacheProvider(app.redis)
 			
 			//NANNAN
-			filecacheProvider := rediscache.NewRedisFileDescriptorCacheProvider(app.redis, hostip)
+			filecacheProvider := rediscache.NewRedisFileDescriptorCacheProvider(app.redis, app.cluster, hostip)
 			
 			localOptions := append(options, storage.BlobDescriptorCacheProviderWithFileCache(cacheProvider, filecacheProvider))
 			app.registry, err = storage.NewRegistry(app, hostip, app.driver, localOptions...)
