@@ -220,7 +220,7 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 	//make for loop parallel by using Limiting Concurrency like semaphore
 	cores := runtime.GOMAXPROCS(0)
 	limChan := make(chan bool, cores)
-	errChan := make(chan error, len(desc.BFDescriptors))
+//	errChan := make(chan error, len(desc.BFDescriptors))
 	defer close(limChan)
 	defer close(errChan)
 	for i := 0; i < cores; i++ {
@@ -234,7 +234,7 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 		go func(bfdescriptor distribution.BFDescriptor, packPath string){
 			if bfdescriptor.ServerIp != bs.serverIp{
 				context.GetLogger(ctx).Debug("NANNAN: this is not a locally available file, ", bfdescriptor.ServerIp) // not locally available
-				limChan <- true
+//				limChan <- true
 			
 			}else{
 				tarfpath := reg.ReplaceAllString(strings.SplitN(bfdescriptor.BlobFilePath, "diff", 2)[1], "") // replace alphanumeric
@@ -244,8 +244,8 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 				contents, err := bs.driver.GetContent(ctx, strings.TrimPrefix(bfdescriptor.DigestFilePath, "/var/lib/registry"))//, dest)
 				if err != nil {
 					context.GetLogger(ctx).Errorf("NANNAN: STILL SEND TAR %s, ", err) // even if there is an error, meaning the dir is empty.
-					errChan <- err
-					limChan <- true
+//					errChan <- err
+//					limChan <- true
 	//				continue
 				}else{
 				
@@ -254,13 +254,14 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 					err = bs.driver.PutContent(ctx, destfpath, contents)
 					if err != nil {
 						context.GetLogger(ctx).Warnf("NANNAN: STILL SEND TAR %s, ", err)
-						errChan <- err
-						limChan <- true
+//						errChan <- err
+//						limChan <- true
 					}else{
-						limChan <- true
+//						limChan <- true
 					}
 				}		
 			}
+			limChan <- true
 		}(bfdescriptor, packPath)
 	}
 	// leave the errChan

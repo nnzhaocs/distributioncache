@@ -13,6 +13,8 @@ import (
 	storagedriver "github.com/docker/distribution/registry/storage/driver"
 	blobcache "github.com/docker/distribution/registry/storage/driver/cache"
 	"github.com/docker/libtrust"
+	//nannan
+	"github.com/serialx/hashring"
 )
 
 // registry is the top-level implementation of Registry for use in the storage
@@ -36,6 +38,7 @@ type registry struct {
 	schema1SigningKey            libtrust.PrivateKey
 	blobDescriptorServiceFactory distribution.BlobDescriptorServiceFactory
 	manifestURLs                 manifestURLs
+	ring					     hashring.HashRing
 }
 
 // manifestURLs holds regular expressions for controlling manifest URL whitelisting
@@ -174,6 +177,19 @@ func BlobDescriptorCacheProvider(blobDescriptorCacheProvider cache.BlobDescripto
 // attempt to use (StorageDriver).URLFor to serve all blobs.
 func NewRegistry(ctx context.Context, serverIp string, driver storagedriver.StorageDriver, options ...RegistryOption) (distribution.Namespace, error) {
 	// create global statter
+	servers := []string{
+                                "192.168.210",
+                                "192.168.211",
+                                "192.168.212",
+                        //      "192.168.213",
+                                "192.168.214",
+                                "192.168.215",
+                                "192.168.216",
+                                "192.168.217",
+                                "192.168.218",
+                                "192.168.219",
+	}
+	
 	statter := &blobStatter{
 		driver: driver,
 	}
@@ -191,6 +207,7 @@ func NewRegistry(ctx context.Context, serverIp string, driver storagedriver.Stor
 			pathFn:  bs.path,
 			cache:   new(blobcache.MemCache),
 			serverIp: serverIp,
+			ring: hashring.New(servers),
 //			filecache: 
 		},
 		statter:                statter,

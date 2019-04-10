@@ -279,6 +279,7 @@ func (buh *blobUploadHandler) PutBlobUploadComplete(w http.ResponseWriter, r *ht
 	}
 
 	// NANNAN: Here, we send a des address to deduplication service
+	//TODO: make a gorutine xxxxxx
 	// desc distribution.Descriptor
 	
 	buh.Upload.Dedup(buh, distribution.Descriptor{
