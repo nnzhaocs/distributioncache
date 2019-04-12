@@ -95,6 +95,15 @@ type FileDescriptor struct {
 	
 }
 
+func (m *FileDescriptor) MarshalBinary() ([]byte, error) {
+    return json.Marshal(m)
+}
+
+func(m *FileDescriptor)UnmarshalBinary(data []byte) error{
+  // convert data to yours, let's assume its json data
+  return json.Unmarshal(data, m)
+}
+
 // Descriptor returns the descriptor, to make it satisfy the Describable
 // interface. Note that implementations of Describable are generally objects
 // which can be described, not simply descriptors; this exception is in place

@@ -42,8 +42,9 @@ import (
 	"golang.org/x/net/context"
 	//redis cluster
 //	"github.com/chasex/redis-go-cluster"
-	redisc "github.com/mna/redisc"
+//	redisc "github.com/mna/redisc"
 	"github.com/gomodule/redigo/redis"
+	redisgo"github.com/go-redis/redis"
 )
 
 // randomSecretSize is the number of random bytes to generate if no secret
@@ -77,7 +78,7 @@ type App struct {
 	}
 
 	redis *redis.Pool
-	cluster redisc.Cluster
+	cluster redisgo.Cluster
 
 	// trustKey is a deprecated key used to sign manifests converted to
 	// schema1 for backward compatibility. It should not be used for any
@@ -587,28 +588,50 @@ func (app *App) configureRedis(configuration *configuration.Configuration) {
 		},
 		Wait: false, // if a connection is not avialable, proceed without cache.
 	}
+	
+//	    maxidle: 16
+//    maxactive: 64
+//    idletimeout: 300s
+//  dialtimeout: 1000ms
+//  readtimeout: 1000ms
+//  writetimeout: 1000ms
 
 	app.redis = pool
 	//NANNAN: add redisc cluster
-	cluster := redisc.Cluster{
-	     StartupNodes: []string{"192.168.0.213:7000", "192.168.0.213:7001", "192.168.0.213:7002", "192.168.0.213:7003", "192.168.0.213:7004", "192.168.0.213:7005"},
-	     DialOptions:  []redis.DialOption{redis.DialConnectTimeout(5 * time.Second)},
-	     CreatePool: func (addr string, opts ...redis.DialOption) (*redis.Pool, error) {
-					    return &redis.Pool{
-					        MaxIdle:     5,
-					        MaxActive:   10,
-					        IdleTimeout: time.Minute,
-					        Dial: func() (redis.Conn, error) {
-					            return redis.Dial("tcp", addr, opts...)
-					        },
-					        TestOnBorrow: func(c redis.Conn, t time.Time) error {
-					            _, err := c.Do("PING")
-					            return err
-					        },
-					    }, nil
-					},
-    }
-	app.cluster = cluster
+//	cluster := redisc.Cluster{
+//	     StartupNodes: []string{"192.168.0.213:7000", "192.168.0.213:7001", "192.168.0.213:7002", "192.168.0.213:7003", "192.168.0.213:7004", "192.168.0.213:7005"},
+//	     DialOptions:  []redis.DialOption{redis.DialConnectTimeout(5 * time.Second)},
+//	     CreatePool: func (addr string, opts ...redis.DialOption) (*redis.Pool, error) {
+//					    return &redis.Pool{
+//					    	Dial: func() (redis.Conn, error) {
+//						    	conn, err := redis.DialTimeout("tcp",
+//											addr,
+//											30*30*1000ms,
+//											1000ms,
+//											1000ms)
+//						    	return conn, err
+//					    	},
+//					    	
+//					        MaxIdle:     16,
+//					        MaxActive:   64,
+//					        IdleTimeout: 300s,
+////					        Dial: func() (redis.Conn, error) {
+////					            return redis.Dial("tcp", addr, opts...)
+////					        },
+//					        TestOnBorrow: func(c redis.Conn, t time.Time) error {
+//					            _, err := c.Do("PING")
+//					            return err
+//					        },
+//					    }, nil
+//					    Wait: true, 
+//					},
+//    }
+	redisdb := redisgo.NewClusterClient(&redisgo.ClusterOptions{
+                Addrs: []string{"192.168.0.213:7000", "192.168.0.213:7001", "192.168.0.213:7002", "192.168.0.213:7003", "192.168.0.213:7004", "192.168.0.213:7005"},//[]string{":7000", ":7001", ":7002", ":7003", ":7004", ":7005"},
+        })
+    redisdb.Ping()
+        
+	app.cluster = redisdb
 	// setup expvar
 	registry := expvar.Get("registry")
 	if registry == nil {

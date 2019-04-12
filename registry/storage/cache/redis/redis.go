@@ -17,7 +17,8 @@ import (
 	rejson "github.com/secondspass/go-rejson"
 //	"log"
 	redis "github.com/gomodule/redigo/redis"
-	redisc "github.com/mna/redisc"
+//	"github.com/go-redis/redis"
+//	redisc "github.com/mna/redisc"
 )
 
 // redisBlobStatService provides an implementation of
@@ -340,7 +341,7 @@ type redisFileDescriptorService struct {
 
 // NewRedisBlobDescriptorCacheProvider returns a new redis-based
 // BlobDescriptorCacheProvider using the provided redis connection pool.
-func NewRedisFileDescriptorCacheProvider(pool *redis.Pool, cluster redisc.Cluster, host_ip string) cache.FileDescriptorCacheProvider {
+func NewRedisFileDescriptorCacheProvider(pool *redis.Pool, cluster redisgo.Cluster, host_ip string) cache.FileDescriptorCacheProvider {
 	
 	//NANNAN address
 	var serverIp string
@@ -382,56 +383,80 @@ func (rfds *redisFileDescriptorService) fileDescriptorHashKey(dgst digest.Digest
 var _ distribution.FileDescriptorService = &redisFileDescriptorService{}
 
 func (rfds *redisFileDescriptorService) StatFile(ctx context.Context, dgst digest.Digest) (distribution.FileDescriptor, error) {
-	conn := rfds.cluster.Get()
-	defer conn.Close()
+//	conn := rfds.cluster.Get()
+//	defer conn.Close()
 	
 //	if _, err := conn.Do("SELECT", dbNoFile); err != nil {
 ////		defer conn.Close()
 //		return distribution.FileDescriptor{}, err
 //	}
     
-    reply, err := redis.Values(conn.Do("HMGET", rfds.fileDescriptorHashKey(dgst), "digest", "filePath", "serverIp"))
-    	//, "fileSize", "layerDescriptor"
-	if err != nil {
+//    reply, err := redis.Values(conn.Do("HMGET", rfds.fileDescriptorHashKey(dgst), "digest", "filePath", "serverIp"))
+//    	//, "fileSize", "layerDescriptor"
+//	if err != nil {
+//		return distribution.FileDescriptor{}, err
+//	}
+	
+	reply, err := rfds.cluster.Get(rfds.fileDescriptorHashKey(dgst)).Result()
+	if err == redis.Nil {
+		context.GetLogger(ctx).Debug("NANNAN: key %s doesnot exist", dgst.String())
 		return distribution.FileDescriptor{}, err
+	}else if err != nil{
+		context.GetLogger(ctx).Errorf("NANNAN: redis cluster error for key %s", err)
+		return distribution.FileDescriptor{}, err
+	}else{
+		var desc distribution.FileDescriptor
+		if err = desc.UnmarshalBinary([]byte(reply)); err !=nil{
+	         context.GetLogger(ctx).Errorf("NANNAN: redis cluster cannot UnmarshalBinary for key %s", err)
+	         return distribution.FileDescriptor{}, err
+		}else{
+			desc.RequestedServerIps = append(desc.RequestedServerIps, rfds.serverIp
+			return desc, nil
+		}
 	}
 
 	// NOTE(stevvooe): The "size" field used to be "length". We treat a
 	// missing "size" field here as an unknown blob, which causes a cache
 	// miss, effectively migrating the field.
-	if len(reply) < 2 || reply[0] == nil || reply[1] == nil { // don't care if mediatype is nil
-		return distribution.FileDescriptor{}, distribution.ErrBlobUnknown
-	}
+//	if len(reply) < 2 || reply[0] == nil || reply[1] == nil { // don't care if mediatype is nil
+//		return distribution.FileDescriptor{}, distribution.ErrBlobUnknown
+//	}
 
-	var desc distribution.FileDescriptor
-	if _, err = redis.Scan(reply, &desc.Digest, &desc.FilePath, &desc.ServerIp); err != nil {
-		
-		return distribution.FileDescriptor{}, err
-	}
-	//NANNAN: find it, then add serverip to requestedserverip 
-	desc.RequestedServerIps = append(desc.RequestedServerIps, rfds.serverIp)
-	
-	return desc, nil
+//	var desc distribution.FileDescriptor
+//	if _, err = redis.Scan(reply, &desc.Digest, &desc.FilePath, &desc.ServerIp); err != nil {
+//		
+//		return distribution.FileDescriptor{}, err
+//	}
+//	//NANNAN: find it, then add serverip to requestedserverip 
+//	desc.RequestedServerIps = append(desc.RequestedServerIps, rfds.serverIp)
+//	
+//	return desc, nil
 }
 
 func (rfds *redisFileDescriptorService) SetFileDescriptor(ctx context.Context, dgst digest.Digest, desc distribution.FileDescriptor) error {
 	
-	conn := rfds.cluster.Get()
-	defer conn.Close()
+//	conn := rfds.cluster.Get()
+//	defer conn.Close()
 	
 //	if _, err := conn.Do("SELECT", dbNoFile); err != nil {
 ////		defer conn.Close()
 //		return err
 //	}
-	var requestedServerIps []string
-	
-	if _, err := conn.Do("HMSET", rfds.fileDescriptorHashKey(dgst),
-		"digest", desc.Digest,
-		"serverIp", rfds.serverIp, //NANNAN SET TO the first registry ip address for global dedup; even for local dedup, it is correct?!
-		"requestedServerIps", requestedServerIps, // NANNAN: set to none initially.
-		"filePath", desc.FilePath); err != nil {
+//	var requestedServerIps []string
+//	desc.RequestedServerIps = requestedServerIps
+	err := redisdb.Set(rfds.fileDescriptorHashKey(dgst), desc, 0).Err()
+	if err != nil{
+		context.GetLogger(ctx).Errorf("NANNAN: redis cluster cannot set value for key %s", err)
 		return err
 	}
+	
+//	if _, err := conn.Do("HMSET", rfds.fileDescriptorHashKey(dgst),
+//		"digest", desc.Digest,
+//		"serverIp", rfds.serverIp, //NANNAN SET TO the first registry ip address for global dedup; even for local dedup, it is correct?!
+//		"requestedServerIps", requestedServerIps, // NANNAN: set to none initially.
+//		"filePath", desc.FilePath); err != nil {
+//		return err
+//	}
 
 //	// Only set mediatype if not already set.
 //	if _, err := conn.Do("HSETNX", rbds.blobDescriptorHashKey(dgst),
