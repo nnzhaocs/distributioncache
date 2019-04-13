@@ -5,7 +5,7 @@ import (
     "fmt"
     //"sync"
     "time"
-    "log"
+    //"log"
     //redissingle "github.com/go-redis/redis"
     "github.com/gomodule/redigo/redis"
     //rediscluster "github.com/chasex/redis-go-cluster"
@@ -70,13 +70,13 @@ type jsonvalue struct {
 }
 
 func main() {
-	data := &jsonvalue{Page: 1, Fruits: []string{"apple", "peach"}}
+	//data := &jsonvalue{Page: 1, Fruits: []string{"apple", "peach"}}
 
 	redisdb := Newclusterredisc()
 	defer redisdb.Close()
 
 	if err := redisdb.Refresh(); err != nil {
-        	log.Fatalf("Refresh failed: %v", err)
+        	panic(err)
     	}
 
 	fmt.Println("hello")
@@ -84,10 +84,10 @@ func main() {
 	conn := redisdb.Get()
 	defer conn.Close()
 
-	_, err := rejson.JSONSet(conn, "key1", ".", data, false, false)
-    	if err != nil {
-        	panic(err)
-    	}
+	//_, err := rejson.JSONSet(conn, "key1", ".", data, false, false)
+    	//if err != nil {
+        //	panic(err)
+    	//}
 	val, err := redis.Bytes(rejson.JSONGet(conn, "key1", ""))
 	if err != nil{
 		panic(err)

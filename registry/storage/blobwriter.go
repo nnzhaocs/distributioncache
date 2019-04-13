@@ -19,9 +19,13 @@ import (
 	"path/filepath"
 	"github.com/docker/distribution/registry/storage/cache"
 	"os"
+	"sync"
+	//"path/filepath"
 //	"github.com/serialx/hashring"
-//	"ioutil"
-	
+	"io/ioutil"
+	"bytes"
+	"net/http"
+	"regexp"
 )
 
 //NANNAN: TODO LIST
@@ -134,19 +138,19 @@ type Pair struct{
 /*
 This function is used to forward put requests on to other registries 
 */
-func (bw *blobWriter) ForwardToRegistry(ctx context.Context, path string, wg *sync.WaitGroup) error {
+func (bw *blobWriter) ForwardToRegistry(ctx context.Context, fpath string, wg *sync.WaitGroup) error {
 	
 	defer wg.Done()
 	
 	regname := filepath.Base(strings.SplitN(fpath, "tmp_dir", 2)[0]) 
 	
-	context.GetLogger(ctx).Warnf("NANNAN: forwarding %s to %s", path, regname)
+	context.GetLogger(ctx).Warnf("NANNAN: forwarding %s to %s", fpath, regname)
 	var buffer bytes.Buffer
 	buffer.WriteString("http://")
 	buffer.WriteString(regname)
 	buffer.WriteString("/v2/test_repo/blobs/sha256:")
 	
-	fp, err := os.Open(path) 
+	fp, err := os.Open(fpath) 
 	if err != nil {
 		context.GetLogger(ctx).Errorf("NANNAN: %s", err)
 		return nil
@@ -157,11 +161,11 @@ func (bw *blobWriter) ForwardToRegistry(ctx context.Context, path string, wg *sy
 	digestFn := algorithm.FromReader
 	dgst, err := digestFn(fp)
 	if err != nil {
-		context.GetLogger(ctx).Errorf("NANNAN: %s: %v", path, err)
+		context.GetLogger(ctx).Errorf("NANNAN: %s: %v", fpath, err)
 		return err
 	}
 	
-	buffer.WriteString(dgst)
+	buffer.WriteString(dgst.String())
 	url := buffer.String()
 //let's skip head request
 	//Send Get Request
@@ -188,13 +192,13 @@ func (bw *blobWriter) ForwardToRegistry(ctx context.Context, path string, wg *sy
 	buffer.Reset()
 	buffer.WriteString(location)
 	buffer.WriteString("&digest=sha256%3A")
-	buffer.WriteString(dgst)
+	buffer.WriteString(dgst.String())
 	url = buffer.String()
-	fi, err := os.Stat(path)
+	fi, err := os.Stat(fpath)
 	if err != nil {
 		return err
 	}
-	file, err := os.Open(path)
+	file, err := os.Open(fpath)
 
 	request, err := http.NewRequest("PUT", url, file)
 	if err != nil {
@@ -208,7 +212,8 @@ func (bw *blobWriter) ForwardToRegistry(ctx context.Context, path string, wg *sy
 		return err
 	}
 	if put.StatusCode < 200 || put.StatusCode > 299 {
-		return context.GetLogger(ctx).Errorf("%s returned status code %d", regname, put.StatusCode)
+		context.GetLogger(ctx).Errorf("%s returned status code %d", regname, put.StatusCode)
+		return errors.New("put unique files to other servers, failed")
 	}
 	put.Body.Close()
 
@@ -222,8 +227,9 @@ func (bw *blobWriter) ForwardToRegistry(ctx context.Context, path string, wg *sy
 // then compress as gizp files "/var/lib/registry/server/mv_tar.tar.gz"
 
 func (bw *blobWriter)PrepareForward(ctx context.Context, serverForwardMap map[string][]string) ([]string, error){
-	var serverFiles []pair
+	var serverFiles []Pair
 	limChan := make(chan bool, len(serverForwardMap))
+	defer close(limChan)
 	for i := 0; i < len(serverForwardMap); i++ {
 		limChan <- true
 	}
@@ -246,10 +252,10 @@ func (bw *blobWriter)PrepareForward(ctx context.Context, serverForwardMap map[st
 		go func(sftmp Pair){
 			server := sftmp.first
 			fpath := sftmp.second
-			
+			reg, err := regexp.Compile("[^a-zA-Z0-9/.-]+")
 			tmpath := path.Join(server, "tmp_dir", "NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL")
 			tarfpath := reg.ReplaceAllString(strings.SplitN(fpath, "diff", 2)[1], "") 
-			blobdgst = filepath.Base(strings.SplitN(fpath, "diff", 2)[0])
+			blobdgst := filepath.Base(strings.SplitN(fpath, "diff", 2)[0])
 			withtmptarfpath := path.Join(tmpath, blobdgst, "diff", tarfpath)
 			
 			destfpath := path.Join("/var/lib/registry", withtmptarfpath)
@@ -267,8 +273,8 @@ func (bw *blobWriter)PrepareForward(ctx context.Context, serverForwardMap map[st
 						limChan <- true
 					}
 			}
-		}	
-	} (sftmp)	
+		}(sftmp)		
+	} 
 	// leave the errChan
 	for i := 0; i < cap(limChan); i++{
 		<-limChan 
@@ -282,6 +288,8 @@ func (bw *blobWriter)PrepareForward(ctx context.Context, serverForwardMap map[st
 	}
 	tarpathChan := make(chan string, len(serverForwardMap))
 	errChan := make(chan error, len(serverForwardMap))
+	defer close(tarpathChan)
+	defer close(errChan)
 	for server, _ := range serverForwardMap{
 		<-limChan
 		go func(server string){
@@ -305,13 +313,12 @@ func (bw *blobWriter)PrepareForward(ctx context.Context, serverForwardMap map[st
 				
 					defer packFile.Close()
 					
-					size, err := io.Copy(packFile, data)
+					_, err := io.Copy(packFile, data)
 					if err != nil{
 						context.GetLogger(ctx).Errorf("NANNAN: FORWARD <COMPRESS> %s, ", err)
 						errChan <- err
-					}
-					else{
-						tarpathChan <- packFile
+					}else{
+						tarpathChan <- packFile.Name()
 					}
 				}
 			}
@@ -391,7 +398,8 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) (
 		context.GetLogger(ctx).Errorf("NANNAN: %s, cannot read this tar file", err)
 	}
 	for _, f := range files{
-		if path.Match("NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL", f.Name()){
+		fmatch, _ := path.Match("NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL", f.Name())
+		if fmatch{
 			context.GetLogger(ctx).Debug("NANNAN: %s, NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL", f.Name())
 			return nil
 		}
@@ -423,11 +431,14 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) (
 	}
 	// let's do forwarding
 	var wg sync.WaitGroup
-	mvtarpaths := PrepareForward(ctx, serverForwardMap)
+	mvtarpaths, err := bw.PrepareForward(ctx, serverForwardMap)
+	if err != nil{
+		return err
+	}
 //	ch := make(chan error, len(mvtarpaths))
 	for _, path := range mvtarpaths{
 		wg.Add(1)
-		go ForwardToRegistry(ctx, path, &wg) //ForwardToRegistry(ctx context.Context, regname string, path string)
+		go bw.ForwardToRegistry(ctx, path, &wg) //ForwardToRegistry(ctx context.Context, regname string, path string)
 		go func() {
 	        wg.Wait()
 //	        close(sizes)
@@ -442,7 +453,7 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) (
 
 func (bw *blobWriter) CheckDuplicate(ctx context.Context, serverIp string, desc distribution.Descriptor, db cache.FileDescriptorCacheProvider, 
 	bfdescriptors *[] distribution.BFDescriptor, 
-	serverIps *[] string
+	serverIps *[] string,
 	serverForwardMap map[string][]string) filepath.WalkFunc {
 //	totalFiles := 0
 //	sameFiles := 0
@@ -540,12 +551,13 @@ func (bw *blobWriter) CheckDuplicate(ctx context.Context, serverIp string, desc 
 		
 		fpath = reFPath
 		//serverForwardMap := make(map[string][]string)
-		server, _:= bw.blobStore.registry.ring.GetNode(string(dgst))
+		server, _:= bw.blobStore.registry.blobServer.ring.GetNode(dgst.String())
 	//	var desc distribution.FileDescriptor	
 		//make map of []
 		// need to forward to other servers
-		if server != serverIp: 
+		if server != serverIp{ 
 			serverForwardMap[server] = append(serverForwardMap[server], fpath)
+		}
 	
 		des = distribution.FileDescriptor{
 			
@@ -575,7 +587,6 @@ func (bw *blobWriter) CheckDuplicate(ctx context.Context, serverIp string, desc 
 		
 		return nil
 	}
-	
 }
 
 

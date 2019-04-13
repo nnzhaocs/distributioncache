@@ -2,14 +2,11 @@ package storage
 
 import (
 //	"bytes"
-
 	"encoding/json"
-
 	"fmt"
 	"net/http"
 	"strings"
 	"time"
-
 //	log "github.com/Sirupsen/logrus"
 	"github.com/docker/distribution"
 	"github.com/docker/distribution/context"
@@ -24,6 +21,7 @@ import (
 	storagecache"github.com/docker/distribution/registry/storage/cache"
 	"regexp"
 	"runtime"
+	"github.com/serialx/hashring"
 //	storagedriver "github.com/docker/distribution/registry/storage/driver"
 )
 
@@ -37,7 +35,7 @@ type blobServer struct {
 	statter  distribution.BlobStatter
 	
 	//NANNAN: add a fileDescriptorCacheProvider for restore
-	
+	ring     *hashring.HashRing
 	fileDescriptorCacheProvider  storagecache.FileDescriptorCacheProvider
 	serverIp string
 	pathFn   func(dgst digest.Digest) (string, error)
@@ -222,7 +220,7 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 	limChan := make(chan bool, cores)
 //	errChan := make(chan error, len(desc.BFDescriptors))
 	defer close(limChan)
-	defer close(errChan)
+//	defer close(errChan)
 	for i := 0; i < cores; i++ {
 		limChan <- true
 	}

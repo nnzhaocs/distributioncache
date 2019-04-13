@@ -6,7 +6,7 @@ import (
 	"io"
 	"net/http"
 	"time"
-
+	"encoding/json"
 	"github.com/docker/distribution/context"
 	"github.com/docker/distribution/reference"
 	"github.com/opencontainers/go-digest"
