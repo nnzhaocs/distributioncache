@@ -19,6 +19,7 @@ import (
 	redis "github.com/gomodule/redigo/redis"
 //	"github.com/go-redis/redis"
 //	redisc "github.com/mna/redisc"
+	redisgo "github.com/go-redis/redis"
 )
 
 // redisBlobStatService provides an implementation of
@@ -336,12 +337,12 @@ type redisFileDescriptorService struct {
 	// request objects, we can change this to a connection.
 	serverIp   string
 	
-	cluster redisc.Cluster
+	cluster *redisgo.ClusterClient
 }
 
 // NewRedisBlobDescriptorCacheProvider returns a new redis-based
 // BlobDescriptorCacheProvider using the provided redis connection pool.
-func NewRedisFileDescriptorCacheProvider(pool *redis.Pool, cluster redisgo.Cluster, host_ip string) cache.FileDescriptorCacheProvider {
+func NewRedisFileDescriptorCacheProvider(pool *redis.Pool, cluster *redisgo.ClusterClient, host_ip string) cache.FileDescriptorCacheProvider {
 	
 	//NANNAN address
 	var serverIp string
@@ -398,7 +399,7 @@ func (rfds *redisFileDescriptorService) StatFile(ctx context.Context, dgst diges
 //	}
 	
 	reply, err := rfds.cluster.Get(rfds.fileDescriptorHashKey(dgst)).Result()
-	if err == redis.Nil {
+	if err == redisgo.Nil {
 		context.GetLogger(ctx).Debug("NANNAN: key %s doesnot exist", dgst.String())
 		return distribution.FileDescriptor{}, err
 	}else if err != nil{
@@ -410,7 +411,7 @@ func (rfds *redisFileDescriptorService) StatFile(ctx context.Context, dgst diges
 	         context.GetLogger(ctx).Errorf("NANNAN: redis cluster cannot UnmarshalBinary for key %s", err)
 	         return distribution.FileDescriptor{}, err
 		}else{
-			desc.RequestedServerIps = append(desc.RequestedServerIps, rfds.serverIp
+			desc.RequestedServerIps = append(desc.RequestedServerIps, rfds.serverIp)
 			return desc, nil
 		}
 	}
@@ -444,7 +445,7 @@ func (rfds *redisFileDescriptorService) SetFileDescriptor(ctx context.Context, d
 //	}
 //	var requestedServerIps []string
 //	desc.RequestedServerIps = requestedServerIps
-	err := redisdb.Set(rfds.fileDescriptorHashKey(dgst), desc, 0).Err()
+	err := rfds.cluster.Set(rfds.fileDescriptorHashKey(dgst), desc, 0).Err()
 	if err != nil{
 		context.GetLogger(ctx).Errorf("NANNAN: redis cluster cannot set value for key %s", err)
 		return err

@@ -38,7 +38,7 @@ type registry struct {
 	schema1SigningKey            libtrust.PrivateKey
 	blobDescriptorServiceFactory distribution.BlobDescriptorServiceFactory
 	manifestURLs                 manifestURLs
-	ring					     hashring.HashRing
+	//ring					     hashring.HashRing
 }
 
 // manifestURLs holds regular expressions for controlling manifest URL whitelisting

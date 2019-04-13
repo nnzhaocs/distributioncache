@@ -78,7 +78,7 @@ type App struct {
 	}
 
 	redis *redis.Pool
-	cluster redisgo.Cluster
+	cluster *redisgo.ClusterClient
 
 	// trustKey is a deprecated key used to sign manifests converted to
 	// schema1 for backward compatibility. It should not be used for any
