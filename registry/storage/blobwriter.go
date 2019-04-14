@@ -26,6 +26,7 @@ import (
 	"bytes"
 	"net/http"
 	"regexp"
+	redisgo"github.com/go-redis/redis"
 )
 
 //NANNAN: TODO LIST
@@ -532,7 +533,7 @@ func (bw *blobWriter) CheckDuplicate(ctx context.Context, serverIp string, desc 
 			*serverIps = append(*serverIps, des.ServerIp)
 			
 			return nil
-		} else if err != distribution.ErrBlobUnknown {
+		} else if err != redisgo.Nil {
 			context.GetLogger(ctx).Errorf("NANNAN: checkDuplicate: error stating content (%v): %v", dgst, err)
 			// real error, return it
 //			fmt.Println(err)

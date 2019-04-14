@@ -83,7 +83,7 @@ type Descriptor struct {
 // NANNAN: if it's a layer, then, we add it's containning files'descriptor
 
 type FileDescriptor struct {
-	Descriptor
+	//Descriptor
 	// Digest uniquely identifies the content. A byte stream can be verified
 	// against against this digest.
 	Digest digest.Digest `json:"digest,omitempty"`
@@ -96,6 +96,8 @@ type FileDescriptor struct {
 }
 
 func (m *FileDescriptor) MarshalBinary() ([]byte, error) {
+    _, err:= json.Marshal(m)
+	//fmt.Println("NANNAN: ================> json.Marshal err %v", err)
     return json.Marshal(m)
 }
 

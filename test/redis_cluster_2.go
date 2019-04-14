@@ -77,10 +77,10 @@ if _, err := redisdb.HMSet("sha:11111", map[string]interface{}{
 reply, err := redisdb.Do("HMGET", "sha:11111", "digest", "filePath", "serverIp").Result()
 fmt.Printf("%v\n", reply)
 var desc fileDescriptor
-err = redisdb.HVals("sha:11111").ScanSlice(&desc)
-fmt.Printf("%d", desc)
-json.Unmarshal(redisdb.HVals("sha:11111"), &desc)
-fmt.Printf("%d", desc)
+//err = redisdb.HVals("sha:11111").ScanSlice(&desc)
+//fmt.Printf("%d", desc)
+//json.Unmarshal(redisdb.HVals("sha:11111"), &desc)
+//fmt.Printf("%d", desc)
 /*
 var desc fileDescriptor
     if _, err = redisgo.Scan(reply, &desc.digest, &desc.filePath, &desc.serverIp); err != nil {
