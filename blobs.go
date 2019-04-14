@@ -96,7 +96,7 @@ type FileDescriptor struct {
 }
 
 func (m *FileDescriptor) MarshalBinary() ([]byte, error) {
-    _, err:= json.Marshal(m)
+    // _,  := json.Marshal(m)
 	//fmt.Println("NANNAN: ================> json.Marshal err %v", err)
     return json.Marshal(m)
 }
