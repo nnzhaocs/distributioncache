@@ -232,7 +232,7 @@ func (bw *blobWriter)PrepareForward(ctx context.Context, serverForwardMap map[st
 	var serverFiles []Pair
 	limChan := make(chan bool, len(serverForwardMap))
 	defer close(limChan)
-	context.GetLogger(ctx).Debug("NANNAN: PrepareForward: [len(serverForwardMap]=>%d", len(serverForwardMap)
+	context.GetLogger(ctx).Debug("NANNAN: PrepareForward: [len(serverForwardMap)]=>%d", len(serverForwardMap))
 	for i := 0; i < len(serverForwardMap); i++ {
 		limChan <- true
 	}
@@ -301,7 +301,7 @@ func (bw *blobWriter)PrepareForward(ctx context.Context, serverForwardMap map[st
 	errChan := make(chan error, len(serverForwardMap))
 	defer close(tarpathChan)
 	defer close(errChan)
-	context.GetLogger(ctx).Debug("NANNAN: PrepareCompress: [len(serverForwardMap]=>%d", len(serverForwardMap)
+	context.GetLogger(ctx).Debug("NANNAN: PrepareCompress: [len(serverForwardMap)]=>%d", len(serverForwardMap))
 	for server, _ := range serverForwardMap{
 		<-limChan
 		context.GetLogger(ctx).Debug("NANNAN: PrepareCompress: compress files before sending to server [%s] ", server)
