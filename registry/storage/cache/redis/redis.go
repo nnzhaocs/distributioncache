@@ -445,7 +445,7 @@ func (rfds *redisFileDescriptorService) SetFileDescriptor(ctx context.Context, d
 //	}
 //	var requestedServerIps []string
 //	desc.RequestedServerIps = requestedServerIps
-	err := rfds.cluster.Set(rfds.fileDescriptorHashKey(dgst), desc, 0).Err()
+	err := rfds.cluster.Set(rfds.fileDescriptorHashKey(dgst), &desc, 0).Err()
 	if err != nil{
 		context.GetLogger(ctx).Errorf("NANNAN: redis cluster cannot set value for key %s", err)
 		return err
