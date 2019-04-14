@@ -232,13 +232,13 @@ func (bw *blobWriter)PrepareForward(ctx context.Context, serverForwardMap map[st
 	var serverFiles []Pair
 	limChan := make(chan bool, len(serverForwardMap))
 	defer close(limChan)
-	context.GetLogger(ctx).Debug("NANNAN: PrepareForward: [len(serverForwardMap]=>%v", len(serverForwardMap)
+	context.GetLogger(ctx).Debug("NANNAN: PrepareForward: [len(serverForwardMap]=>%d", len(serverForwardMap)
 	for i := 0; i < len(serverForwardMap); i++ {
 		limChan <- true
 	}
 //	mvtarpathall := path.Join("/var/lib/registry", server)
 	for server, fpathlst := range serverForwardMap{
-		context.GetLogger(ctx).Debug("NANNAN: serverForwardMap: [%v]=>%v", server, fpathlst)
+		context.GetLogger(ctx).Debug("NANNAN: serverForwardMap: [%s]=>%", server, fpathlst)
 		for _, fpath := range fpathlst{
 			sftmp := Pair{
 				first: server,
@@ -254,17 +254,20 @@ func (bw *blobWriter)PrepareForward(ctx context.Context, serverForwardMap map[st
 		<-limChan
 		go func(sftmp Pair){
 			server := sftmp.first
-			context.GetLogger(ctx).Debug("NANNAN: PrepareForward: cping files to server [%v]", server)
+//			context.GetLogger(ctx).Debug("NANNAN: PrepareForward: cping files to server [%s]", server)
 			fpath := sftmp.second
 			reg, err := regexp.Compile("[^a-zA-Z0-9/.-]+")
 			tmpath := path.Join(server, "tmp_dir", "NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL")
 			tarfpath := reg.ReplaceAllString(strings.SplitN(fpath, "diff", 2)[1], "") 
 			blobdgst := filepath.Base(strings.SplitN(fpath, "diff", 2)[0])
+			//192.168.210/tmp_dir/NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL/
+			//898c46f3b1a1f39827ed135f020c32e2038c87ae0690a8fe73d94e5df9e6a2d6/
+			//diff/bin/1c48ade64b96409e6773d2c5c771f3b3c5acec65a15980d8dca6b1efd3f95969
 			withtmptarfpath := path.Join(tmpath, blobdgst, "diff", tarfpath)
-			context.GetLogger(ctx).Debug("NANNAN: withtmptarfpath: [%v]", withtmptarfpath)
+//			context.GetLogger(ctx).Debug("NANNAN: withtmptarfpath: [%v]", withtmptarfpath)
 			
 			destfpath := path.Join("/var/lib/registry", withtmptarfpath)
-			context.GetLogger(ctx).Debug("NANNAN: destfpath: [%v]", destfpath)
+//			context.GetLogger(ctx).Debug("NANNAN: PrepareForward: cping files to server [%s], destfpath: [%s]", server, destfpath)
 			
 			contents, err := bw.driver.GetContent(ctx, strings.TrimPrefix(fpath, "/var/lib/registry")) 
 			if err != nil {
@@ -284,7 +287,7 @@ func (bw *blobWriter)PrepareForward(ctx context.Context, serverForwardMap map[st
 	// leave the errChan
 	for i := 0; i < cap(limChan); i++{
 		<-limChan 
-		context.GetLogger(ctx).Debug("NANNAN: FORWARD <copy files> [%v th] goroutine is joined", i) 
+		context.GetLogger(ctx).Debug("NANNAN: FORWARD <copy files> [%d th] goroutine is joined ", i) 
 	}
 	// all goroutines finished here
 	
@@ -293,22 +296,24 @@ func (bw *blobWriter)PrepareForward(ctx context.Context, serverForwardMap map[st
 	for i := 0; i < len(serverForwardMap); i++ {
 		limChan <- true
 	}
+	
 	tarpathChan := make(chan string, len(serverForwardMap))
 	errChan := make(chan error, len(serverForwardMap))
 	defer close(tarpathChan)
 	defer close(errChan)
+	context.GetLogger(ctx).Debug("NANNAN: PrepareCompress: [len(serverForwardMap]=>%d", len(serverForwardMap)
 	for server, _ := range serverForwardMap{
 		<-limChan
-		context.GetLogger(ctx).Debug("NANNAN: PrepareForward: compress files before sending to server [%v]", server)
+		context.GetLogger(ctx).Debug("NANNAN: PrepareCompress: compress files before sending to server [%s] ", server)
 		go func(server string){
 //			tmpath := path.Join(server, "tmp_dir")
 			packpath := path.Join("/var/lib/registry", server, "tmp_dir")
-			context.GetLogger(ctx).Debug("NANNAN: FORWARD <COMPRESS> packpath: %v", packpath)
+			context.GetLogger(ctx).Debug("NANNAN: PrepareCompress <COMPRESS> packpath: %s", packpath)
 			
 			data, err := archive.Tar(packpath, archive.Gzip)
 			if err != nil {
 				//TODO: process manifest file
-				context.GetLogger(ctx).Errorf("NANNAN: FORWARD <COMPRESS> %s, ", err)
+				context.GetLogger(ctx).Errorf("NANNAN: Compress <COMPRESS tar> %s, ", err)
 				errChan <- err
 			}else{
 			
@@ -316,7 +321,7 @@ func (bw *blobWriter)PrepareForward(ctx context.Context, serverForwardMap map[st
 				
 				packFile, err := os.Create(path.Join("/var/lib/registry", server, "mv_tar.tar.gz"))
 				if err != nil{
-					context.GetLogger(ctx).Errorf("NANNAN: FORWARD <COMPRESS> %s, ", err)
+					context.GetLogger(ctx).Errorf("NANNAN: PrepareCopy <COMPRESS create file> %s, ", err)
 					errChan <- err
 				}else{
 				
@@ -324,7 +329,7 @@ func (bw *blobWriter)PrepareForward(ctx context.Context, serverForwardMap map[st
 					
 					_, err := io.Copy(packFile, data)
 					if err != nil{
-						context.GetLogger(ctx).Errorf("NANNAN: FORWARD <COMPRESS> %s, ", err)
+						context.GetLogger(ctx).Errorf("NANNAN: Copy compress file <COMPRESS copy to desfile> %s, ", err)
 						errChan <- err
 					}else{
 						tarpathChan <- packFile.Name()
@@ -433,7 +438,7 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) (
 		BFDescriptors: bfdescriptors,
 		ServerIps: RemoveDuplicateIpsFromIps(serverIps),
 	}
-	context.GetLogger(ctx).Debug("NANNAN: set distribution.BFRecipeDescriptor: %v", des)
+//	context.GetLogger(ctx).Debug("NANNAN: set distribution.BFRecipeDescriptor: %v", des)
 	err = bw.blobStore.registry.fileDescriptorCacheProvider.SetBFRecipe(ctx, desc.Digest, des)
 	if err != nil {
 		return err
