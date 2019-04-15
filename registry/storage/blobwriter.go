@@ -256,17 +256,17 @@ func (bw *blobWriter)PrepareForward(ctx context.Context, serverForwardMap map[st
 			server := sftmp.first
 //			context.GetLogger(ctx).Debug("NANNAN: PrepareForward: cping files to server [%s]", server)
 			fpath := sftmp.second
-			reg, err := regexp.Compile("[^a-zA-Z0-9/.-]+")
+//			reg, err := regexp.Compile("[^a-zA-Z0-9/.-]+")
 			tmpath := path.Join(server, "tmp_dir", "NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL")
-			tarfpath := reg.ReplaceAllString(strings.SplitN(fpath, "diff", 2)[1], "") 
-			blobdgst := filepath.Base(strings.SplitN(fpath, "diff", 2)[0])
+//			tarfpath := reg.ReplaceAllString(strings.SplitN(fpath, "diff", 2)[1], "") 
+//			blobdgst := filepath.Base(strings.SplitN(fpath, "diff", 2)[0])
 			//192.168.210/tmp_dir/NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL/
 			//898c46f3b1a1f39827ed135f020c32e2038c87ae0690a8fe73d94e5df9e6a2d6/
 			//diff/bin/1c48ade64b96409e6773d2c5c771f3b3c5acec65a15980d8dca6b1efd3f95969
-			withtmptarfpath := path.Join(tmpath, blobdgst, "diff", tarfpath)
+			withtmptarfpath := path.Join(tmpath, strings.TrimPrefix(fpath, "/var/lib/registry"))
 //			context.GetLogger(ctx).Debug("NANNAN: withtmptarfpath: [%v]", withtmptarfpath)
 			
-			destfpath := path.Join("/var/lib/registry", withtmptarfpath)
+			destfpath := path.Join("mv_tmp_serverfiles/", withtmptarfpath)
 //			context.GetLogger(ctx).Debug("NANNAN: PrepareForward: cping files to server [%s], destfpath: [%s]", server, destfpath)
 			
 			contents, err := bw.driver.GetContent(ctx, strings.TrimPrefix(fpath, "/var/lib/registry")) 
@@ -307,7 +307,7 @@ func (bw *blobWriter)PrepareForward(ctx context.Context, serverForwardMap map[st
 		context.GetLogger(ctx).Debug("NANNAN: PrepareCompress: compress files before sending to server [%s] ", server)
 		go func(server string){
 //			tmpath := path.Join(server, "tmp_dir")
-			packpath := path.Join("/var/lib/registry", server, "tmp_dir")
+			packpath := path.Join("/var/lib/registry", "mv_tmp_serverfiles", server, "tmp_dir")
 			context.GetLogger(ctx).Debug("NANNAN: PrepareCompress <COMPRESS> packpath: %s", packpath)
 			
 			data, err := archive.Tar(packpath, archive.Gzip)
@@ -319,7 +319,7 @@ func (bw *blobWriter)PrepareForward(ctx context.Context, serverForwardMap map[st
 			
 				defer data.Close()
 				
-				packFile, err := os.Create(path.Join("/var/lib/registry", server, "mv_tar.tar.gz"))
+				packFile, err := os.Create(path.Join("/var/lib/registry", "mv_tmp_serverfiles", server, "mv_tar.tar.gz"))
 				if err != nil{
 					context.GetLogger(ctx).Errorf("NANNAN: PrepareCopy <COMPRESS create file> %s, ", err)
 					errChan <- err
