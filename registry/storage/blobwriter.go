@@ -25,7 +25,7 @@ import (
 	"io/ioutil"
 	"bytes"
 	"net/http"
-	"regexp"
+	//"regexp"
 	redisgo"github.com/go-redis/redis"
 )
 
@@ -271,7 +271,7 @@ func (bw *blobWriter)PrepareForward(ctx context.Context, serverForwardMap map[st
 			withtmptarfpath := path.Join(tmpath, strings.TrimPrefix(fpath, "/var/lib/registry"))
 //			context.GetLogger(ctx).Debug("NANNAN: withtmptarfpath: [%v]", withtmptarfpath)
 			
-			destfpath := path.Join("mv_tmp_serverfiles/", withtmptarfpath)
+			destfpath := path.Join("/docker/registry/v2/mv_tmp_serverfiles/", withtmptarfpath)
 //			context.GetLogger(ctx).Debug("NANNAN: PrepareForward: cping files to server [%s], destfpath: [%s]", server, destfpath)
 			
 			contents, err := bw.driver.GetContent(ctx, strings.TrimPrefix(fpath, "/var/lib/registry")) 
@@ -311,8 +311,8 @@ func (bw *blobWriter)PrepareForward(ctx context.Context, serverForwardMap map[st
 		<-limChan
 		context.GetLogger(ctx).Debug("NANNAN: PrepareCompress: compress files before sending to server [%s] ", server)
 		go func(server string){
-//			tmpath := path.Join(server, "tmp_dir")
-			packpath := path.Join("/var/lib/registry", "mv_tmp_serverfiles", server, "tmp_dir")
+//			//tmpath := path.Join(server, "tmp_dir")
+			packpath := path.Join("/var/lib/registry", "/docker/registry/v2/mv_tmp_serverfiles", server, "tmp_dir")
 			context.GetLogger(ctx).Debug("NANNAN: PrepareCompress <COMPRESS> packpath: %s", packpath)
 			
 			data, err := archive.Tar(packpath, archive.Gzip)
@@ -324,7 +324,7 @@ func (bw *blobWriter)PrepareForward(ctx context.Context, serverForwardMap map[st
 			
 				defer data.Close()
 				
-				packFile, err := os.Create(path.Join("/var/lib/registry", "mv_tmp_serverfiles", server, "mv_tar.tar.gz"))
+				packFile, err := os.Create(path.Join("/var/lib/registry", "/docker/registry/v2/mv_tmp_serverfiles", server, "mv_tar.tar.gz"))
 				if err != nil{
 					context.GetLogger(ctx).Errorf("NANNAN: PrepareCopy <COMPRESS create file> %s, ", err)
 					errChan <- err
