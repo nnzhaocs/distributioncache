@@ -138,13 +138,31 @@ type Pair struct{
 
 /*
 This function is used to forward put requests on to other registries 
+NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL/
+NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL/docker/
+NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL/docker/registry/
+NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL/docker/registry/v2/
+NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL/docker/registry/v2/blobs/
+NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL/docker/registry/v2/blobs/sha256/
+NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL/docker/registry/v2/blobs/sha256/1b/
+NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL/docker/registry/v2/blobs/sha256/1b/
+1b930d010525941c1d56ec53b97bd057a67ae1865eebf042686d2a2d18271ced/
+NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL/docker/registry/v2/blobs/sha256/1b/
+1b930d010525941c1d56ec53b97bd057a67ae1865eebf042686d2a2d18271ced/diff/
+NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL/docker/registry/v2/blobs/sha256/1b/
+1b930d010525941c1d56ec53b97bd057a67ae1865eebf042686d2a2d18271ced/diff/
+8b6566f585bad55b6fb9efb1dc1b6532fd08bb1796b4b42a3050aacb961f1f3f
 */
 func (bw *blobWriter) ForwardToRegistry(ctx context.Context, fpath string, wg *sync.WaitGroup) error {
 	
 	defer wg.Done()
 	
-	regname := filepath.Base(strings.SplitN(fpath, "tmp_dir", 2)[0]) 
-	
+	regname := filepath.Base(strings.SplitN(fpath, "mv_tar.tar.g", 2)[0]) 
+	var regnamebuffer bytes.Buffer
+	regnamebuffer.WriteString(regname)
+	regnamebuffer.WriteString(":5000")
+	regname = regnamebuffer.String()
+	///var/lib/registry/docker/registry/v2/mv_tmp_serverfiles/192.168.0.200/mv_tar.tar.gz
 	context.GetLogger(ctx).Debug("NANNAN: ForwardToRegistry forwarding %s to %s", fpath, regname)
 	var buffer bytes.Buffer
 	buffer.WriteString("http://")
@@ -165,9 +183,13 @@ func (bw *blobWriter) ForwardToRegistry(ctx context.Context, fpath string, wg *s
 		context.GetLogger(ctx).Errorf("NANNAN: ForwardToRegistry %s: %v", fpath, err)
 		return err
 	}
-	
+	context.GetLogger(ctx).Debug("NANNAN: ForwardToRegistry File %s dgest %s", fpath, dgst.String())
+
 	buffer.WriteString(dgst.String())
 	url := buffer.String()
+	
+	context.GetLogger(ctx).Debug("NANNAN: ForwardToRegistry URL %s", url)
+
 //let's skip head request
 	//Send Get Request
 //	head, err := http.Head(url)
@@ -183,8 +205,10 @@ func (bw *blobWriter) ForwardToRegistry(ctx context.Context, fpath string, wg *s
 	buffer.WriteString("/v2/forward_repo/blobs/uploads/")
 	url = buffer.String()
 
+	context.GetLogger(ctx).Debug("NANNAN: ForwardToRegistry POST URL %s", url)
 	post, err := http.Post(url, "*/*", nil)
 	if err != nil {
+		context.GetLogger(ctx).Errorf("NANNAN: ForwardToRegistry POST URL %s, err %s", url, err)
 		return err
 	}
 	post.Body.Close()
@@ -201,8 +225,11 @@ func (bw *blobWriter) ForwardToRegistry(ctx context.Context, fpath string, wg *s
 	}
 	file, err := os.Open(fpath)
 
+	context.GetLogger(ctx).Debug("NANNAN: ForwardToRegistry PUT URL %s", url)
+
 	request, err := http.NewRequest("PUT", url, file)
 	if err != nil {
+		context.GetLogger(ctx).Errorf("NANNAN: ForwardToRegistry PUT URL %s, err %s", url, err)
 		return err
 	}
 
@@ -211,6 +238,7 @@ func (bw *blobWriter) ForwardToRegistry(ctx context.Context, fpath string, wg *s
 	context.GetLogger(ctx).Debug("NANNAN: ForwardToRegistry: Do(request) to %v", regname)
 	put, err := client.Do(request)
 	if err != nil {
+		context.GetLogger(ctx).Errorf("NANNAN: ForwardToRegistry PUT URL %s, err %s", url, err)
 		return err
 	}
 	if put.StatusCode < 200 || put.StatusCode > 299 {
