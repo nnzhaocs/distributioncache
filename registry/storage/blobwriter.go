@@ -138,20 +138,23 @@ type Pair struct{
 
 /*
 This function is used to forward put requests on to other registries 
-NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL/
-NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL/docker/
-NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL/docker/registry/
-NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL/docker/registry/v2/
-NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL/docker/registry/v2/blobs/
-NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL/docker/registry/v2/blobs/sha256/
-NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL/docker/registry/v2/blobs/sha256/1b/
-NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL/docker/registry/v2/blobs/sha256/1b/
-1b930d010525941c1d56ec53b97bd057a67ae1865eebf042686d2a2d18271ced/
-NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL/docker/registry/v2/blobs/sha256/1b/
-1b930d010525941c1d56ec53b97bd057a67ae1865eebf042686d2a2d18271ced/diff/
-NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL/docker/registry/v2/blobs/sha256/1b/
-1b930d010525941c1d56ec53b97bd057a67ae1865eebf042686d2a2d18271ced/diff/
-8b6566f585bad55b6fb9efb1dc1b6532fd08bb1796b4b42a3050aacb961f1f3f
+
+DEBU[0021] authorizing request                           go.version=go1.12 http.request.host="localhost:5000" 
+http.request.id=d8119314-5400-4477-bee9-ca4f2d808d52 
+http.request.method=PUT http.request.remoteaddr="172.17.0.1:55964" 
+http.request.uri="/v2/nnzhaocs/hello-world/blobs/uploads/736b54f9-38cb-4498-904c-a28b684c1a1c?_state=4zFr9emRBkO_Ij5iKV4y8GEtYwEpsMD3Z-M3x31jbRF7Ik5hbWUiOiJubnpoYW9jcy9oZWxsby13b3JsZCIsIlVVSUQiOiI3MzZiNTRmOS0zOGNiLTQ0OTgtOTA0Yy1hMjhiNjg0YzFhMWMiLCJPZmZzZXQiOjk3NywiU3RhcnRlZEF0IjoiMjAxOS0wNC0xNVQwMjoyODoxNloifQ%3D%3D&digest=sha256%3A1b930d010525941c1d56ec53b97bd057a67ae1865eebf042686d2a2d18271ced" 
+http.request.useragent="docker/18.09.3 go/go1.10.8 git-commit/774a1f4 kernel/3.10.0-693.11.6.el7_lustre.x86_64 os/linux arch/amd64 UpstreamClient(Docker-Client/18.09.3 \\(linux\\))" vars.name="nnzhaocs/hello-world" vars.uuid=736b54f9-38cb-4498-904c-a28b684c1a1c
+
+ERRO[0109] response completed with error                 
+err.code="digest invalid" err.detail="digest parsing failed" 
+err.message="provided digest did not match uploaded content" go.version=go1.12 http.request.host="192.168.0.215:5000" 
+http.request.id=4af0c21c-315e-42f9-b04d-a99f0a6e6eac 
+http.request.method=PUT http.request.remoteaddr="192.168.0.210:48070" 
+http.request.uri="/v2/forward_repo/blobs/uploads/d8a15122-8119-4290-a100-bd6ccd4ce747?_state=8Jv7qNOl5I8kKqVzT3sst5mCBPTBdu8kH8v2Wzhvt6N7Ik5hbWUiOiJmb3J3YXJkX3JlcG8iLCJVVUlEIjoiZDhhMTUxMjItODExOS00MjkwLWExMDAtYmQ2Y2NkNGNlNzQ3IiwiT2Zmc2V0IjowLCJTdGFydGVkQXQiOiIyMDE5LTA0LTE1VDAyOjI4OjE2LjA5NTIzNTI2N1oifQ%3D%3D&digest=sha256%3Asha256:729a6da29d6e10228688fc0cf3e943068b459ef6f168afbbd2d3d44ee0f2fd01" 
+http.request.useragent="Go-http-client/1.1" http.response.contenttype="application/json; charset=utf-8" http.response.duration=9.048157ms 
+http.response.status=400 http.response.written=131 vars.name="forward_repo" vars.uuid=d8a15122-8119-4290-a100-bd6ccd4ce747
+
+
 */
 func (bw *blobWriter) ForwardToRegistry(ctx context.Context, fpath string, wg *sync.WaitGroup) error {
 	
@@ -185,7 +188,9 @@ func (bw *blobWriter) ForwardToRegistry(ctx context.Context, fpath string, wg *s
 	}
 	context.GetLogger(ctx).Debug("NANNAN: ForwardToRegistry File %s dgest %s", fpath, dgst.String())
 
-	buffer.WriteString(dgst.String())
+	dgst = strings.SplitN(dgst.String(), "sha256:", 2)[1]
+
+	buffer.WriteString(dgst)
 	url := buffer.String()
 	
 	context.GetLogger(ctx).Debug("NANNAN: ForwardToRegistry URL %s", url)
@@ -202,7 +207,7 @@ func (bw *blobWriter) ForwardToRegistry(ctx context.Context, fpath string, wg *s
 	buffer.Reset()
 	buffer.WriteString("http://")
 	buffer.WriteString(regname)
-	buffer.WriteString("/v2/forward_repo/blobs/uploads/")
+	buffer.WriteString("/v2/forward_repo/forward_repo/blobs/uploads/")
 	url = buffer.String()
 
 	context.GetLogger(ctx).Debug("NANNAN: ForwardToRegistry POST URL %s", url)
@@ -217,7 +222,7 @@ func (bw *blobWriter) ForwardToRegistry(ctx context.Context, fpath string, wg *s
 	buffer.Reset()
 	buffer.WriteString(location)
 	buffer.WriteString("&digest=sha256%3A")
-	buffer.WriteString(dgst.String())
+	buffer.WriteString(dgst)
 	url = buffer.String()
 	fi, err := os.Stat(fpath)
 	if err != nil {
@@ -392,6 +397,23 @@ func (bw *blobWriter)PrepareForward(ctx context.Context, serverForwardMap map[st
 //NANNAN: after finishing commit, start do deduplication
 //TODO delete tarball
 //type BFmap map[digest.Digest][]distribution.FileDescriptor
+
+/*
+NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL/
+NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL/docker/
+NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL/docker/registry/
+NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL/docker/registry/v2/
+NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL/docker/registry/v2/blobs/
+NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL/docker/registry/v2/blobs/sha256/
+NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL/docker/registry/v2/blobs/sha256/1b/
+NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL/docker/registry/v2/blobs/sha256/1b/
+1b930d010525941c1d56ec53b97bd057a67ae1865eebf042686d2a2d18271ced/
+NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL/docker/registry/v2/blobs/sha256/1b/
+1b930d010525941c1d56ec53b97bd057a67ae1865eebf042686d2a2d18271ced/diff/
+NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL/docker/registry/v2/blobs/sha256/1b/
+1b930d010525941c1d56ec53b97bd057a67ae1865eebf042686d2a2d18271ced/diff/
+8b6566f585bad55b6fb9efb1dc1b6532fd08bb1796b4b42a3050aacb961f1f3f
+*/
 
 func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) (error) {
 	
