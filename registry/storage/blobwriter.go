@@ -187,10 +187,10 @@ func (bw *blobWriter) ForwardToRegistry(ctx context.Context, fpath string, wg *s
 		return err
 	}
 	context.GetLogger(ctx).Debug("NANNAN: ForwardToRegistry File %s dgest %s", fpath, dgst.String())
+	dgststring := dgst.String()
+	dgststring = strings.SplitN(dgststring, "sha256:", 2)[1]
 
-	dgst = strings.SplitN(dgst.String(), "sha256:", 2)[1]
-
-	buffer.WriteString(dgst)
+	buffer.WriteString(dgststring)
 	url := buffer.String()
 	
 	context.GetLogger(ctx).Debug("NANNAN: ForwardToRegistry URL %s", url)
@@ -222,7 +222,7 @@ func (bw *blobWriter) ForwardToRegistry(ctx context.Context, fpath string, wg *s
 	buffer.Reset()
 	buffer.WriteString(location)
 	buffer.WriteString("&digest=sha256%3A")
-	buffer.WriteString(dgst)
+	buffer.WriteString(dgststring)
 	url = buffer.String()
 	fi, err := os.Stat(fpath)
 	if err != nil {
