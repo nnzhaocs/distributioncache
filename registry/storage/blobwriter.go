@@ -225,8 +225,13 @@ func (bw *blobWriter) ForwardToRegistry(ctx context.Context, fpath string, wg *s
 }
 
 // prepare forward files to other servers/registries
-// first read the files and store in "/var/lib/registry/serverip/tmp_dir"
-// then compress as gizp files "/var/lib/registry/server/mv_tar.tar.gz"
+// FIRST, READ "/docker/registry/v2/blobs/sha256/1b/
+// 1b930d010525941c1d56ec53b97bd057a67ae1865eebf042686d2a2d18271ced/
+// diff/8b6566f585bad55b6fb9efb1dc1b6532fd08bb1796b4b42a3050aacb961f1f3f"
+// SECOND, store in "/docker/registry/v2/mv_tmp_serverfiles/192.168.0.200/tmp_dir/
+// NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL/docker/registry/v2/blobs/sha256/1b/
+// 1b930d010525941c1d56ec53b97bd057a67ae1865eebf042686d2a2d18271ced/diff/8b6566f585bad55b6fb9efb1dc1b6532fd08bb1796b4b42a3050aacb961f1f3f"
+// THEN, compress as gizp files "/var/lib/registry/docker/registry/v2/mv_tmp_serverfiles/192.168.0.200/mv_tar.tar.gz"
 
 func (bw *blobWriter)PrepareForward(ctx context.Context, serverForwardMap map[string][]string) ([]string, error){
 	var serverFiles []Pair
