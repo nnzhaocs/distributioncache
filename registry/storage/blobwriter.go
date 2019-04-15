@@ -251,6 +251,17 @@ func (bw *blobWriter) ForwardToRegistry(ctx context.Context, fpath string, wg *s
 		return errors.New("put unique files to other servers, failed")
 	}
 	put.Body.Close()
+	
+	context.GetLogger(ctx).Debug("NANNAN: ForwardToRegistry remove files %s", url)
+	
+	if err = os.Remove(fpath); err != nil{
+		context.GetLogger(ctx).Errorf("NANNAN: cannot remove fpath %s: %s", fpath, err)
+		return err
+	}
+	if err = os.RemoveAll(path.Join(path.Dir(fpath),"NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL")); err != nil{
+		context.GetLogger(ctx).Errorf("NANNAN: cannot remove NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL: %s", err)
+		return err	
+	}
 
 //	}
 
@@ -548,6 +559,11 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) (
 	if err != nil{
 		return err
 	}
+	
+	if len(mvtarpaths) == 0{
+		return nil
+	}
+	
 	context.GetLogger(ctx).Debug("NANNAN: mvtarpaths are %v", mvtarpaths)
 //	ch := make(chan error, len(mvtarpaths))
 	for _, path := range mvtarpaths{
@@ -557,10 +573,6 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) (
 	        wg.Wait()
 //	        close(sizes)
 	    }()
-	}
-	if err = os.RemoveAll("/var/lib/registry/docker/registry/v2/mv_tmp_serverfiles/"); err != nil{
-		context.GetLogger(ctx).Debug("NANNAN: cannot remove files in /var/lib/registry/docker/registry/v2/mv_tmp_serverfiles/: %s", err)
-		return err
 	}
 	
 	return err
