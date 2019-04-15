@@ -413,6 +413,7 @@ NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL/docker/registry/v2/blobs/sha256/1b/
 NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL/docker/registry/v2/blobs/sha256/1b/
 1b930d010525941c1d56ec53b97bd057a67ae1865eebf042686d2a2d18271ced/diff/
 8b6566f585bad55b6fb9efb1dc1b6532fd08bb1796b4b42a3050aacb961f1f3f
+ 
 */
 
 func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) (error) {
@@ -469,10 +470,21 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) (
 	for _, f := range files{
 		fmatch, _ := path.Match("NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL", f.Name())
 		if fmatch{
-			context.GetLogger(ctx).Debug("NANNAN: %s, NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL", f.Name())
+			context.GetLogger(ctx).Debug("NANNAN: NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL ", f.Name())
+			/*
+			 /home/nannan/dockerimages/layers
+			 /docker/registry/v2/blobs/sha256/07/078bb24d9ee4ddf90f349d0b63004d3ac6897dae28dd37cc8ae97a0306e6aa33/
+			 diff/NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL/docker/registry/v2/blobs/sha256/1b/1b930d010525941c1d56ec53b97bd057a67ae1865eebf042686d2a2d18271ced/diff	
+			*/
+			//move unpackPath to the correct diff dir
+			
+			newpathname := os.Rename(path.Join(unpackPath, "NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL/docker/registry/v2/"), "/var/lib/registry/docker/registry/v2/")
+			
 			return nil
 		}
 	}
+	
+
 	
 	var bfdescriptors [] distribution.BFDescriptor
 	var serverIps []string
@@ -518,8 +530,11 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) (
 	return err
 }
 
-//NANNAN check dedup
-// Metrics: lock
+/*
+NANNAN check dedup
+ Metrics: lock
+ 
+*/
 
 func (bw *blobWriter) CheckDuplicate(ctx context.Context, serverIp string, desc distribution.Descriptor, db cache.FileDescriptorCacheProvider, 
 	bfdescriptors *[] distribution.BFDescriptor, 
