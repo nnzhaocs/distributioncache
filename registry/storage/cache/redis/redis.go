@@ -400,7 +400,7 @@ func (rfds *redisFileDescriptorService) StatFile(ctx context.Context, dgst diges
 	
 	reply, err := rfds.cluster.Get(rfds.fileDescriptorHashKey(dgst)).Result()
 	if err == redisgo.Nil {
-		context.GetLogger(ctx).Debug("NANNAN: key %s doesnot exist", dgst.String())
+//		context.GetLogger(ctx).Debug("NANNAN: key %s doesnot exist", dgst.String())
 		return distribution.FileDescriptor{}, err
 	}else if err != nil{
 		context.GetLogger(ctx).Errorf("NANNAN: redis cluster error for key %s", err)
@@ -446,7 +446,7 @@ func (rfds *redisFileDescriptorService) SetFileDescriptor(ctx context.Context, d
 	var requestedServerIps []string
 	desc.RequestedServerIps = requestedServerIps
         desc.ServerIp = rfds.serverIp
-        context.GetLogger(ctx).Debug("NANNAN: redis cluster set value for file %v", rfds.fileDescriptorHashKey(dgst))
+//        context.GetLogger(ctx).Debug("NANNAN: redis cluster set value for file %v", rfds.fileDescriptorHashKey(dgst))
 	err := rfds.cluster.Set(rfds.fileDescriptorHashKey(dgst), &desc, 0).Err()
 	if err != nil{
 		context.GetLogger(ctx).Errorf("NANNAN: redis cluster cannot set value for key %s", err)
