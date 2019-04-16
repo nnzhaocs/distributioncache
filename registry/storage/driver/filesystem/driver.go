@@ -12,7 +12,7 @@ import (
 	"strconv"
 	"time"
 
-	log "github.com/Sirupsen/logrus"
+	//log "github.com/Sirupsen/logrus"
 	"github.com/docker/distribution/context"
 	storagedriver "github.com/docker/distribution/registry/storage/driver"
 	"github.com/docker/distribution/registry/storage/driver/base"

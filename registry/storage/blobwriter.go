@@ -258,7 +258,7 @@ func (bw *blobWriter) ForwardToRegistry(ctx context.Context, fpath string, wg *s
 		context.GetLogger(ctx).Errorf("NANNAN: cannot remove fpath %s: %s", fpath, err)
 		return err
 	}
-	if err = os.RemoveAll(path.Join(path.Dir(fpath),"NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL")); err != nil{
+	if err = os.RemoveAll(path.Join(path.Dir(fpath),"tmp_dir")); err != nil{
 		context.GetLogger(ctx).Errorf("NANNAN: cannot remove NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL: %s", err)
 		return err	
 	}
