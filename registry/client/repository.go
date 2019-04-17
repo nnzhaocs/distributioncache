@@ -725,7 +725,7 @@ func (bs *blobs) Create(ctx context.Context, options ...distribution.BlobCreateO
 	var opts distribution.CreateOptions
 
 	//log.Warnf("IBM: Registry creating blobs")
-	//log.Warnf("NANNAN: repository: Registry creating blobs")
+	log.Warnf("NANNAN: repository: Registry creating blobs")
 	
 	for _, option := range options {
 		err := option.Apply(&opts)
@@ -765,7 +765,9 @@ func (bs *blobs) Create(ctx context.Context, options ...distribution.BlobCreateO
 		if err != nil {
 			return nil, err
 		}
-
+	// /repoPrefix/current_image_name/_uploads/repository.id/startedat
+	// /home/lustre/dockerimages/layers /docker/registry/v2/repositories/nnzhaocs/ubuntu/_uploads/	
+	log.Warnf("NANNAN: repository: Registry creating blobs: location is %s", location)
 		return &httpBlobUpload{
 			statter:   bs.statter,
 			client:    bs.client,

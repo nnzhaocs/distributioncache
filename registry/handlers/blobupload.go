@@ -192,6 +192,7 @@ func (buh *blobUploadHandler) PatchBlobData(w http.ResponseWriter, r *http.Reque
 
 	// TODO(dmcgowan): support Content-Range header to seek and write range
 	log.Warnf("NANNAN: PatchBlobData: copyFullPayload")
+	//copyFullPayload(responseWriter http.ResponseWriter, r *http.Request, destWriter io.Writer, context ctxu.Context, action string, errSlice *errcode.Errors)
 	if err := copyFullPayload(w, r, buh.Upload, buh, "blob PATCH", &buh.Errors); err != nil {
 		// copyFullPayload reports the error if necessary
 		return

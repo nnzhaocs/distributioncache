@@ -124,7 +124,7 @@ func (bs *blobServer) ServeHeadBlob(ctx context.Context, w http.ResponseWriter, 
 
 func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *http.Request, dgst digest.Digest) error {
 	
-	//NANNAN: recursively read file from backend.
+	//NANNAN: parallelly read file from backend.
 	context.GetLogger(ctx).Debug("NANNAN: (*blobServer).ServeBlob")
 	
 	_desc, err := bs.statter.Stat(ctx, dgst)
