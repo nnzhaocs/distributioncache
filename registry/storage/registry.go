@@ -178,15 +178,13 @@ func BlobDescriptorCacheProvider(blobDescriptorCacheProvider cache.BlobDescripto
 func NewRegistry(ctx context.Context, serverIp string, driver storagedriver.StorageDriver, options ...RegistryOption) (distribution.Namespace, error) {
 	// create global statter
 	servers := []string{
-                                //"192.168.0.210",
-                                //"192.168.0.212",
-                                //"192.168.0.213",
-                                //"192.168.0.214",
-                                "192.168.0.215",
+                                "192.168.0.202",
+                                "192.168.0.203",
+                                "192.168.0.204",
+                                "192.168.0.205",
+                                "192.168.0.211",
 //                                 "192.168.216",
 //                                 "192.168.217",
-//                                 "192.168.218",
-//                                 "192.168.219",
 	}
 	
 	statter := &blobStatter{

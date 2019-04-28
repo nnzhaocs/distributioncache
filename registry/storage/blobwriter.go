@@ -160,8 +160,9 @@ func (bw *blobWriter) ForwardToRegistry(ctx context.Context, fpath string, wg *s
 	
 	defer wg.Done()
 	
-	regname := filepath.Base(strings.SplitN(fpath, "mv_tar.tar.g", 2)[0]) 
+	regname := filepath.Base(strings.SplitN(fpath, "mv_tar.tar.gz", 2)[0]) 
 	var regnamebuffer bytes.Buffer
+	fmt.Println("regname: ", regname)
 	regnamebuffer.WriteString(regname)
 	regnamebuffer.WriteString(":5000")
 	regname = regnamebuffer.String()
