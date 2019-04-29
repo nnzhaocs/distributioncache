@@ -27,6 +27,8 @@ import (
 	"net/http"
 	//"regexp"
 	redisgo"github.com/go-redis/redis"
+	"math/rand"
+	"strconv"
 )
 
 //NANNAN: TODO LIST
@@ -130,6 +132,12 @@ func RemoveDuplicateIpsFromIps(s []string) []string {
       return result
 }
 
+func getGID() float64{
+	s1 := rand.NewSource(time.Now().UnixNano())
+	r1 := rand.New(s1)
+	return r1.Float64()
+}
+
 type Pair struct{
 	first string
 	second string
@@ -153,14 +161,12 @@ http.request.method=PUT http.request.remoteaddr="192.168.0.210:48070"
 http.request.uri="/v2/forward_repo/blobs/uploads/d8a15122-8119-4290-a100-bd6ccd4ce747?_state=8Jv7qNOl5I8kKqVzT3sst5mCBPTBdu8kH8v2Wzhvt6N7Ik5hbWUiOiJmb3J3YXJkX3JlcG8iLCJVVUlEIjoiZDhhMTUxMjItODExOS00MjkwLWExMDAtYmQ2Y2NkNGNlNzQ3IiwiT2Zmc2V0IjowLCJTdGFydGVkQXQiOiIyMDE5LTA0LTE1VDAyOjI4OjE2LjA5NTIzNTI2N1oifQ%3D%3D&digest=sha256%3Asha256:729a6da29d6e10228688fc0cf3e943068b459ef6f168afbbd2d3d44ee0f2fd01" 
 http.request.useragent="Go-http-client/1.1" http.response.contenttype="application/json; charset=utf-8" http.response.duration=9.048157ms 
 http.response.status=400 http.response.written=131 vars.name="forward_repo" vars.uuid=d8a15122-8119-4290-a100-bd6ccd4ce747
-
-
 */
 func (bw *blobWriter) ForwardToRegistry(ctx context.Context, fpath string, wg *sync.WaitGroup) error {
 	
 	defer wg.Done()
 	
-	regname := filepath.Base(strings.SplitN(fpath, "mv_tar.tar.g", 2)[0]) 
+	regname := filepath.Base(filepath.Dir(fpath)) 
 	var regnamebuffer bytes.Buffer
 	regnamebuffer.WriteString(regname)
 	regnamebuffer.WriteString(":5000")
@@ -254,12 +260,15 @@ func (bw *blobWriter) ForwardToRegistry(ctx context.Context, fpath string, wg *s
 	
 	context.GetLogger(ctx).Debug("NANNAN: ForwardToRegistry remove files %s", url)
 	
+	//remove or not to remove? no diff
 	if err = os.Remove(fpath); err != nil{
 		context.GetLogger(ctx).Errorf("NANNAN: cannot remove fpath %s: %s", fpath, err)
 		return err
 	}
-	if err = os.RemoveAll(path.Join(path.Dir(fpath),"tmp_dir")); err != nil{
-		context.GetLogger(ctx).Errorf("NANNAN: cannot remove NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL: %s", err)
+	tmp_dir := filepath.Base(fpath)
+	if err = os.RemoveAll(path.Join("/var/lib/registry", "/docker/registry/v2/mv_tmp_serverfiles", regname, tmp_dir)); err != nil{
+		context.GetLogger(ctx).Errorf("NANNAN: cannot remove all file in NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL: %s: %s", 
+			path.Join("/var/lib/registry", "/docker/registry/v2/mv_tmp_serverfiles", regname, tmp_dir), err)
 		return err	
 	}
 
@@ -277,7 +286,7 @@ func (bw *blobWriter) ForwardToRegistry(ctx context.Context, fpath string, wg *s
 // 1b930d010525941c1d56ec53b97bd057a67ae1865eebf042686d2a2d18271ced/diff/8b6566f585bad55b6fb9efb1dc1b6532fd08bb1796b4b42a3050aacb961f1f3f"
 // THEN, compress as gizp files "/var/lib/registry/docker/registry/v2/mv_tmp_serverfiles/192.168.0.200/mv_tar.tar.gz"
 
-func (bw *blobWriter)PrepareForward(ctx context.Context, serverForwardMap map[string][]string) ([]string, error){
+func (bw *blobWriter)PrepareForward(ctx context.Context, serverForwardMap map[string][]string, gid float64) ([]string, error){
 	var serverFiles []Pair
 	limChan := make(chan bool, len(serverForwardMap))
 	defer close(limChan)
@@ -298,7 +307,11 @@ func (bw *blobWriter)PrepareForward(ctx context.Context, serverForwardMap map[st
 			serverFiles = append(serverFiles, sftmp)
 		}	
 	}
-	
+	if tmp_dir, err := strconv.ParseFloat(gid, 64); err == nil {
+//	    fmt.Println(s) // 3.14159265
+		context.GetLogger(ctx).Debug("NANNAN: PrepareForward: the gid for this goroutine: =>%", tmp_dir)
+	}
+
 	for _, sftmp := range serverFiles{
 		<-limChan
 		go func(sftmp Pair){
@@ -306,7 +319,7 @@ func (bw *blobWriter)PrepareForward(ctx context.Context, serverForwardMap map[st
 //			context.GetLogger(ctx).Debug("NANNAN: PrepareForward: cping files to server [%s]", server)
 			fpath := sftmp.second
 //			reg, err := regexp.Compile("[^a-zA-Z0-9/.-]+")
-			tmpath := path.Join(server, "tmp_dir", "NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL")
+			tmpath := path.Join(server, tmp_dir, "NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL")
 //			tarfpath := reg.ReplaceAllString(strings.SplitN(fpath, "diff", 2)[1], "") 
 //			blobdgst := filepath.Base(strings.SplitN(fpath, "diff", 2)[0])
 			//192.168.210/tmp_dir/NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL/
@@ -356,7 +369,7 @@ func (bw *blobWriter)PrepareForward(ctx context.Context, serverForwardMap map[st
 		context.GetLogger(ctx).Debug("NANNAN: PrepareCompress: compress files before sending to server [%s] ", server)
 		go func(server string){
 //			//tmpath := path.Join(server, "tmp_dir")
-			packpath := path.Join("/var/lib/registry", "/docker/registry/v2/mv_tmp_serverfiles", server, "tmp_dir")
+			packpath := path.Join("/var/lib/registry", "/docker/registry/v2/mv_tmp_serverfiles", server, tmp_dir) //tmp_dir is with gid
 			context.GetLogger(ctx).Debug("NANNAN: PrepareCompress <COMPRESS> packpath: %s", packpath)
 			
 			data, err := archive.Tar(packpath, archive.Gzip)
@@ -368,7 +381,7 @@ func (bw *blobWriter)PrepareForward(ctx context.Context, serverForwardMap map[st
 			
 				defer data.Close()
 				
-				packFile, err := os.Create(path.Join("/var/lib/registry", "/docker/registry/v2/mv_tmp_serverfiles", server, "mv_tar.tar.gz"))
+				packFile, err := os.Create(path.Join("/var/lib/registry", "/docker/registry/v2/mv_tmp_servertars", server, tmp_dir)) // added a tmp_dir
 				if err != nil{
 					context.GetLogger(ctx).Errorf("NANNAN: PrepareCopy <COMPRESS create file> %s, ", err)
 					errChan <- err
@@ -424,7 +437,6 @@ NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL/docker/registry/v2/blobs/sha256/1b/
 NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL/docker/registry/v2/blobs/sha256/1b/
 1b930d010525941c1d56ec53b97bd057a67ae1865eebf042686d2a2d18271ced/diff/
 8b6566f585bad55b6fb9efb1dc1b6532fd08bb1796b4b42a3050aacb961f1f3f
- 
 */
 
 func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) (error) {
@@ -473,6 +485,8 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) (
 		return err
 	}
 	
+	gid := getGID()
+	//later check ..................
 	// check if we need to dedup this tarball
 	files, err := ioutil.ReadDir(unpackPath)
 	if err != nil{
@@ -527,8 +541,6 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) (
 		}
 	}
 	
-
-	
 	var bfdescriptors [] distribution.BFDescriptor
 	var serverIps []string
 	serverForwardMap := make(map[string][]string)
@@ -555,7 +567,7 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) (
 	}
 	// let's do forwarding
 	var wg sync.WaitGroup
-	mvtarpaths, err := bw.PrepareForward(ctx, serverForwardMap)
+	mvtarpaths, err := bw.PrepareForward(ctx, serverForwardMap, gid)
 	if err != nil{
 		return err
 	}
