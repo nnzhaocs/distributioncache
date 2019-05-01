@@ -715,7 +715,7 @@ func (bw *blobWriter) CheckDuplicate(ctx context.Context, serverIp string, desc 
 			BlobFilePath: fpath,
 			Digest:    dgst,
 			DigestFilePath: dfp,
-			ServerIp: server,//serverIp,
+			ServerIp: serverIp,//serverIp,
 		}
 				
 		*bfdescriptors = append(*bfdescriptors, bfdescriptor)
