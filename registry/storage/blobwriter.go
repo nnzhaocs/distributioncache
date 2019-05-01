@@ -334,16 +334,24 @@ func (bw *blobWriter)PrepareForward(ctx context.Context, serverForwardMap map[st
 			contents, err := bw.driver.GetContent(ctx, strings.TrimPrefix(fpath, "/var/lib/registry")) 
 			if err != nil {
 				context.GetLogger(ctx).Errorf("NANNAN: CANNOT READ File FOR SENDING TO OTHER SERVER %s, ", err)
-				limChan <- true
+//				limChan <- true
 			}else{
 				err = bw.driver.PutContent(ctx, destfpath, contents)
 				if err != nil {
 					context.GetLogger(ctx).Errorf("NANNAN: CANNOT WRITE FILE TO DES DIR FOR SENDING TO OTHER SERVER %s, ", err)
-						limChan <- true
-					}else{
-						limChan <- true
-					}
+				}
+				//delete the old one
+				err = bw.driver.Delete(ctx, strings.TrimPrefix(fpath, "/var/lib/registry"))
+				if err != nil {
+					context.GetLogger(ctx).Errorf("NANNAN: CANNOT DELETE THE ORGINIAL File FOR SENDING TO OTHER SERVER %s, ", err)
+//				limChan <- true
+				}
+//					limChan <- true
+//					}else{
+////						limChan <- true
+//					}
 			}
+			limChan <- trues
 		}(sftmp)		
 	} 
 	// leave the errChan

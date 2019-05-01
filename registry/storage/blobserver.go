@@ -254,9 +254,10 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 						context.GetLogger(ctx).Warnf("NANNAN: STILL SEND TAR %s, ", err)
 //						errChan <- err
 //						limChan <- true
-					}else{
-//						limChan <- true
 					}
+//					else{
+////						limChan <- true
+//					}
 				}		
 			}
 			limChan <- true
