@@ -119,6 +119,14 @@ func (bs *blobServer) ServeHeadBlob(ctx context.Context, w http.ResponseWriter, 
 	return nil
 }
 
+// add an id to avoid two threads conflict. make it thread safe.
+
+func getGID() float64{
+	s1 := rand.NewSource(time.Now().UnixNano())
+	r1 := rand.New(s1)
+	return r1.Float64()
+}
+
 
 //NANNAN: TODO: process manfiests
 
@@ -195,6 +203,13 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 //	ServerIp		string
 //}
 
+	gid := getGID()
+	
+	if tmp_dir, err := strconv.ParseFloat(gid, 64); err == nil {
+//	    fmt.Println(s) // 3.14159265
+		context.GetLogger(ctx).Debug("NANNAN: PrepareForward: the gid for this goroutine: =>%", tmp_dir)
+	}
+
 	blobPath, err := PathFor(BlobDataPathSpec{
 		Digest: _desc.Digest,
 	})
@@ -205,7 +220,7 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 //	context.GetLogger(ctx).Debug("NANNAN: START RESTORING FROM :=>%s", layerPath)
 
 	parentDir := path.Dir(layerPath)
-	packPath := path.Join(parentDir, "tmp_dir")
+	packPath := path.Join(parentDir, tmp_dir)
 
 //	context.GetLogger(ctx).Debug("NANNAN GET: %v", desc)
 
@@ -282,7 +297,7 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 	
 	defer data.Close()
 	
-	packFile, err := os.Create(path.Join("/var/lib/registry", path.Join(parentDir, "tmp_tar.tar.gz")))
+	packFile, err := os.Create(path.Join("/var/lib/registry", "/docker/registry/v2/pull_tmp_tarfile", tmp_dir)//path.Join(parentDir, "tmp_tar.tar.gz")))
 	if err != nil{
 		context.GetLogger(ctx).Errorf("NANNAN: %s, ", err)
 		return err
@@ -335,6 +350,10 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 	}
 
 	http.ServeContent(w, r, _desc.Digest.String(), time.Time{}, packFile)
+	
+	//delete tmp_dir and packFile here
+	
+	
 	return nil
 }
 

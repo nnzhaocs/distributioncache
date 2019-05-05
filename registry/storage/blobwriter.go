@@ -721,6 +721,7 @@ func (bw *blobWriter) CheckDuplicate(ctx context.Context, serverIp string, desc 
 			// for the specific repository.
 			FilePath: fpath,
 			Digest:    dgst,
+			ServerIp: server,//serverIp,
 		}
 		
 		err = db.SetFileDescriptor(ctx, dgst, des)

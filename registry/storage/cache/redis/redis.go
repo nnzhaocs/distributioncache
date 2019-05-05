@@ -445,7 +445,7 @@ func (rfds *redisFileDescriptorService) SetFileDescriptor(ctx context.Context, d
 //	}
 	var requestedServerIps []string
 	desc.RequestedServerIps = requestedServerIps
-        desc.ServerIp = rfds.serverIp
+//        desc.ServerIp = rfds.serverIp
 //        context.GetLogger(ctx).Debug("NANNAN: redis cluster set value for file %v", rfds.fileDescriptorHashKey(dgst))
 	err := rfds.cluster.Set(rfds.fileDescriptorHashKey(dgst), &desc, 0).Err()
 	if err != nil{
