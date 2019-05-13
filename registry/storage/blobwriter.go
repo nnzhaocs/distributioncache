@@ -132,7 +132,7 @@ func RemoveDuplicateIpsFromIps(s []string) []string {
       return result
 }
 
-func getGID() float64{
+func GetGID() float64{
 	s1 := rand.NewSource(time.Now().UnixNano())
 	r1 := rand.New(s1)
 	return r1.Float64()
@@ -493,7 +493,7 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) (
 		return err
 	}
 	
-	gid := getGID()
+	gid := GetGID()
 	//later check ..................
 	// check if we need to dedup this tarball
 	files, err := ioutil.ReadDir(unpackPath)
