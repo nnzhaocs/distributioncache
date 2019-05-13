@@ -297,7 +297,7 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 	
 	defer data.Close()
 	
-	packFile, err := os.Create(path.Join("/var/lib/registry", "/docker/registry/v2/pull_tmp_tarfile", tmp_dir)//path.Join(parentDir, "tmp_tar.tar.gz")))
+	packFile, err := os.Create(path.Join("/var/lib/registry", "/docker/registry/v2/pull_tmp_tarfile", tmp_dir))//path.Join(parentDir, "tmp_tar.tar.gz")))
 	if err != nil{
 		context.GetLogger(ctx).Errorf("NANNAN: %s, ", err)
 		return err
