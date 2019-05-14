@@ -24,16 +24,6 @@ storage:
     cache:
         blobdescriptor: redis
         hostip: 192.168.0.205
-        registries:
-            - name: 192.168.0.170
-            - name: 192.168.0.171
-            - name: 192.168.0.172
-            - name: 192.168.0.174
-            - name: 192.168.0.176
-            - name: 192.168.0.177
-            - name: 192.168.0.178
-            - name: 192.168.0.179
-            - name: 192.168.0.180
     filesystem:
         rootdirectory: /var/lib/registry
     maintenance:
@@ -72,7 +62,17 @@ notifications:
           timeout: 1s
           threshold: 10
           backoff: 1s
-          disabled: true 
+          disabled: true
+    registries:
+        - name: 192.168.0.170
+        - name: 192.168.0.171
+        - name: 192.168.0.172
+        - name: 192.168.0.174
+        - name: 192.168.0.176
+        - name: 192.168.0.177
+        - name: 192.168.0.178
+        - name: 192.168.0.179
+        - name: 192.168.0.180 
 health:
   storagedriver:
     enabled: true
