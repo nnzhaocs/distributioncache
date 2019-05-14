@@ -20,19 +20,19 @@ import (
 // registry is the top-level implementation of Registry for use in the storage
 // package. All instances should descend from this object.
 type registry struct {
-	blobStore                    *blobStore
-	blobServer                   *blobServer
-	statter                      *blobStatter // global statter service.
-	
+	blobStore  *blobStore
+	blobServer *blobServer
+	statter    *blobStatter // global statter service.
+
 	//NANNAN: add a filestatter
-//	filestatter					 *FileStatter
-	
-	blobDescriptorCacheProvider  cache.BlobDescriptorCacheProvider
-	
+	//	filestatter					 *FileStatter
+
+	blobDescriptorCacheProvider cache.BlobDescriptorCacheProvider
+
 	//NANNAN: add a fileDescriptorCacheProvider for dedup
-	serverIp   string
-	fileDescriptorCacheProvider  cache.FileDescriptorCacheProvider
-	
+	serverIp                    string
+	fileDescriptorCacheProvider cache.FileDescriptorCacheProvider
+
 	deleteEnabled                bool
 	resumableDigestEnabled       bool
 	schema1SigningKey            libtrust.PrivateKey
@@ -142,9 +142,9 @@ func BlobDescriptorCacheProviderWithFileCache(blobDescriptorCacheProvider cache.
 			registry.blobStore.statter = statter
 			registry.blobServer.statter = statter
 			registry.blobDescriptorCacheProvider = blobDescriptorCacheProvider
-			registry.fileDescriptorCacheProvider = fileDescriptorCacheProvider 
+			registry.fileDescriptorCacheProvider = fileDescriptorCacheProvider
 			registry.blobServer.fileDescriptorCacheProvider = fileDescriptorCacheProvider
-//			registry.blobServer.filestatter = statter
+			//			registry.blobServer.filestatter = statter
 		}
 		return nil
 	}
@@ -178,27 +178,27 @@ func BlobDescriptorCacheProvider(blobDescriptorCacheProvider cache.BlobDescripto
 func NewRegistry(ctx context.Context, serverIp string, driver storagedriver.StorageDriver, options ...RegistryOption) (distribution.Namespace, error) {
 	// create global statter
 	servers := []string{
-                                //"192.168.0.210",
-                                //"192.168.0.212",
-                                //"192.168.0.213",
-                                //"192.168.0.214",
-//                                "192.168.0.215",
+		//"192.168.0.210",
+		//"192.168.0.212",
+		//"192.168.0.213",
+		//"192.168.0.214",
+		//                                "192.168.0.215",
 
-//-------------------* hulks *---------------------
+		//-------------------* hulks *---------------------
 
-								192.168.0.170,
-								192.168.0.171,
-								192.168.0.172,
-								192.168.0.174,
-//								192.168.0.173,
-//								192.168.0.175,
-								192.168.0.176,
-								192.168.0.177,
-								192.168.0.178,
-								192.168.0.179,
-								192.168.0.180,
+		"192.168.0.170",
+		"192.168.0.171",
+		"192.168.0.172",
+		"192.168.0.174",
+		//								"192.168.0.173",
+		//								"192.168.0.175",
+		"192.168.0.176",
+		"192.168.0.177",
+		"192.168.0.178",
+		"192.168.0.179",
+		"192.168.0.180",
 	}
-	
+
 	statter := &blobStatter{
 		driver: driver,
 	}
@@ -211,17 +211,17 @@ func NewRegistry(ctx context.Context, serverIp string, driver storagedriver.Stor
 	registry := &registry{
 		blobStore: bs,
 		blobServer: &blobServer{
-			driver:  driver,
-			statter: statter,
-			pathFn:  bs.path,
-			cache:   new(blobcache.MemCache),
+			driver:   driver,
+			statter:  statter,
+			pathFn:   bs.path,
+			cache:    new(blobcache.MemCache),
 			serverIp: serverIp,
-			ring: hashring.New(servers),
-//			filecache: 
+			ring:     hashring.New(servers),
+			//			filecache:
 		},
 		statter:                statter,
 		resumableDigestEnabled: true,
-		serverIp: serverIp,
+		serverIp:               serverIp,
 	}
 
 	for _, option := range options {
@@ -265,7 +265,6 @@ func NewRegistry(ctx context.Context, serverIp string, driver storagedriver.Stor
 //
 //	return registry, nil
 //}
-
 
 // Scope returns the namespace scope for a registry. The registry
 // will only serve repositories contained within this scope.

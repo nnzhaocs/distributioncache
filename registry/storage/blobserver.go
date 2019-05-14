@@ -1,28 +1,30 @@
 package storage
 
 import (
-//	"bytes"
+	//	"bytes"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
 	"time"
-//	log "github.com/Sirupsen/logrus"
+	//	log "github.com/Sirupsen/logrus"
 	"github.com/docker/distribution"
 	"github.com/docker/distribution/context"
 	"github.com/docker/distribution/registry/storage/driver"
 	"github.com/docker/distribution/registry/storage/driver/cache"
 	"github.com/opencontainers/go-digest"
 	//NANNAN
-	"path"
-	"os"
 	"io"
-	"github.com/docker/docker/pkg/archive"
-	storagecache"github.com/docker/distribution/registry/storage/cache"
+	"os"
+	"path"
 	"regexp"
 	"runtime"
+
+	storagecache "github.com/docker/distribution/registry/storage/cache"
+	"github.com/docker/docker/pkg/archive"
 	"github.com/serialx/hashring"
-//	storagedriver "github.com/docker/distribution/registry/storage/driver"
+	//	storagedriver "github.com/docker/distribution/registry/storage/driver"
+	"math/rand"
 )
 
 // TODO(stevvooe): This should configurable in the future.
@@ -31,16 +33,16 @@ const blobCacheControlMaxAge = 365 * 24 * time.Hour
 // blobServer simply serves blobs from a driver instance using a path function
 // to identify paths and a descriptor service to fill in metadata.
 type blobServer struct {
-	driver   driver.StorageDriver
-	statter  distribution.BlobStatter
-	
+	driver  driver.StorageDriver
+	statter distribution.BlobStatter
+
 	//NANNAN: add a fileDescriptorCacheProvider for restore
-	ring     *hashring.HashRing
-	fileDescriptorCacheProvider  storagecache.FileDescriptorCacheProvider
-	serverIp string
-	pathFn   func(dgst digest.Digest) (string, error)
-	redirect bool // allows disabling URLFor redirects
-	cache    *cache.MemCache
+	ring                        *hashring.HashRing
+	fileDescriptorCacheProvider storagecache.FileDescriptorCacheProvider
+	serverIp                    string
+	pathFn                      func(dgst digest.Digest) (string, error)
+	redirect                    bool // allows disabling URLFor redirects
+	cache                       *cache.MemCache
 }
 
 type registriesAPIResponse struct {
@@ -121,36 +123,35 @@ func (bs *blobServer) ServeHeadBlob(ctx context.Context, w http.ResponseWriter, 
 
 // add an id to avoid two threads conflict. make it thread safe.
 
-func getGID() float64{
+func getGID() float64 {
 	s1 := rand.NewSource(time.Now().UnixNano())
 	r1 := rand.New(s1)
 	return r1.Float64()
 }
 
-
 //NANNAN: TODO: process manfiests
 
 func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *http.Request, dgst digest.Digest) error {
-	
+
 	//NANNAN: parallelly read file from backend.
 	context.GetLogger(ctx).Debug("NANNAN: (*blobServer).ServeBlob")
-	
+
 	_desc, err := bs.statter.Stat(ctx, dgst)
 	if err != nil {
 		return err
 	}
-	
+
 	// get filepaths from redis
 	desc, err := bs.fileDescriptorCacheProvider.StatBFRecipe(ctx, dgst)
 	if err != nil {
 		// get from traditional registry, this is a manifest
 		context.GetLogger(ctx).Warnf("NANNAN: THIS IS A MANIFEST OR COMPRESSED TAR %s", err)
-		
+
 		path, err := bs.pathFn(_desc.Digest)
 		if err != nil {
 			return err
 		}
-	
+
 		if bs.redirect {
 			redirectURL, err := bs.driver.URLFor(ctx, path, map[string]interface{}{"method": r.Method})
 			switch err.(type) {
@@ -158,7 +159,7 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 				// Redirect to storage URL.
 				http.Redirect(w, r, redirectURL, http.StatusTemporaryRedirect)
 				return err
-	
+
 			case driver.ErrUnsupportedMethod:
 				// Fallback to serving the content directly.
 			default:
@@ -166,66 +167,67 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 				return err
 			}
 		}
-			
-		br, err := newFileReader(ctx, bs.driver, path, _desc.Size)//stat.Size())
+
+		br, err := newFileReader(ctx, bs.driver, path, _desc.Size) //stat.Size())
 		if err != nil {
 			return err
 		}
 		defer br.Close()
-	
+
 		w.Header().Set("ETag", fmt.Sprintf(`"%s"`, _desc.Digest)) // If-None-Match handled by ServeContent
 		w.Header().Set("Cache-Control", fmt.Sprintf("max-age=%.f", blobCacheControlMaxAge.Seconds()))
-	
+
 		if w.Header().Get("Docker-Content-Digest") == "" {
 			w.Header().Set("Docker-Content-Digest", _desc.Digest.String())
 		}
-	
+
 		if w.Header().Get("Content-Type") == "" {
 			// Set the content type if not already set.
 			w.Header().Set("Content-Type", _desc.MediaType)
 		}
-	
+
 		if w.Header().Get("Content-Length") == "" {
 			// Set the content length if not already set.
 			w.Header().Set("Content-Length", fmt.Sprint(_desc.Size))
 		}
-	
+
 		http.ServeContent(w, r, _desc.Digest.String(), time.Time{}, br)
 		return nil
 	}
-////NANNAN: for blob-files info
-//type BFDescriptor struct{
-//
-//	BlobFilePath    string // filepath of this blobfile
-//	Digest          digest.Digest
-//	DigestFilePath  string	// digest file path
-//	
-//	ServerIp		string
-//}
+	////NANNAN: for blob-files info
+	//type BFDescriptor struct{
+	//
+	//	BlobFilePath    string // filepath of this blobfile
+	//	Digest          digest.Digest
+	//	DigestFilePath  string	// digest file path
+	//
+	//	ServerIp		string
+	//}
 
 	gid := getGID()
-	
-	if tmp_dir, err := strconv.ParseFloat(gid, 64); err == nil {
-//	    fmt.Println(s) // 3.14159265
+	tmp_dir := fmt.Sprintf("%f", gid) //gid
+	context.GetLogger(ctx).Debug("NANNAN: serveblob: the gid for this goroutine: =>%", tmp_dir)
+	/*if tmp_dir, err := strconv.ParseFloat(gid, 64); err == nil {
+		//	    fmt.Println(s) // 3.14159265
 		context.GetLogger(ctx).Debug("NANNAN: PrepareForward: the gid for this goroutine: =>%", tmp_dir)
-	}
+	}*/
 
 	blobPath, err := PathFor(BlobDataPathSpec{
 		Digest: _desc.Digest,
 	})
-//	context.GetLogger(ctx).Debugf("NANNAN: blob = %v:%v", blobPath, _desc.Digest)
-	
+	//	context.GetLogger(ctx).Debugf("NANNAN: blob = %v:%v", blobPath, _desc.Digest)
+
 	layerPath := blobPath
-	
-//	context.GetLogger(ctx).Debug("NANNAN: START RESTORING FROM :=>%s", layerPath)
+
+	//	context.GetLogger(ctx).Debug("NANNAN: START RESTORING FROM :=>%s", layerPath)
 
 	parentDir := path.Dir(layerPath)
 	packPath := path.Join(parentDir, tmp_dir)
 
-//	context.GetLogger(ctx).Debug("NANNAN GET: %v", desc)
+	//	context.GetLogger(ctx).Debug("NANNAN GET: %v", desc)
 
 	reg, err := regexp.Compile("[^a-zA-Z0-9/.-]+")
-	if err != nil{
+	if err != nil {
 		context.GetLogger(ctx).Errorf("NANNAN: %s, ", err)
 		return err
 	}
@@ -233,84 +235,84 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 	//make for loop parallel by using Limiting Concurrency like semaphore
 	cores := runtime.GOMAXPROCS(0)
 	limChan := make(chan bool, cores)
-//	errChan := make(chan error, len(desc.BFDescriptors))
+	//	errChan := make(chan error, len(desc.BFDescriptors))
 	defer close(limChan)
-//	defer close(errChan)
+	//	defer close(errChan)
 	for i := 0; i < cores; i++ {
 		limChan <- true
 	}
 
 	for _, bfdescriptor := range desc.BFDescriptors {
 		<-limChan
-	
-		// copy 
-		go func(bfdescriptor distribution.BFDescriptor, packPath string){
-			if bfdescriptor.ServerIp != bs.serverIp{
+
+		// copy
+		go func(bfdescriptor distribution.BFDescriptor, packPath string) {
+			if bfdescriptor.ServerIp != bs.serverIp {
 				context.GetLogger(ctx).Debug("NANNAN: this is not a locally available file, ", bfdescriptor.ServerIp) // not locally available
-//				limChan <- true
-			
-			}else{
+				//				limChan <- true
+
+			} else {
 				tarfpath := reg.ReplaceAllString(strings.SplitN(bfdescriptor.BlobFilePath, "diff", 2)[1], "") // replace alphanumeric
-				
-		//		context.GetLogger(ctx).Debug("NANNAN: START COPY FILE FROM %s TO %s", bfdescriptor.DigestFilePath, bfdescriptor.BlobFilePath)
-			
-				contents, err := bs.driver.GetContent(ctx, strings.TrimPrefix(bfdescriptor.DigestFilePath, "/var/lib/registry"))//, dest)
+
+				//		context.GetLogger(ctx).Debug("NANNAN: START COPY FILE FROM %s TO %s", bfdescriptor.DigestFilePath, bfdescriptor.BlobFilePath)
+
+				contents, err := bs.driver.GetContent(ctx, strings.TrimPrefix(bfdescriptor.DigestFilePath, "/var/lib/registry")) //, dest)
 				if err != nil {
 					context.GetLogger(ctx).Errorf("NANNAN: STILL SEND TAR %s, ", err) // even if there is an error, meaning the dir is empty.
-//					errChan <- err
-//					limChan <- true
-	//				continue
-				}else{
-				
+					//					errChan <- err
+					//					limChan <- true
+					//				continue
+				} else {
+
 					destfpath := path.Join(packPath, tarfpath)
-					
+
 					err = bs.driver.PutContent(ctx, destfpath, contents)
 					if err != nil {
 						context.GetLogger(ctx).Warnf("NANNAN: STILL SEND TAR %s, ", err)
-//						errChan <- err
-//						limChan <- true
+						//						errChan <- err
+						//						limChan <- true
 					}
-//					else{
-////						limChan <- true
-//					}
-				}		
+					//					else{
+					////						limChan <- true
+					//					}
+				}
 			}
 			limChan <- true
 		}(bfdescriptor, packPath)
 	}
 	// leave the errChan
-	for i := 0; i < cap(limChan); i++{
-		<-limChan 
-		context.GetLogger(ctx).Debug("NANNAN: one goroutine is joined") 
+	for i := 0; i < cap(limChan); i++ {
+		<-limChan
+		context.GetLogger(ctx).Debug("NANNAN: one goroutine is joined")
 	}
 	// all goroutines finished here
 	context.GetLogger(ctx).Debug("NANNAN: all goroutines finished here") // not locally available
-	
+
 	packpath := path.Join("/var/lib/registry", packPath)
-	
+
 	data, err := archive.Tar(packpath, archive.Gzip)
 	if err != nil {
 		//TODO: process manifest file
 		context.GetLogger(ctx).Warnf("NANNAN: %s, ", err)
 		return err
 	}
-	
+
 	defer data.Close()
-	
-	packFile, err := os.Create(path.Join("/var/lib/registry", "/docker/registry/v2/pull_tmp_tarfile", tmp_dir))//path.Join(parentDir, "tmp_tar.tar.gz")))
-	if err != nil{
+
+	packFile, err := os.Create(path.Join("/var/lib/registry", "/docker/registry/v2/pull_tmp_tarfile", tmp_dir)) //path.Join(parentDir, "tmp_tar.tar.gz")))
+	if err != nil {
 		context.GetLogger(ctx).Errorf("NANNAN: %s, ", err)
 		return err
 	}
-	
+
 	defer packFile.Close()
-	
+
 	size, err := io.Copy(packFile, data)
-	if err != nil{
+	if err != nil {
 		context.GetLogger(ctx).Errorf("NANNAN: %s, ", err)
 		return err
 	}
-	
+
 	path, err := bs.pathFn(_desc.Digest)
 	if err != nil {
 		return err
@@ -350,13 +352,11 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 	}
 
 	http.ServeContent(w, r, _desc.Digest.String(), time.Time{}, packFile)
-	
+
 	//delete tmp_dir and packFile here
-	
-	
+
 	return nil
 }
-
 
 //func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *http.Request, dgst digest.Digest) error {
 //	context.GetLogger(ctx).Infof("NANNAN: START serve blob")
