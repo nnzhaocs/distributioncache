@@ -205,7 +205,7 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 	//}
 
 	gid := getGID()
-	tmp_dir := fmt.Sprintf("%f", gid) //gid
+	tmp_dir := fmt.Sprintf(gid) //gid
 	context.GetLogger(ctx).Debug("NANNAN: serveblob: the gid for this goroutine: =>%", tmp_dir)
 	/*if tmp_dir, err := strconv.ParseFloat(gid, 64); err == nil {
 		//	    fmt.Println(s) // 3.14159265

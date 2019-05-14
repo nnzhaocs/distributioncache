@@ -307,7 +307,7 @@ func (bw *blobWriter) PrepareForward(ctx context.Context, serverForwardMap map[s
 			serverFiles = append(serverFiles, sftmp)
 		}
 	}
-	tmp_dir := fmt.Sprint("%f", gid) //gid
+	tmp_dir := fmt.Sprint(gid) //gid
 	context.GetLogger(ctx).Debug("NANNAN: PrepareForward: the gid for this goroutine: =>%", tmp_dir)
 	/*if tmp_dir, err := strconv.ParseFloat(gid, 64); err == nil {
 		//	    fmt.Println(s) // 3.14159265
@@ -390,21 +390,26 @@ func (bw *blobWriter) PrepareForward(ctx context.Context, serverForwardMap map[s
 			} else {
 
 				defer data.Close()
-
-				packFile, err := os.Create(path.Join("/var/lib/registry", "/docker/registry/v2/mv_tmp_servertars", server, tmp_dir)) // added a tmp_dir
-				if err != nil {
-					context.GetLogger(ctx).Errorf("NANNAN: PrepareCopy <COMPRESS create file> %s, ", err)
+				newtardir = path.Join("/var/lib/registry", "/docker/registry/v2/mv_tmp_servertars", server)
+				if os.MkdirAll(newtardir, 0666) != nil{
+					context.GetLogger(ctx).Errorf("NANNAN: PrepareCopy <COMPRESS create dir for tarfile> %s, ", err)
 					errChan <- err
-				} else {
-
-					defer packFile.Close()
-
-					_, err := io.Copy(packFile, data)
+				}else{
+					packFile, err := os.Create(path.Join("/var/lib/registry", "/docker/registry/v2/mv_tmp_servertars", server, tmp_dir)) // added a tmp_dir
 					if err != nil {
-						context.GetLogger(ctx).Errorf("NANNAN: Copy compress file <COMPRESS copy to desfile> %s, ", err)
+						context.GetLogger(ctx).Errorf("NANNAN: PrepareCopy <COMPRESS create file> %s, ", err)
 						errChan <- err
 					} else {
-						tarpathChan <- packFile.Name()
+
+						defer packFile.Close()
+	
+						_, err := io.Copy(packFile, data)
+						if err != nil {
+							context.GetLogger(ctx).Errorf("NANNAN: Copy compress file <COMPRESS copy to desfile> %s, ", err)
+							errChan <- err
+						} else {
+							tarpathChan <- packFile.Name()
+						}
 					}
 				}
 			}

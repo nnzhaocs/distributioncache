@@ -68,8 +68,8 @@ var GCCmd = &cobra.Command{
 			fmt.Fprint(os.Stderr, err)
 			os.Exit(1)
 		}
-
-		registry, err := storage.NewRegistry(ctx, "127.0.0.1", driver, storage.Schema1SigningKey(k))
+		registrylist := []string{"127.0.0.1"}
+		registry, err := storage.NewRegistry(ctx, "127.0.0.1", registrylist, driver, storage.Schema1SigningKey(k))
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "failed to construct registry: %v", err)
 			os.Exit(1)
