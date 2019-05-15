@@ -299,15 +299,6 @@ func NewApp(ctx context.Context, config *configuration.Configuration) *App {
 
 	var servers []string
 
-	/*if cc, ok := config.Notification.Registries; ok {
-		registries, ok := cc["registries"]
-		for _, registry := range registries {
-			registryip, ok := registry["name"]
-			servers = append(servers, registryip)
-
-		}
-
-	}*/
 	for _, registry := range config.Notifications.Registries {
 		servers = append(servers, registry)
 	}
