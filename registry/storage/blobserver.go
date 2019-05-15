@@ -249,7 +249,7 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 	for i := 0; i < cores; i++ {
 		limChan <- true
 	}
-	start := time.Now()
+	start = time.Now()
 	for _, bfdescriptor := range desc.BFDescriptors {
 		<-limChan
 
@@ -293,14 +293,14 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 		<-limChan
 		context.GetLogger(ctx).Debug("NANNAN: one goroutine is joined")
 	}
-	elapsed := time.Since(start)
+	elapsed = time.Since(start)
 	fmt.Println("NANNAN: slice IO cp time: %v, %v", elapsed, dgst)
 	
 	// all goroutines finished here
 	context.GetLogger(ctx).Debug("NANNAN: all goroutines finished here") // not locally available
 
 	packpath := path.Join("/var/lib/registry", packPath)
-	start := time.Now()
+	start = time.Now()
 	data, err := archive.Tar(packpath, archive.Gzip)
 	if err != nil {
 		//TODO: process manifest file
@@ -308,7 +308,7 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 		return err
 	}
 	
-	elapsed := time.Since(start)
+	elapsed = time.Since(start)
 	fmt.Println("NANNAN: slice compression time: %v, %v", elapsed, dgst)
 
 	defer data.Close()
@@ -369,9 +369,9 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 		// Set the content length if not already set.
 		w.Header().Set("Content-Length", fmt.Sprint(size))
 	}
-	start := time.Now()
+	start = time.Now()
 	http.ServeContent(w, r, _desc.Digest.String(), time.Time{}, packFile)
-	elapsed := time.Since(start)
+	elapsed = time.Since(start)
 	fmt.Println("NANNAN: slice network transfer time: %v, %v", elapsed, dgst)
 	//delete tmp_dir and packFile here
 
