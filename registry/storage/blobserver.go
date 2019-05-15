@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
-	"time"
+	//"time"
 	//	log "github.com/Sirupsen/logrus"
 	"github.com/docker/distribution"
 	"github.com/docker/distribution/context"
@@ -148,7 +148,7 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 	desc, err := bs.fileDescriptorCacheProvider.StatBFRecipe(ctx, dgst)
 	elapsed := time.Since(start)
 	fmt.Println("NANNAN: metadata lookup time: %v, %v", elapsed, dgst)
-	
+
 	if err != nil {
 		// get from traditional registry, this is a manifest
 		context.GetLogger(ctx).Warnf("NANNAN: THIS IS A MANIFEST OR COMPRESSED TAR %s", err)
@@ -295,7 +295,7 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 	}
 	elapsed = time.Since(start)
 	fmt.Println("NANNAN: slice IO cp time: %v, %v", elapsed, dgst)
-	
+
 	// all goroutines finished here
 	context.GetLogger(ctx).Debug("NANNAN: all goroutines finished here") // not locally available
 
@@ -307,7 +307,7 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 		context.GetLogger(ctx).Warnf("NANNAN: %s, ", err)
 		return err
 	}
-	
+
 	elapsed = time.Since(start)
 	fmt.Println("NANNAN: slice compression time: %v, %v", elapsed, dgst)
 
@@ -317,7 +317,7 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 		context.GetLogger(ctx).Errorf("NANNAN: ServeBlob <COMPRESS create dir for tarfile> %s, ", err)
 		return err
 	}
-				
+
 	packFile, err := os.Create(path.Join("/var/lib/registry", "/docker/registry/v2/pull_tmp_tarfile", tmp_dir)) //path.Join(parentDir, "tmp_tar.tar.gz")))
 	if err != nil {
 		context.GetLogger(ctx).Errorf("NANNAN: %s, ", err)
