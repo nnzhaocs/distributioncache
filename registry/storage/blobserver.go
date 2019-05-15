@@ -26,6 +26,7 @@ import (
 	//	storagedriver "github.com/docker/distribution/registry/storage/driver"
 	"math/rand"
 	"strconv"
+	"time"
 )
 
 // TODO(stevvooe): This should configurable in the future.
@@ -143,7 +144,11 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 	}
 
 	// get filepaths from redis
+	start := time.Now()
 	desc, err := bs.fileDescriptorCacheProvider.StatBFRecipe(ctx, dgst)
+	elapsed := time.Since(start)
+	fmt.Println("NANNAN: metadata lookup time: %v, %v", elapsed, dgst)
+	
 	if err != nil {
 		// get from traditional registry, this is a manifest
 		context.GetLogger(ctx).Warnf("NANNAN: THIS IS A MANIFEST OR COMPRESSED TAR %s", err)
@@ -244,7 +249,7 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 	for i := 0; i < cores; i++ {
 		limChan <- true
 	}
-
+	start := time.Now()
 	for _, bfdescriptor := range desc.BFDescriptors {
 		<-limChan
 
@@ -288,17 +293,23 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 		<-limChan
 		context.GetLogger(ctx).Debug("NANNAN: one goroutine is joined")
 	}
+	elapsed := time.Since(start)
+	fmt.Println("NANNAN: slice IO cp time: %v, %v", elapsed, dgst)
+	
 	// all goroutines finished here
 	context.GetLogger(ctx).Debug("NANNAN: all goroutines finished here") // not locally available
 
 	packpath := path.Join("/var/lib/registry", packPath)
-
+	start := time.Now()
 	data, err := archive.Tar(packpath, archive.Gzip)
 	if err != nil {
 		//TODO: process manifest file
 		context.GetLogger(ctx).Warnf("NANNAN: %s, ", err)
 		return err
 	}
+	
+	elapsed := time.Since(start)
+	fmt.Println("NANNAN: slice compression time: %v, %v", elapsed, dgst)
 
 	defer data.Close()
 	newtardir := path.Join("/var/lib/registry", "/docker/registry/v2/pull_tmp_tarfile")
@@ -358,9 +369,10 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 		// Set the content length if not already set.
 		w.Header().Set("Content-Length", fmt.Sprint(size))
 	}
-
+	start := time.Now()
 	http.ServeContent(w, r, _desc.Digest.String(), time.Time{}, packFile)
-
+	elapsed := time.Since(start)
+	fmt.Println("NANNAN: slice network transfer time: %v, %v", elapsed, dgst)
 	//delete tmp_dir and packFile here
 
 	return nil
