@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
-	"time"
+//	"time"
 	//	log "github.com/Sirupsen/logrus"
 	"github.com/docker/distribution"
 	"github.com/docker/distribution/context"
@@ -372,7 +372,7 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 	start = time.Now()
 	http.ServeContent(w, r, _desc.Digest.String(), time.Time{}, packFile)
 	elapsed = time.Since(start)
-	fmt.Println("NANNAN: slice network transfer time: %v, %v", elapsed, dgst)
+	fmt.Println("NANNAN: slice network transfer time: %.3f, %v", elapsed.Seconds(), dgst)
 	//delete tmp_dir and packFile here
 
 	return nil
