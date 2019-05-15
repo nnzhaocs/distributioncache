@@ -28,6 +28,7 @@ import (
 	"net/http"
 	//"regexp"
 	"math/rand"
+	"strconv"
 
 	redisgo "github.com/go-redis/redis"
 )
@@ -307,7 +308,8 @@ func (bw *blobWriter) PrepareForward(ctx context.Context, serverForwardMap map[s
 			serverFiles = append(serverFiles, sftmp)
 		}
 	}
-	tmp_dir := fmt.Sprint(gid) //gid
+	//tmp_dir := fmt.Sprint(gid) //gid
+	tmp_dir := strconv.FormatFloat(gid, 'g', 1, 64)
 	context.GetLogger(ctx).Debug("NANNAN: PrepareForward: the gid for this goroutine: =>%", tmp_dir)
 	/*if tmp_dir, err := strconv.ParseFloat(gid, 64); err == nil {
 		//	    fmt.Println(s) // 3.14159265
@@ -388,13 +390,12 @@ func (bw *blobWriter) PrepareForward(ctx context.Context, serverForwardMap map[s
 				context.GetLogger(ctx).Errorf("NANNAN: Compress <COMPRESS tar> %s, ", err)
 				errChan <- err
 			} else {
-
 				defer data.Close()
-				newtardir = path.Join("/var/lib/registry", "/docker/registry/v2/mv_tmp_servertars", server)
-				if os.MkdirAll(newtardir, 0666) != nil{
+				newtardir := path.Join("/var/lib/registry", "/docker/registry/v2/mv_tmp_servertars", server)
+				if os.MkdirAll(newtardir, 0666) != nil {
 					context.GetLogger(ctx).Errorf("NANNAN: PrepareCopy <COMPRESS create dir for tarfile> %s, ", err)
 					errChan <- err
-				}else{
+				} else {
 					packFile, err := os.Create(path.Join("/var/lib/registry", "/docker/registry/v2/mv_tmp_servertars", server, tmp_dir)) // added a tmp_dir
 					if err != nil {
 						context.GetLogger(ctx).Errorf("NANNAN: PrepareCopy <COMPRESS create file> %s, ", err)
@@ -402,7 +403,7 @@ func (bw *blobWriter) PrepareForward(ctx context.Context, serverForwardMap map[s
 					} else {
 
 						defer packFile.Close()
-	
+
 						_, err := io.Copy(packFile, data)
 						if err != nil {
 							context.GetLogger(ctx).Errorf("NANNAN: Copy compress file <COMPRESS copy to desfile> %s, ", err)

@@ -25,6 +25,7 @@ import (
 	"github.com/serialx/hashring"
 	//	storagedriver "github.com/docker/distribution/registry/storage/driver"
 	"math/rand"
+	"strconv"
 )
 
 // TODO(stevvooe): This should configurable in the future.
@@ -205,9 +206,11 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 	//}
 
 	gid := getGID()
-	tmp_dir := fmt.Sprintf(gid) //gid
+	//tmp_dir := fmt.Sprintf(gid) //gid
+
+	tmp_dir := strconv.FormatFloat(gid, 'g', 1, 64)
 	context.GetLogger(ctx).Debug("NANNAN: serveblob: the gid for this goroutine: =>%", tmp_dir)
-	/*if tmp_dir, err := strconv.ParseFloat(gid, 64); err == nil {
+	/*; err == nil {
 		//	    fmt.Println(s) // 3.14159265
 		context.GetLogger(ctx).Debug("NANNAN: PrepareForward: the gid for this goroutine: =>%", tmp_dir)
 	}*/
