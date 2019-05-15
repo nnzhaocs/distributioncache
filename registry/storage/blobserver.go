@@ -38,7 +38,7 @@ type blobServer struct {
 	statter distribution.BlobStatter
 
 	//NANNAN: add a fileDescriptorCacheProvider for restore
-	ring                        *hashring.HashRing
+	ring                        *RoundRobin.roundrobin
 	fileDescriptorCacheProvider storagecache.FileDescriptorCacheProvider
 	serverIp                    string
 	pathFn                      func(dgst digest.Digest) (string, error)

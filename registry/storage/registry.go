@@ -14,7 +14,9 @@ import (
 	blobcache "github.com/docker/distribution/registry/storage/driver/cache"
 	"github.com/docker/libtrust"
 	//nannan
-	"github.com/serialx/hashring"
+//	"github.com/serialx/hashring"
+"net/url
+"github.com/hlts2/round-robin"
 )
 
 // registry is the top-level implementation of Registry for use in the storage
@@ -175,29 +177,8 @@ func BlobDescriptorCacheProvider(blobDescriptorCacheProvider cache.BlobDescripto
 // resulting registry may be shared by multiple goroutines but is cheap to
 // allocate. If the Redirect option is specified, the backend blob server will
 // attempt to use (StorageDriver).URLFor to serve all blobs.
-func NewRegistry(ctx context.Context, serverIp string, servers []string, driver storagedriver.StorageDriver, options ...RegistryOption) (distribution.Namespace, error) {
+func NewRegistry(ctx context.Context, serverIp string, servers *[]url.URL, driver storagedriver.StorageDriver, options ...RegistryOption) (distribution.Namespace, error) {
 	// create global statter
-//	servers := []string{
-//		//"192.168.0.210",
-//		//"192.168.0.212",
-//		//"192.168.0.213",
-//		//"192.168.0.214",
-//		//                                "192.168.0.215",
-//
-//		//-------------------* hulks *---------------------
-//
-//		"192.168.0.170",
-//		"192.168.0.171",
-//		"192.168.0.172",
-//		"192.168.0.174",
-//		//								"192.168.0.173",
-//		//								"192.168.0.175",
-//		"192.168.0.176",
-//		"192.168.0.177",
-//		"192.168.0.178",
-//		"192.168.0.179",
-//		"192.168.0.180",
-//	}
 
 	statter := &blobStatter{
 		driver: driver,
@@ -208,6 +189,10 @@ func NewRegistry(ctx context.Context, serverIp string, servers []string, driver 
 		statter: statter,
 	}
 
+	rr, err := roundrobin.New(servers)
+	if err != nil {
+         panic(err)
+	}
 	registry := &registry{
 		blobStore: bs,
 		blobServer: &blobServer{
@@ -216,7 +201,7 @@ func NewRegistry(ctx context.Context, serverIp string, servers []string, driver 
 			pathFn:   bs.path,
 			cache:    new(blobcache.MemCache),
 			serverIp: serverIp,
-			ring:     hashring.New(servers),
+			ring:     rr,
 			//			filecache:
 		},
 		statter:                statter,

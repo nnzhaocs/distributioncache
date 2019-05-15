@@ -712,7 +712,7 @@ func (bw *blobWriter) CheckDuplicate(ctx context.Context, serverIp string, desc 
 
 		fpath = reFPath
 		//serverForwardMap := make(map[string][]string)
-		server, _ := bw.blobStore.registry.blobServer.ring.GetNode(dgst.String())
+		server := bw.blobStore.registry.blobServer.ring.Next().Hostname()
 		context.GetLogger(ctx).Debug("NANNAN: file: %v (%v) will be forwarded to server (%v): %v", dgst.String(), reFPath, server)
 		//	var desc distribution.FileDescriptor
 		//make map of []

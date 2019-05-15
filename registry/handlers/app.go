@@ -297,10 +297,11 @@ func NewApp(ctx context.Context, config *configuration.Configuration) *App {
 
 	// configure storage caches
 
-	var servers []string
+	var servers []*url.URL
 
 	for _, registry := range config.Notifications.Registries {
-		servers = append(servers, registry)
+		registryurl := &url.URL{Host: registry}
+		servers = append(*servers, registryurl)
 	}
 
 	ctxu.GetLogger(app).Warn("server in the cluster: >>>>>>>>", servers)
