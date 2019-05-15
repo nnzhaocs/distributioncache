@@ -301,7 +301,7 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 	}
 
 	defer data.Close()
-	newtardir := path.Join("/var/lib/registry", "/docker/registry/v2/pull_tmp_tarfile", tmp_dir)
+	newtardir := path.Join("/var/lib/registry", "/docker/registry/v2/pull_tmp_tarfile")
 	if os.MkdirAll(newtardir, 0666) != nil {
 		context.GetLogger(ctx).Errorf("NANNAN: ServeBlob <COMPRESS create dir for tarfile> %s, ", err)
 		return err

@@ -538,18 +538,18 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) e
 					for _, fd := range fds {
 						if err = os.Rename(path.Join(unpackPath, "NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL/docker/registry/v2/blobs/sha256/", f.Name(), fd.Name()),
 							path.Join("/var/lib/registry/docker/registry/v2/blobs/sha256/", f.Name(), fd.Name())); err != nil {
-							context.GetLogger(ctx).Errorf("NANNAN: %s, cannot rename this unpackpath filepath: %s",
+							context.GetLogger(ctx).Errorf("NANNAN: %s, cannot rename this unpackpath filepath: %s, probaly a deuplicate file, Ignore it.",
 								path.Join(unpackPath, "NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL/docker/registry/v2/blobs/sha256/", f.Name(), fd.Name()), err)
-							return err
+							//return err
 						}
 					}
 
 				} else {
 					if err = os.Rename(path.Join(unpackPath, "NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL/docker/registry/v2/blobs/sha256/", f.Name()),
 						path.Join("/var/lib/registry/docker/registry/v2/blobs/sha256/", f.Name())); err != nil {
-						context.GetLogger(ctx).Errorf("NANNAN: %s, cannot rename this unpackpath filepath: %s",
+						context.GetLogger(ctx).Errorf("NANNAN: %s, cannot rename this unpackpath filepath: %s, probaly a deuplicate file, Ignore it",
 							path.Join(unpackPath, "NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL/docker/registry/v2/blobs/sha256/", f.Name()), err)
-						return err
+//						return err
 					}
 				}
 			}
