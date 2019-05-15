@@ -543,7 +543,7 @@ type Notifications struct {
 	// respond to webhook notifications. In the future, we may allow other
 	// kinds of endpoints, such as external queues.
 	Endpoints  []Endpoint `yaml:"endpoints,omitempty"`
-	Registires []string
+	Registries []string
 }
 
 // Endpoint describes the configuration of an http webhook notification
