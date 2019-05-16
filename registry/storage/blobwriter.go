@@ -493,8 +493,11 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) e
 		context.GetLogger(ctx).Errorf("NANNAN: %s", err)
 		return err
 	}
-
+	start := time.Now()
 	err = archiver.UntarPath(layerPath, unpackPath)
+	elapsed := time.Since(start)
+	fmt.Println("NANNAN: gzip decompression time: %.3f, %v", elapsed.Seconds(), dgst)
+	
 	if err != nil {
 		//TODO: process manifest file
 		context.GetLogger(ctx).Errorf("NANNAN: %s, This may be a manifest file", err)
@@ -560,11 +563,13 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) e
 	var bfdescriptors []distribution.BFDescriptor
 	var serverIps []string
 	serverForwardMap := make(map[string][]string)
-
+	start = time.Now()
 	err = filepath.Walk(unpackPath, bw.CheckDuplicate(ctx, bw.blobStore.registry.serverIp, desc, bw.blobStore.registry.fileDescriptorCacheProvider,
 		&bfdescriptors,
 		&serverIps,
 		serverForwardMap))
+	elapsed = time.Since(start)
+	fmt.Println("NANNAN: digest calculation + file index lookup time: %.3f, %v", elapsed.Seconds(), dgst)
 	if err != nil {
 		context.GetLogger(ctx).Errorf("NANNAN: %s", err)
 	}
@@ -577,7 +582,11 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) e
 		ServerIps:     RemoveDuplicateIpsFromIps(serverIps),
 	}
 	//	context.GetLogger(ctx).Debug("NANNAN: set distribution.BFRecipeDescriptor: %v", des)
+	elapsed = time.Since(start)
 	err = bw.blobStore.registry.fileDescriptorCacheProvider.SetBFRecipe(ctx, desc.Digest, des)
+	elapsed = time.Since(start)
+	fmt.Println("NANNAN: layer recipe update time: %.3f, %v", elapsed.Seconds(), dgst)
+
 	if err != nil {
 		return err
 	}

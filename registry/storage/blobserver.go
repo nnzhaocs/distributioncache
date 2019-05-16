@@ -146,7 +146,7 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 	start := time.Now()
 	desc, err := bs.fileDescriptorCacheProvider.StatBFRecipe(ctx, dgst)
 	elapsed := time.Since(start)
-	fmt.Println("NANNAN: metadata lookup time: %v, %v", elapsed, dgst)
+	fmt.Println("NANNAN: metadata lookup time: %.3f, %v", elapsed.Seconds(), dgst)
 
 	if err != nil {
 		// get from traditional registry, this is a manifest
@@ -293,7 +293,7 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 		context.GetLogger(ctx).Debug("NANNAN: one goroutine is joined")
 	}
 	elapsed = time.Since(start)
-	fmt.Println("NANNAN: slice IO cp time: %v, %v", elapsed, dgst)
+	fmt.Println("NANNAN: slice IO cp time: %.3f, %v", elapsed.Seconds(), dgst)
 
 	// all goroutines finished here
 	context.GetLogger(ctx).Debug("NANNAN: all goroutines finished here") // not locally available
@@ -308,7 +308,7 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 	}
 
 	elapsed = time.Since(start)
-	fmt.Println("NANNAN: slice compression time: %v, %v", elapsed, dgst)
+	fmt.Println("NANNAN: slice compression time: %.3f, %v", elapsed.Seconds(), dgst)
 
 	defer data.Close()
 	newtardir := path.Join("/var/lib/registry", "/docker/registry/v2/pull_tmp_tarfile")
