@@ -24,7 +24,7 @@ import (
 	"github.com/serialx/hashring"
 	//	storagedriver "github.com/docker/distribution/registry/storage/driver"
 	"math/rand"
-	"strconv"
+	//"strconv"
 	"time"
 )
 
@@ -212,7 +212,7 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 	gid := getGID()
 	//tmp_dir := fmt.Sprintf(gid) //gid
 
-	tmp_dir := strconv.FormatFloat(gid, 'g', 1, 64)
+	tmp_dir := fmt.Sprintf("%f", gid)
 	context.GetLogger(ctx).Debug("NANNAN: serveblob: the gid for this goroutine: =>%", tmp_dir)
 	/*; err == nil {
 		//	    fmt.Println(s) // 3.14159265
@@ -266,9 +266,6 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 				contents, err := bs.driver.GetContent(ctx, strings.TrimPrefix(bfdescriptor.DigestFilePath, "/var/lib/registry")) //, dest)
 				if err != nil {
 					context.GetLogger(ctx).Errorf("NANNAN: STILL SEND TAR %s, ", err) // even if there is an error, meaning the dir is empty.
-					//					errChan <- err
-					//					limChan <- true
-					//				continue
 				} else {
 
 					destfpath := path.Join(packPath, tarfpath)
@@ -276,12 +273,7 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 					err = bs.driver.PutContent(ctx, destfpath, contents)
 					if err != nil {
 						context.GetLogger(ctx).Warnf("NANNAN: STILL SEND TAR %s, ", err)
-						//						errChan <- err
-						//						limChan <- true
 					}
-					//					else{
-					////						limChan <- true
-					//					}
 				}
 			}
 			limChan <- true
