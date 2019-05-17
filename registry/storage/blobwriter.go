@@ -28,7 +28,7 @@ import (
 	"net/http"
 	//"regexp"
 	"math/rand"
-	"strconv"
+	//"strconv"
 
 	redisgo "github.com/go-redis/redis"
 )
@@ -309,7 +309,7 @@ func (bw *blobWriter) PrepareForward(ctx context.Context, serverForwardMap map[s
 		}
 	}
 	//tmp_dir := fmt.Sprint(gid) //gid
-	tmp_dir := strconv.FormatFloat(gid, 'g', 1, 64)
+	tmp_dir := fmt.Sprintf("%f", gid)
 	context.GetLogger(ctx).Debug("NANNAN: PrepareForward: the gid for this goroutine: =>%", tmp_dir)
 	/*if tmp_dir, err := strconv.ParseFloat(gid, 64); err == nil {
 		//	    fmt.Println(s) // 3.14159265
