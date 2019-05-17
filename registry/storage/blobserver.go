@@ -240,7 +240,8 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 	}
 
 	//make for loop parallel by using Limiting Concurrency like semaphore
-	cores := runtime.GOMAXPROCS(0)
+	//cores := runtime.GOMAXPROCS(0)
+	cores := 3
 	limChan := make(chan bool, cores)
 	//	errChan := make(chan error, len(desc.BFDescriptors))
 	defer close(limChan)
@@ -365,6 +366,19 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 	elapsed = time.Since(start)
 	fmt.Println("NANNAN: slice network transfer time: %.3f, %v", elapsed.Seconds(), dgst)
 	//delete tmp_dir and packFile here
+	
+	if err = os.RemoveAll(path.Join("/var/lib/registry", "/docker/registry/v2/pull_tmp_tarfile", tmp_dir)); err != nil {
+		context.GetLogger(ctx).Errorf("NANNAN: cannot remove all file in: %s: %s",
+			path.Join("/var/lib/registry", "/docker/registry/v2/pull_tmp_tarfile", tmp_dir), err)
+		return err
+	}
+	//packpath
+	
+	if err = os.RemoveAll(packpath); err != nil {
+		context.GetLogger(ctx).Errorf("NANNAN: cannot remove all file in packpath: %s: %s",
+			packpath, err)
+		return err
+	}
 
 	return nil
 }
