@@ -301,7 +301,7 @@ func NewApp(ctx context.Context, config *configuration.Configuration) *App {
 
 	for _, registry := range config.Notifications.Registries {
 		registryurl := &url.URL{Host: registry}
-		servers = append(*servers, registryurl)
+		servers = append(servers, registryurl)
 	}
 
 	ctxu.GetLogger(app).Warn("server in the cluster: >>>>>>>>", servers)

@@ -24,7 +24,7 @@ RUN git clone https://github.com/moby/moby.git /go/src/github.com/docker/docker
 RUN apt-get update && apt-get install -y libzookeeper-mt-dev
 
 # slight change. go-rejson has updated to v2.0 and broke compatibility. I made a clone of the old version and pointing to that version
-RUN go get github.com/ngaut/log && go get github.com/allegro/bigcache && go get launchpad.net/gozk/zookeeper && go get github.com/secondspass/go-rejson && go get github.com/gomodule/redigo/redis && go get github.com/mna/redisc && go get github.com/serialx/hashring && go get github.com/go-redis/redis
+RUN go get github.com/ngaut/log && go get github.com/allegro/bigcache && go get launchpad.net/gozk/zookeeper && go get github.com/secondspass/go-rejson && go get github.com/gomodule/redigo/redis && go get github.com/mna/redisc && go get github.com/serialx/hashring && go get github.com/go-redis/redis && go get github.com/hlts2/round-robin
 
 #RUN cd $DISTRIBUTION_DIR
 

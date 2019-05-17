@@ -13,10 +13,10 @@ import (
 	storagedriver "github.com/docker/distribution/registry/storage/driver"
 	blobcache "github.com/docker/distribution/registry/storage/driver/cache"
 	"github.com/docker/libtrust"
+	roundrobin "github.com/hlts2/round-robin"
 	//nannan
-//	"github.com/serialx/hashring"
-"net/url
-"github.com/hlts2/round-robin"
+	//	"github.com/serialx/hashring"
+	"net/url"
 )
 
 // registry is the top-level implementation of Registry for use in the storage
@@ -177,7 +177,7 @@ func BlobDescriptorCacheProvider(blobDescriptorCacheProvider cache.BlobDescripto
 // resulting registry may be shared by multiple goroutines but is cheap to
 // allocate. If the Redirect option is specified, the backend blob server will
 // attempt to use (StorageDriver).URLFor to serve all blobs.
-func NewRegistry(ctx context.Context, serverIp string, servers *[]url.URL, driver storagedriver.StorageDriver, options ...RegistryOption) (distribution.Namespace, error) {
+func NewRegistry(ctx context.Context, serverIp string, servers []*url.URL, driver storagedriver.StorageDriver, options ...RegistryOption) (distribution.Namespace, error) {
 	// create global statter
 
 	statter := &blobStatter{
@@ -191,7 +191,7 @@ func NewRegistry(ctx context.Context, serverIp string, servers *[]url.URL, drive
 
 	rr, err := roundrobin.New(servers)
 	if err != nil {
-         panic(err)
+		panic(err)
 	}
 	registry := &registry{
 		blobStore: bs,
