@@ -17,7 +17,7 @@ import (
 	"os"
 	"path"
 	"regexp"
-	"runtime"
+	//"runtime"
 
 	storagecache "github.com/docker/distribution/registry/storage/cache"
 	"github.com/docker/docker/pkg/archive"
@@ -326,13 +326,13 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 		return err
 	}
 
-	path, err := bs.pathFn(_desc.Digest)
+	path_old, err := bs.pathFn(_desc.Digest)
 	if err != nil {
 		return err
 	}
 
 	if bs.redirect {
-		redirectURL, err := bs.driver.URLFor(ctx, path, map[string]interface{}{"method": r.Method})
+		redirectURL, err := bs.driver.URLFor(ctx, path_old, map[string]interface{}{"method": r.Method})
 		switch err.(type) {
 		case nil:
 			// Redirect to storage URL.
@@ -368,14 +368,14 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 	elapsed = time.Since(start)
 	fmt.Println("NANNAN: slice network transfer time: %.3f, %v", elapsed.Seconds(), dgst)
 	//delete tmp_dir and packFile here
-	
+
 	if err = os.RemoveAll(path.Join("/var/lib/registry", "/docker/registry/v2/pull_tmp_tarfile", tmp_dir)); err != nil {
 		context.GetLogger(ctx).Errorf("NANNAN: cannot remove all file in: %s: %s",
 			path.Join("/var/lib/registry", "/docker/registry/v2/pull_tmp_tarfile", tmp_dir), err)
 		return err
 	}
 	//packpath
-	
+
 	if err = os.RemoveAll(packpath); err != nil {
 		context.GetLogger(ctx).Errorf("NANNAN: cannot remove all file in packpath: %s: %s",
 			packpath, err)
