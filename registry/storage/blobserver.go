@@ -21,11 +21,13 @@ import (
 
 	storagecache "github.com/docker/distribution/registry/storage/cache"
 	"github.com/docker/docker/pkg/archive"
-	"github.com/serialx/hashring"
+	//"github.com/serialx/hashring"
 	//	storagedriver "github.com/docker/distribution/registry/storage/driver"
 	"math/rand"
 	"strconv"
 	"time"
+
+	roundrobin "github.com/hlts2/round-robin"
 )
 
 // TODO(stevvooe): This should configurable in the future.
@@ -38,7 +40,7 @@ type blobServer struct {
 	statter distribution.BlobStatter
 
 	//NANNAN: add a fileDescriptorCacheProvider for restore
-	ring                        *RoundRobin.roundrobin
+	ring                        roundrobin.RoundRobin
 	fileDescriptorCacheProvider storagecache.FileDescriptorCacheProvider
 	serverIp                    string
 	pathFn                      func(dgst digest.Digest) (string, error)

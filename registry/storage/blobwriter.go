@@ -496,8 +496,8 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) e
 	start := time.Now()
 	err = archiver.UntarPath(layerPath, unpackPath)
 	elapsed := time.Since(start)
-	fmt.Println("NANNAN: gzip decompression time: %.3f, %v", elapsed.Seconds(), dgst)
-	
+	fmt.Println("NANNAN: gzip decompression time: %.3f, %v", elapsed.Seconds(), blobPath)
+
 	if err != nil {
 		//TODO: process manifest file
 		context.GetLogger(ctx).Errorf("NANNAN: %s, This may be a manifest file", err)
@@ -552,7 +552,7 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) e
 						path.Join("/var/lib/registry/docker/registry/v2/blobs/sha256/", f.Name())); err != nil {
 						context.GetLogger(ctx).Errorf("NANNAN: %s, cannot rename this unpackpath filepath: %s, probaly a deuplicate file, Ignore it",
 							path.Join(unpackPath, "NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL/docker/registry/v2/blobs/sha256/", f.Name()), err)
-//						return err
+						//						return err
 					}
 				}
 			}
@@ -569,7 +569,7 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) e
 		&serverIps,
 		serverForwardMap))
 	elapsed = time.Since(start)
-	fmt.Println("NANNAN: digest calculation + file index lookup time: %.3f, %v", elapsed.Seconds(), dgst)
+	fmt.Println("NANNAN: digest calculation + file index lookup time: %.3f, %v", elapsed.Seconds(), blobPath)
 	if err != nil {
 		context.GetLogger(ctx).Errorf("NANNAN: %s", err)
 	}
@@ -585,7 +585,7 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) e
 	elapsed = time.Since(start)
 	err = bw.blobStore.registry.fileDescriptorCacheProvider.SetBFRecipe(ctx, desc.Digest, des)
 	elapsed = time.Since(start)
-	fmt.Println("NANNAN: layer recipe update time: %.3f, %v", elapsed.Seconds(), dgst)
+	fmt.Println("NANNAN: layer recipe update time: %.3f, %v", elapsed.Seconds(), blobPath)
 
 	if err != nil {
 		return err
