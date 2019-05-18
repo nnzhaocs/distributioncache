@@ -306,13 +306,13 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 	fmt.Println("NANNAN: slice compression time: %.3f, %v", elapsed.Seconds(), dgst)
 
 	defer data.Close()
-	newtardir := path.Join("/var/lib/registry", "/docker/registry/v2/pull_tmp_tarfile")
+	newtardir := path.Join("/var/lib/registry", "/docker/registry/v2/pull_tars/pull_tmp_tarfile")
 	if os.MkdirAll(newtardir, 0666) != nil {
 		context.GetLogger(ctx).Errorf("NANNAN: ServeBlob <COMPRESS create dir for tarfile> %s, ", err)
 		return err
 	}
 
-	packFile, err := os.Create(path.Join("/var/lib/registry", "/docker/registry/v2/pull_tmp_tarfile", tmp_dir)) //path.Join(parentDir, "tmp_tar.tar.gz")))
+	packFile, err := os.Create(path.Join("/var/lib/registry", "/docker/registry/v2/pull_tars/pull_tmp_tarfile", tmp_dir)) //path.Join(parentDir, "tmp_tar.tar.gz")))
 	if err != nil {
 		context.GetLogger(ctx).Errorf("NANNAN: %s, ", err)
 		return err
@@ -369,7 +369,7 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 	fmt.Println("NANNAN: slice network transfer time: %.3f, %v", elapsed.Seconds(), dgst)
 	//delete tmp_dir and packFile here
 	
-	if err = os.RemoveAll(path.Join("/var/lib/registry", "/docker/registry/v2/pull_tmp_tarfile", tmp_dir)); err != nil {
+	if err = os.RemoveAll(path.Join("/var/lib/registry", "/docker/registry/v2/pull_tars/pull_tmp_tarfile", tmp_dir)); err != nil {
 		context.GetLogger(ctx).Errorf("NANNAN: cannot remove all file in: %s: %s",
 			path.Join("/var/lib/registry", "/docker/registry/v2/pull_tmp_tarfile", tmp_dir), err)
 		return err
