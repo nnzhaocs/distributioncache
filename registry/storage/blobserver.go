@@ -221,17 +221,17 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 		context.GetLogger(ctx).Debug("NANNAN: PrepareForward: the gid for this goroutine: =>%", tmp_dir)
 	}*/
 
-	blobPath, err := PathFor(BlobDataPathSpec{
-		Digest: _desc.Digest,
-	})
+	//	blobPath, err := PathFor(BlobDataPathSpec{
+	//		Digest: _desc.Digest,
+	//	})
 	//	context.GetLogger(ctx).Debugf("NANNAN: blob = %v:%v", blobPath, _desc.Digest)
 
-	layerPath := blobPath
+	//layerPath := blobPath
 
 	//	context.GetLogger(ctx).Debug("NANNAN: START RESTORING FROM :=>%s", layerPath)
 
-	parentDir := path.Dir(layerPath)
-//	packPath := path.Join(parentDir, tmp_dir) // /var/lib/registry/pull_tars/
+	//parentDir := path.Dir(layerPath)
+	//	packPath := path.Join(parentDir, tmp_dir) // /var/lib/registry/pull_tars/
 	packPath := path.Join("/var/lib/registry", "/docker/registry/v2/pull_tars/pull_tarfiles")
 	//	context.GetLogger(ctx).Debug("NANNAN GET: %v", desc)
 
