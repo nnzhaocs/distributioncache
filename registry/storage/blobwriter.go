@@ -563,9 +563,16 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) e
 	var bfdescriptors []distribution.BFDescriptor
 	var serverIps []string
 	serverForwardMap := make(map[string][]string)
+	
+	rr, err := roundrobin.New(servers)
+	if err != nil {
+		panic(err)
+	}
+	
 	start = time.Now()
 	err = filepath.Walk(unpackPath, bw.CheckDuplicate(ctx, bw.blobStore.registry.serverIp, desc, bw.blobStore.registry.fileDescriptorCacheProvider,
 		&bfdescriptors,
+		rr,
 		&serverIps,
 		serverForwardMap))
 	elapsed = time.Since(start)
@@ -618,11 +625,11 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) e
 /*
 NANNAN check dedup
  Metrics: lock
-
 */
 
 func (bw *blobWriter) CheckDuplicate(ctx context.Context, serverIp string, desc distribution.Descriptor, db cache.FileDescriptorCacheProvider,
 	bfdescriptors *[]distribution.BFDescriptor,
+	rr roundrobin.RoundRobin,
 	serverIps *[]string,
 	serverForwardMap map[string][]string) filepath.WalkFunc {
 	//	totalFiles := 0
@@ -721,7 +728,7 @@ func (bw *blobWriter) CheckDuplicate(ctx context.Context, serverIp string, desc 
 
 		fpath = reFPath
 		//serverForwardMap := make(map[string][]string)
-		server := bw.blobStore.registry.blobServer.ring.Next().Hostname()
+		server := rr.Next().Hostname()
 		context.GetLogger(ctx).Debug("NANNAN: file: %v (%v) will be forwarded to server (%v): %v", dgst.String(), reFPath, server)
 		//	var desc distribution.FileDescriptor
 		//make map of []

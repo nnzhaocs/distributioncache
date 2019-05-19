@@ -17,7 +17,7 @@ import (
 	"os"
 	"path"
 	"regexp"
-	"runtime"
+	//"runtime"
 
 	storagecache "github.com/docker/distribution/registry/storage/cache"
 	"github.com/docker/docker/pkg/archive"
@@ -40,7 +40,8 @@ type blobServer struct {
 	statter distribution.BlobStatter
 
 	//NANNAN: add a fileDescriptorCacheProvider for restore
-	ring                        roundrobin.RoundRobin
+	servers []*url.URL
+//	ring                        roundrobin.RoundRobin
 	fileDescriptorCacheProvider storagecache.FileDescriptorCacheProvider
 	serverIp                    string
 	pathFn                      func(dgst digest.Digest) (string, error)
@@ -221,17 +222,17 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 		context.GetLogger(ctx).Debug("NANNAN: PrepareForward: the gid for this goroutine: =>%", tmp_dir)
 	}*/
 
-	blobPath, err := PathFor(BlobDataPathSpec{
-		Digest: _desc.Digest,
-	})
+	//	blobPath, err := PathFor(BlobDataPathSpec{
+	//		Digest: _desc.Digest,
+	//	})
 	//	context.GetLogger(ctx).Debugf("NANNAN: blob = %v:%v", blobPath, _desc.Digest)
 
-	layerPath := blobPath
+	//layerPath := blobPath
 
 	//	context.GetLogger(ctx).Debug("NANNAN: START RESTORING FROM :=>%s", layerPath)
 
-	parentDir := path.Dir(layerPath)
-//	packPath := path.Join(parentDir, tmp_dir) // /var/lib/registry/pull_tars/
+	//parentDir := path.Dir(layerPath)
+	//	packPath := path.Join(parentDir, tmp_dir) // /var/lib/registry/pull_tars/
 	packPath := path.Join("/var/lib/registry", "/docker/registry/v2/pull_tars/pull_tarfiles")
 	//	context.GetLogger(ctx).Debug("NANNAN GET: %v", desc)
 
@@ -326,13 +327,13 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 		return err
 	}
 
-	path, err := bs.pathFn(_desc.Digest)
+	path_old, err := bs.pathFn(_desc.Digest)
 	if err != nil {
 		return err
 	}
 
 	if bs.redirect {
-		redirectURL, err := bs.driver.URLFor(ctx, path, map[string]interface{}{"method": r.Method})
+		redirectURL, err := bs.driver.URLFor(ctx, path_old, map[string]interface{}{"method": r.Method})
 		switch err.(type) {
 		case nil:
 			// Redirect to storage URL.
@@ -369,13 +370,13 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 	fmt.Println("NANNAN: slice network transfer time: %.3f, %v", elapsed.Seconds(), dgst)
 	//delete tmp_dir and packFile here
 	
-	if err = os.RemoveAll(path.Join("/var/lib/registry", "/docker/registry/v2/pull_tars/pull_tmp_tarfile", tmp_dir)); err != nil {
-		context.GetLogger(ctx).Errorf("NANNAN: cannot remove all file in: %s: %s",
-			path.Join("/var/lib/registry", "/docker/registry/v2/pull_tmp_tarfile", tmp_dir), err)
-		return err
-	}
+//	if err = os.RemoveAll(path.Join("/var/lib/registry", "/docker/registry/v2/pull_tars/pull_tmp_tarfile", tmp_dir)); err != nil {
+//		context.GetLogger(ctx).Errorf("NANNAN: cannot remove all file in: %s: %s",
+//			path.Join("/var/lib/registry", "/docker/registry/v2/pull_tmp_tarfile", tmp_dir), err)
+//		return err
+//	}
 	//packpath
-	
+
 	if err = os.RemoveAll(packpath); err != nil {
 		context.GetLogger(ctx).Errorf("NANNAN: cannot remove all file in packpath: %s: %s",
 			packpath, err)

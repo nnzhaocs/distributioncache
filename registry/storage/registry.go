@@ -189,10 +189,6 @@ func NewRegistry(ctx context.Context, serverIp string, servers []*url.URL, drive
 		statter: statter,
 	}
 
-	rr, err := roundrobin.New(servers)
-	if err != nil {
-		panic(err)
-	}
 	registry := &registry{
 		blobStore: bs,
 		blobServer: &blobServer{
@@ -201,7 +197,7 @@ func NewRegistry(ctx context.Context, serverIp string, servers []*url.URL, drive
 			pathFn:   bs.path,
 			cache:    new(blobcache.MemCache),
 			serverIp: serverIp,
-			ring:     rr,
+			servers:     servers,
 			//			filecache:
 		},
 		statter:                statter,
