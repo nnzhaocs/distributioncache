@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strings"
 	//	log "github.com/Sirupsen/logrus"
 	"github.com/docker/distribution"
@@ -26,8 +27,7 @@ import (
 	"math/rand"
 	//"strconv"
 	"time"
-
-	roundrobin "github.com/hlts2/round-robin"
+	//roundrobin "github.com/hlts2/round-robin"
 )
 
 // TODO(stevvooe): This should configurable in the future.
@@ -41,7 +41,7 @@ type blobServer struct {
 
 	//NANNAN: add a fileDescriptorCacheProvider for restore
 	servers []*url.URL
-//	ring                        roundrobin.RoundRobin
+	//	ring                        roundrobin.RoundRobin
 	fileDescriptorCacheProvider storagecache.FileDescriptorCacheProvider
 	serverIp                    string
 	pathFn                      func(dgst digest.Digest) (string, error)
@@ -369,12 +369,12 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 	elapsed = time.Since(start)
 	fmt.Println("NANNAN: slice network transfer time: %.3f, %v", elapsed.Seconds(), dgst)
 	//delete tmp_dir and packFile here
-	
-//	if err = os.RemoveAll(path.Join("/var/lib/registry", "/docker/registry/v2/pull_tars/pull_tmp_tarfile", tmp_dir)); err != nil {
-//		context.GetLogger(ctx).Errorf("NANNAN: cannot remove all file in: %s: %s",
-//			path.Join("/var/lib/registry", "/docker/registry/v2/pull_tmp_tarfile", tmp_dir), err)
-//		return err
-//	}
+
+	//	if err = os.RemoveAll(path.Join("/var/lib/registry", "/docker/registry/v2/pull_tars/pull_tmp_tarfile", tmp_dir)); err != nil {
+	//		context.GetLogger(ctx).Errorf("NANNAN: cannot remove all file in: %s: %s",
+	//			path.Join("/var/lib/registry", "/docker/registry/v2/pull_tmp_tarfile", tmp_dir), err)
+	//		return err
+	//	}
 	//packpath
 
 	if err = os.RemoveAll(packpath); err != nil {

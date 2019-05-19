@@ -29,8 +29,8 @@ import (
 	//"regexp"
 	"math/rand"
 	//"strconv"
-
 	redisgo "github.com/go-redis/redis"
+	roundrobin "github.com/hlts2/round-robin"
 )
 
 //NANNAN: TODO LIST
@@ -563,12 +563,12 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) e
 	var bfdescriptors []distribution.BFDescriptor
 	var serverIps []string
 	serverForwardMap := make(map[string][]string)
-	
-	rr, err := roundrobin.New(servers)
+
+	rr, err := roundrobin.New(bw.blobStore.registry.blobServer.servers)
 	if err != nil {
 		panic(err)
 	}
-	
+
 	start = time.Now()
 	err = filepath.Walk(unpackPath, bw.CheckDuplicate(ctx, bw.blobStore.registry.serverIp, desc, bw.blobStore.registry.fileDescriptorCacheProvider,
 		&bfdescriptors,

@@ -13,7 +13,7 @@ import (
 	storagedriver "github.com/docker/distribution/registry/storage/driver"
 	blobcache "github.com/docker/distribution/registry/storage/driver/cache"
 	"github.com/docker/libtrust"
-	roundrobin "github.com/hlts2/round-robin"
+	//roundrobin "github.com/hlts2/round-robin"
 	//nannan
 	//	"github.com/serialx/hashring"
 	"net/url"
@@ -197,7 +197,7 @@ func NewRegistry(ctx context.Context, serverIp string, servers []*url.URL, drive
 			pathFn:   bs.path,
 			cache:    new(blobcache.MemCache),
 			serverIp: serverIp,
-			servers:     servers,
+			servers:  servers,
 			//			filecache:
 		},
 		statter:                statter,
