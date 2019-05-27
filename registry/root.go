@@ -10,6 +10,7 @@ import (
 	"github.com/docker/distribution/version"
 	"github.com/docker/libtrust"
 	"github.com/spf13/cobra"
+	"net/url"
 )
 
 var showVersion bool
@@ -68,8 +69,8 @@ var GCCmd = &cobra.Command{
 			fmt.Fprint(os.Stderr, err)
 			os.Exit(1)
 		}
-
-		registry, err := storage.NewRegistry(ctx, "127.0.0.1", driver, storage.Schema1SigningKey(k))
+		registrylist := []*url.URL{&url.URL{Host: "127.0.0.1"}}
+		registry, err := storage.NewRegistry(ctx, "127.0.0.1", registrylist, driver, storage.Schema1SigningKey(k))
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "failed to construct registry: %v", err)
 			os.Exit(1)

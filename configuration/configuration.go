@@ -542,7 +542,8 @@ type Notifications struct {
 	// Endpoints is a list of http configurations for endpoints that
 	// respond to webhook notifications. In the future, we may allow other
 	// kinds of endpoints, such as external queues.
-	Endpoints []Endpoint `yaml:"endpoints,omitempty"`
+	Endpoints  []Endpoint `yaml:"endpoints,omitempty"`
+	Registries []string
 }
 
 // Endpoint describes the configuration of an http webhook notification

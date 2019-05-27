@@ -5,28 +5,32 @@ import (
 	"fmt"
 	"io"
 	"path"
-	"time"
 	"strings"
+	"time"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/docker/distribution"
 	"github.com/docker/distribution/context"
 	storagedriver "github.com/docker/distribution/registry/storage/driver"
 	"github.com/opencontainers/go-digest"
-//NANNAN	
+	//NANNAN
+	"os"
+	"path/filepath"
+	"sync"
+
+	"github.com/docker/distribution/registry/storage/cache"
 	"github.com/docker/docker/pkg/archive"
 	"github.com/docker/docker/pkg/idtools"
-	"path/filepath"
-	"github.com/docker/distribution/registry/storage/cache"
-	"os"
-	"sync"
 	//"path/filepath"
-//	"github.com/serialx/hashring"
-	"io/ioutil"
+	//	"github.com/serialx/hashring"
 	"bytes"
+	"io/ioutil"
 	"net/http"
 	//"regexp"
-	redisgo"github.com/go-redis/redis"
+	"math/rand"
+	//"strconv"
+	redisgo "github.com/go-redis/redis"
+	roundrobin "github.com/hlts2/round-robin"
 )
 
 //NANNAN: TODO LIST
@@ -35,7 +39,7 @@ import (
 var (
 	errResumableDigestNotAvailable = errors.New("resumable digest not available")
 	//NANNAN
-	algorithm   = digest.Canonical
+	algorithm = digest.Canonical
 )
 
 const (
@@ -113,54 +117,57 @@ func (bw *blobWriter) Commit(ctx context.Context, desc distribution.Descriptor) 
 
 //NANNAN: utility function. to remove duplicate ips from serverips
 func RemoveDuplicateIpsFromIps(s []string) []string {
-      m := make(map[string]bool)
-      for _, item := range s {
-              if _, ok := m[item]; ok {
-                      // duplicate item
-                      fmt.Println(item, "is a duplicate")
-              } else {
-                      m[item] = true
-              }
-      }
+	m := make(map[string]bool)
+	for _, item := range s {
+		if _, ok := m[item]; ok {
+			// duplicate item
+			fmt.Println(item, "is a duplicate")
+		} else {
+			m[item] = true
+		}
+	}
 
-      var result []string
-      for item, _ := range m {
-              result = append(result, item)
-      }
-      return result
+	var result []string
+	for item, _ := range m {
+		result = append(result, item)
+	}
+	return result
 }
 
-type Pair struct{
-	first string
+func GetGID() float64 {
+	s1 := rand.NewSource(time.Now().UnixNano())
+	r1 := rand.New(s1)
+	return r1.Float64()
+}
+
+type Pair struct {
+	first  string
 	second string
 }
 
-
 /*
-This function is used to forward put requests on to other registries 
+This function is used to forward put requests on to other registries
 
-DEBU[0021] authorizing request                           go.version=go1.12 http.request.host="localhost:5000" 
-http.request.id=d8119314-5400-4477-bee9-ca4f2d808d52 
-http.request.method=PUT http.request.remoteaddr="172.17.0.1:55964" 
-http.request.uri="/v2/nnzhaocs/hello-world/blobs/uploads/736b54f9-38cb-4498-904c-a28b684c1a1c?_state=4zFr9emRBkO_Ij5iKV4y8GEtYwEpsMD3Z-M3x31jbRF7Ik5hbWUiOiJubnpoYW9jcy9oZWxsby13b3JsZCIsIlVVSUQiOiI3MzZiNTRmOS0zOGNiLTQ0OTgtOTA0Yy1hMjhiNjg0YzFhMWMiLCJPZmZzZXQiOjk3NywiU3RhcnRlZEF0IjoiMjAxOS0wNC0xNVQwMjoyODoxNloifQ%3D%3D&digest=sha256%3A1b930d010525941c1d56ec53b97bd057a67ae1865eebf042686d2a2d18271ced" 
+DEBU[0021] authorizing request                           go.version=go1.12 http.request.host="localhost:5000"
+http.request.id=d8119314-5400-4477-bee9-ca4f2d808d52
+http.request.method=PUT http.request.remoteaddr="172.17.0.1:55964"
+http.request.uri="/v2/nnzhaocs/hello-world/blobs/uploads/736b54f9-38cb-4498-904c-a28b684c1a1c?_state=4zFr9emRBkO_Ij5iKV4y8GEtYwEpsMD3Z-M3x31jbRF7Ik5hbWUiOiJubnpoYW9jcy9oZWxsby13b3JsZCIsIlVVSUQiOiI3MzZiNTRmOS0zOGNiLTQ0OTgtOTA0Yy1hMjhiNjg0YzFhMWMiLCJPZmZzZXQiOjk3NywiU3RhcnRlZEF0IjoiMjAxOS0wNC0xNVQwMjoyODoxNloifQ%3D%3D&digest=sha256%3A1b930d010525941c1d56ec53b97bd057a67ae1865eebf042686d2a2d18271ced"
 http.request.useragent="docker/18.09.3 go/go1.10.8 git-commit/774a1f4 kernel/3.10.0-693.11.6.el7_lustre.x86_64 os/linux arch/amd64 UpstreamClient(Docker-Client/18.09.3 \\(linux\\))" vars.name="nnzhaocs/hello-world" vars.uuid=736b54f9-38cb-4498-904c-a28b684c1a1c
 
-ERRO[0109] response completed with error                 
-err.code="digest invalid" err.detail="digest parsing failed" 
-err.message="provided digest did not match uploaded content" go.version=go1.12 http.request.host="192.168.0.215:5000" 
-http.request.id=4af0c21c-315e-42f9-b04d-a99f0a6e6eac 
-http.request.method=PUT http.request.remoteaddr="192.168.0.210:48070" 
-http.request.uri="/v2/forward_repo/blobs/uploads/d8a15122-8119-4290-a100-bd6ccd4ce747?_state=8Jv7qNOl5I8kKqVzT3sst5mCBPTBdu8kH8v2Wzhvt6N7Ik5hbWUiOiJmb3J3YXJkX3JlcG8iLCJVVUlEIjoiZDhhMTUxMjItODExOS00MjkwLWExMDAtYmQ2Y2NkNGNlNzQ3IiwiT2Zmc2V0IjowLCJTdGFydGVkQXQiOiIyMDE5LTA0LTE1VDAyOjI4OjE2LjA5NTIzNTI2N1oifQ%3D%3D&digest=sha256%3Asha256:729a6da29d6e10228688fc0cf3e943068b459ef6f168afbbd2d3d44ee0f2fd01" 
-http.request.useragent="Go-http-client/1.1" http.response.contenttype="application/json; charset=utf-8" http.response.duration=9.048157ms 
+ERRO[0109] response completed with error
+err.code="digest invalid" err.detail="digest parsing failed"
+err.message="provided digest did not match uploaded content" go.version=go1.12 http.request.host="192.168.0.215:5000"
+http.request.id=4af0c21c-315e-42f9-b04d-a99f0a6e6eac
+http.request.method=PUT http.request.remoteaddr="192.168.0.210:48070"
+http.request.uri="/v2/forward_repo/blobs/uploads/d8a15122-8119-4290-a100-bd6ccd4ce747?_state=8Jv7qNOl5I8kKqVzT3sst5mCBPTBdu8kH8v2Wzhvt6N7Ik5hbWUiOiJmb3J3YXJkX3JlcG8iLCJVVUlEIjoiZDhhMTUxMjItODExOS00MjkwLWExMDAtYmQ2Y2NkNGNlNzQ3IiwiT2Zmc2V0IjowLCJTdGFydGVkQXQiOiIyMDE5LTA0LTE1VDAyOjI4OjE2LjA5NTIzNTI2N1oifQ%3D%3D&digest=sha256%3Asha256:729a6da29d6e10228688fc0cf3e943068b459ef6f168afbbd2d3d44ee0f2fd01"
+http.request.useragent="Go-http-client/1.1" http.response.contenttype="application/json; charset=utf-8" http.response.duration=9.048157ms
 http.response.status=400 http.response.written=131 vars.name="forward_repo" vars.uuid=d8a15122-8119-4290-a100-bd6ccd4ce747
-
-
 */
 func (bw *blobWriter) ForwardToRegistry(ctx context.Context, fpath string, wg *sync.WaitGroup) error {
-	
+
 	defer wg.Done()
-	
-	regname := filepath.Base(strings.SplitN(fpath, "mv_tar.tar.g", 2)[0]) 
+
+	regname := filepath.Base(filepath.Dir(fpath))
 	var regnamebuffer bytes.Buffer
 	regnamebuffer.WriteString(regname)
 	regnamebuffer.WriteString(":5000")
@@ -171,15 +178,15 @@ func (bw *blobWriter) ForwardToRegistry(ctx context.Context, fpath string, wg *s
 	buffer.WriteString("http://")
 	buffer.WriteString(regname)
 	buffer.WriteString("/v2/test_repo/blobs/sha256:")
-	
-	fp, err := os.Open(fpath) 
+
+	fp, err := os.Open(fpath)
 	if err != nil {
 		context.GetLogger(ctx).Errorf("NANNAN: ForwardToRegistry %s", err)
 		return nil
 	}
-	
+
 	defer fp.Close()
-	
+
 	digestFn := algorithm.FromReader
 	dgst, err := digestFn(fp)
 	if err != nil {
@@ -192,18 +199,11 @@ func (bw *blobWriter) ForwardToRegistry(ctx context.Context, fpath string, wg *s
 
 	buffer.WriteString(dgststring)
 	url := buffer.String()
-	
+
 	context.GetLogger(ctx).Debug("NANNAN: ForwardToRegistry URL %s", url)
 
-//let's skip head request
-	//Send Get Request
-//	head, err := http.Head(url)
-//	if err != nil {
-//		return err
-//	}
-//	
-//	head.Body.Close()
-//	if head.StatusCode == 404 {
+	//let's skip head request
+
 	buffer.Reset()
 	buffer.WriteString("http://")
 	buffer.WriteString(regname)
@@ -251,19 +251,20 @@ func (bw *blobWriter) ForwardToRegistry(ctx context.Context, fpath string, wg *s
 		return errors.New("put unique files to other servers, failed")
 	}
 	put.Body.Close()
-	
+
 	context.GetLogger(ctx).Debug("NANNAN: ForwardToRegistry remove files %s", url)
-	
-	if err = os.Remove(fpath); err != nil{
+
+	//remove or not to remove? no diff
+	if err = os.Remove(fpath); err != nil {
 		context.GetLogger(ctx).Errorf("NANNAN: cannot remove fpath %s: %s", fpath, err)
 		return err
 	}
-	if err = os.RemoveAll(path.Join(path.Dir(fpath),"tmp_dir")); err != nil{
-		context.GetLogger(ctx).Errorf("NANNAN: cannot remove NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL: %s", err)
-		return err	
+	tmp_dir := filepath.Base(fpath)
+	if err = os.RemoveAll(path.Join("/var/lib/registry", "/docker/registry/v2/mv_tmp_serverfiles", regname, tmp_dir)); err != nil {
+		context.GetLogger(ctx).Errorf("NANNAN: cannot remove all file in NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL: %s: %s",
+			path.Join("/var/lib/registry", "/docker/registry/v2/mv_tmp_serverfiles", regname, tmp_dir), err)
+		return err
 	}
-
-//	}
 
 	return nil
 }
@@ -277,7 +278,7 @@ func (bw *blobWriter) ForwardToRegistry(ctx context.Context, fpath string, wg *s
 // 1b930d010525941c1d56ec53b97bd057a67ae1865eebf042686d2a2d18271ced/diff/8b6566f585bad55b6fb9efb1dc1b6532fd08bb1796b4b42a3050aacb961f1f3f"
 // THEN, compress as gizp files "/var/lib/registry/docker/registry/v2/mv_tmp_serverfiles/192.168.0.200/mv_tar.tar.gz"
 
-func (bw *blobWriter)PrepareForward(ctx context.Context, serverForwardMap map[string][]string) ([]string, error){
+func (bw *blobWriter) PrepareForward(ctx context.Context, serverForwardMap map[string][]string, gid float64) ([]string, error) {
 	var serverFiles []Pair
 	limChan := make(chan bool, len(serverForwardMap))
 	defer close(limChan)
@@ -285,120 +286,123 @@ func (bw *blobWriter)PrepareForward(ctx context.Context, serverForwardMap map[st
 	for i := 0; i < len(serverForwardMap); i++ {
 		limChan <- true
 	}
-//	mvtarpathall := path.Join("/var/lib/registry", server)
-	for server, fpathlst := range serverForwardMap{
+	//	mvtarpathall := path.Join("/var/lib/registry", server)
+	for server, fpathlst := range serverForwardMap {
 		context.GetLogger(ctx).Debug("NANNAN: serverForwardMap: [%s]=>%", server, fpathlst)
-		for _, fpath := range fpathlst{
+		for _, fpath := range fpathlst {
 			sftmp := Pair{
-				first: server,
+				first:  server,
 				second: fpath,
-	//			DigestFilePath: dfp,
-	//			ServerIp: server,//serverIp,
 			}
 			serverFiles = append(serverFiles, sftmp)
-		}	
+		}
 	}
-	
-	for _, sftmp := range serverFiles{
+
+	tmp_dir := fmt.Sprintf("%f", gid)
+	context.GetLogger(ctx).Debug("NANNAN: PrepareForward: the gid for this goroutine: =>%", tmp_dir)
+
+	for _, sftmp := range serverFiles {
 		<-limChan
-		go func(sftmp Pair){
+		go func(sftmp Pair) {
 			server := sftmp.first
 //			context.GetLogger(ctx).Debug("NANNAN: PrepareForward: cping files to server [%s]", server)
 			fpath := sftmp.second
-//			reg, err := regexp.Compile("[^a-zA-Z0-9/.-]+")
-			tmpath := path.Join(server, "tmp_dir", "NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL")
-//			tarfpath := reg.ReplaceAllString(strings.SplitN(fpath, "diff", 2)[1], "") 
-//			blobdgst := filepath.Base(strings.SplitN(fpath, "diff", 2)[0])
+			tmpath := path.Join(server, tmp_dir, "NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL")
 			//192.168.210/tmp_dir/NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL/
 			//898c46f3b1a1f39827ed135f020c32e2038c87ae0690a8fe73d94e5df9e6a2d6/
 			//diff/bin/1c48ade64b96409e6773d2c5c771f3b3c5acec65a15980d8dca6b1efd3f95969
 			withtmptarfpath := path.Join(tmpath, strings.TrimPrefix(fpath, "/var/lib/registry"))
 //			context.GetLogger(ctx).Debug("NANNAN: withtmptarfpath: [%v]", withtmptarfpath)
-			
+
 			destfpath := path.Join("/docker/registry/v2/mv_tmp_serverfiles/", withtmptarfpath)
 //			context.GetLogger(ctx).Debug("NANNAN: PrepareForward: cping files to server [%s], destfpath: [%s]", server, destfpath)
-			
-			contents, err := bw.driver.GetContent(ctx, strings.TrimPrefix(fpath, "/var/lib/registry")) 
+
+			contents, err := bw.driver.GetContent(ctx, strings.TrimPrefix(fpath, "/var/lib/registry"))
 			if err != nil {
 				context.GetLogger(ctx).Errorf("NANNAN: CANNOT READ File FOR SENDING TO OTHER SERVER %s, ", err)
-				limChan <- true
-			}else{
+			} else {
 				err = bw.driver.PutContent(ctx, destfpath, contents)
 				if err != nil {
 					context.GetLogger(ctx).Errorf("NANNAN: CANNOT WRITE FILE TO DES DIR FOR SENDING TO OTHER SERVER %s, ", err)
-						limChan <- true
-					}else{
-						limChan <- true
-					}
+				}
+				//delete the old one
+				err = bw.driver.Delete(ctx, strings.TrimPrefix(fpath, "/var/lib/registry"))
+				if err != nil {
+					context.GetLogger(ctx).Errorf("NANNAN: CANNOT DELETE THE ORGINIAL File FOR SENDING TO OTHER SERVER %s, ", err)
+				}
 			}
-		}(sftmp)		
-	} 
+			limChan <- true
+		}(sftmp)
+	}
 	// leave the errChan
-	for i := 0; i < cap(limChan); i++{
-		<-limChan 
-		context.GetLogger(ctx).Debug("NANNAN: FORWARD <copy files> [%d th] goroutine is joined ", i) 
+	for i := 0; i < cap(limChan); i++ {
+		<-limChan
+		context.GetLogger(ctx).Debug("NANNAN: FORWARD <copy files> [%d th] goroutine is joined ", i)
 	}
 	// all goroutines finished here
-	
+
 	context.GetLogger(ctx).Debug("NANNAN: FORWARD <copy files> all goroutines finished here") // not locally available
-	
+
 	for i := 0; i < len(serverForwardMap); i++ {
 		limChan <- true
 	}
-	
+
 	tarpathChan := make(chan string, len(serverForwardMap))
 	errChan := make(chan error, len(serverForwardMap))
 	defer close(tarpathChan)
 	defer close(errChan)
 	context.GetLogger(ctx).Debug("NANNAN: PrepareCompress: [len(serverForwardMap)]=>%d", len(serverForwardMap))
-	for server, _ := range serverForwardMap{
+	for server, _ := range serverForwardMap {
 		<-limChan
 		context.GetLogger(ctx).Debug("NANNAN: PrepareCompress: compress files before sending to server [%s] ", server)
-		go func(server string){
-//			//tmpath := path.Join(server, "tmp_dir")
-			packpath := path.Join("/var/lib/registry", "/docker/registry/v2/mv_tmp_serverfiles", server, "tmp_dir")
+		go func(server string) {
+			packpath := path.Join("/var/lib/registry", "/docker/registry/v2/mv_tmp_serverfiles", server, tmp_dir) //tmp_dir is with gid
 			context.GetLogger(ctx).Debug("NANNAN: PrepareCompress <COMPRESS> packpath: %s", packpath)
-			
+
 			data, err := archive.Tar(packpath, archive.Gzip)
 			if err != nil {
 				//TODO: process manifest file
 				context.GetLogger(ctx).Errorf("NANNAN: Compress <COMPRESS tar> %s, ", err)
 				errChan <- err
-			}else{
-			
+			} else {
 				defer data.Close()
-				
-				packFile, err := os.Create(path.Join("/var/lib/registry", "/docker/registry/v2/mv_tmp_serverfiles", server, "mv_tar.tar.gz"))
-				if err != nil{
-					context.GetLogger(ctx).Errorf("NANNAN: PrepareCopy <COMPRESS create file> %s, ", err)
+				newtardir := path.Join("/var/lib/registry", "/docker/registry/v2/mv_tmp_servertars", server)
+				if os.MkdirAll(newtardir, 0666) != nil {
+					context.GetLogger(ctx).Errorf("NANNAN: PrepareCopy <COMPRESS create dir for tarfile> %s, ", err)
 					errChan <- err
-				}else{
-				
-					defer packFile.Close()
-					
-					_, err := io.Copy(packFile, data)
-					if err != nil{
-						context.GetLogger(ctx).Errorf("NANNAN: Copy compress file <COMPRESS copy to desfile> %s, ", err)
+				} else {
+					packFile, err := os.Create(path.Join("/var/lib/registry", "/docker/registry/v2/mv_tmp_servertars", server, tmp_dir)) // added a tmp_dir
+					if err != nil {
+						context.GetLogger(ctx).Errorf("NANNAN: PrepareCopy <COMPRESS create file> %s, ", err)
 						errChan <- err
-					}else{
-						tarpathChan <- packFile.Name()
+					} else {
+
+						defer packFile.Close()
+
+						_, err := io.Copy(packFile, data)
+						if err != nil {
+							context.GetLogger(ctx).Errorf("NANNAN: Copy compress file <COMPRESS copy to desfile> %s, ", err)
+							errChan <- err
+						} else {
+							tarpathChan <- packFile.Name()
+						}
 					}
 				}
 			}
-			limChan <- true 
+			limChan <- true
 		}(server)
 	}
-	
+
 	mvtarpaths := []string{}
-	for{
-		select{
-			case err := <-errChan:
-				return []string{}, err
-			case res := <-tarpathChan:
-				mvtarpaths = append(mvtarpaths, res)
+	for {
+		select {
+		case err := <-errChan:
+			return []string{}, err
+		case res := <-tarpathChan:
+			mvtarpaths = append(mvtarpaths, res)
 		}
-		
-		if len(serverForwardMap) == len(mvtarpaths){
+
+		if len(serverForwardMap) == len(mvtarpaths) {
 			break
 		}
 	}
@@ -424,30 +428,25 @@ NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL/docker/registry/v2/blobs/sha256/1b/
 NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL/docker/registry/v2/blobs/sha256/1b/
 1b930d010525941c1d56ec53b97bd057a67ae1865eebf042686d2a2d18271ced/diff/
 8b6566f585bad55b6fb9efb1dc1b6532fd08bb1796b4b42a3050aacb961f1f3f
- 
 */
 
-func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) (error) {
-	
+func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) error {
+
 	context.GetLogger(ctx).Debug("NANNAN: (*blobWriter).Dedup")
 
 	blobPath, err := PathFor(BlobDataPathSpec{
 		Digest: desc.Digest,
 	})
 	context.GetLogger(ctx).Debugf("NANNAN: blob = %v:%v", blobPath, desc.Digest)
-	
+
 	_, err = bw.blobStore.registry.fileDescriptorCacheProvider.StatBFRecipe(ctx, desc.Digest)
-	if err == nil{
+	if err == nil {
 		context.GetLogger(ctx).Debug("NANNAN: THIS LAYER TARBALL ALREADY DEDUPED :=>%v", desc.Digest)
 		return nil
 	}
-	
-	//DedupLayersFromPath(blobPath)
-	//log.Warnf("IBM: HTTP GET: %s", dgst)
-	//WithField("digest", desc.Digest).Warnf("attempted to move zero-length content with non-zero digest")
-	
+
 	layerPath := path.Join("/var/lib/registry", blobPath)
-	
+
 	context.GetLogger(ctx).Debug("NANNAN: START DEDUPLICATION FROM PATH :=>%s", layerPath)
 
 	parentDir := path.Dir(layerPath)
@@ -465,134 +464,141 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) (
 		context.GetLogger(ctx).Errorf("NANNAN: %s", err)
 		return err
 	}
-
+	start := time.Now()
 	err = archiver.UntarPath(layerPath, unpackPath)
+	elapsed := time.Since(start)
+	fmt.Println("NANNAN: gzip decompression time: %.3f, %v", elapsed.Seconds(), blobPath)
+
 	if err != nil {
 		//TODO: process manifest file
 		context.GetLogger(ctx).Errorf("NANNAN: %s, This may be a manifest file", err)
 		return err
 	}
-	
+
+	gid := GetGID()
+	//later check ..................
 	// check if we need to dedup this tarball
 	files, err := ioutil.ReadDir(unpackPath)
-	if err != nil{
+	if err != nil {
 		context.GetLogger(ctx).Errorf("NANNAN: %s, cannot read this tar file", err)
 	}
-	for _, f := range files{
+	for _, f := range files {
 		fmatch, _ := path.Match("NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL", f.Name())
-		if fmatch{
+		if fmatch {
 			context.GetLogger(ctx).Debug("NANNAN: NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL ", f.Name())
 			/*
 			 /home/nannan/dockerimages/layers
 			 /docker/registry/v2/blobs/sha256/07/078bb24d9ee4ddf90f349d0b63004d3ac6897dae28dd37cc8ae97a0306e6aa33/
-			 diff/NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL/docker/registry/v2/blobs/sha256/1b/1b930d010525941c1d56ec53b97bd057a67ae1865eebf042686d2a2d18271ced/diff	
+			 diff/NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL/docker/registry/v2/blobs/sha256/1b/1b930d010525941c1d56ec53b97bd057a67ae1865eebf042686d2a2d18271ced/diff
 			*/
-			//move unpackPath to the correct diff dir
-			//newpathname := os.Rename(path.Join(unpackPath, "NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL/docker/registry/v2/"), "/var/lib/registry/docker/registry/v2/")
-			
+
 			files, err := ioutil.ReadDir(path.Join(unpackPath, "NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL/docker/registry/v2/blobs/sha256/"))
 			if err != nil {
-			    context.GetLogger(ctx).Errorf("NANNAN: %s, cannot read this unpackpath file: %s", path.Join(unpackPath, "NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL/docker/registry/v2/blobs/sha256/"), err)
-			    return err
+				context.GetLogger(ctx).Errorf("NANNAN: %s, cannot read this unpackpath file: %s", path.Join(unpackPath, "NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL/docker/registry/v2/blobs/sha256/"), err)
+				return err
 			}
 			for _, f := range files {
 				context.GetLogger(ctx).Debug("NANNAN: find a layer subdir xx: ", f.Name())
-				if _, err := os.Stat(path.Join("/var/lib/registry/docker/registry/v2/blobs/sha256/", f.Name())); err == nil{
+				if _, err := os.Stat(path.Join("/var/lib/registry/docker/registry/v2/blobs/sha256/", f.Name())); err == nil {
 					//path exists
 					//get next level directories
 					fds, err := ioutil.ReadDir(path.Join(unpackPath, "NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL/docker/registry/v2/blobs/sha256/", f.Name()))
-					if err != nil{
+					if err != nil {
 						context.GetLogger(ctx).Errorf("NANNAN: %s, cannot read this unpackpath filepath: %s", path.Join(unpackPath, "NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL/docker/registry/v2/blobs/sha256/", f.Name()), err)
 						return err
 					}
-					for _, fd := range fds{
-						if err = os.Rename(path.Join(unpackPath, "NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL/docker/registry/v2/blobs/sha256/", f.Name(), fd.Name()), 
-							path.Join("/var/lib/registry/docker/registry/v2/blobs/sha256/", f.Name(), fd.Name())); err != nil{
-							context.GetLogger(ctx).Errorf("NANNAN: %s, cannot rename this unpackpath filepath: %s", 
-								path.Join(unpackPath, "NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL/docker/registry/v2/blobs/sha256/", f.Name(),fd.Name()), err)
-							return err
+					for _, fd := range fds {
+						if err = os.Rename(path.Join(unpackPath, "NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL/docker/registry/v2/blobs/sha256/", f.Name(), fd.Name()),
+							path.Join("/var/lib/registry/docker/registry/v2/blobs/sha256/", f.Name(), fd.Name())); err != nil {
+							context.GetLogger(ctx).Errorf("NANNAN: %s, cannot rename this unpackpath filepath: %s, probaly a deuplicate file, Ignore it.",
+								path.Join(unpackPath, "NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL/docker/registry/v2/blobs/sha256/", f.Name(), fd.Name()), err)
+							//return err
 						}
 					}
-					
-				}else{
-					    if err = os.Rename(path.Join(unpackPath, "NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL/docker/registry/v2/blobs/sha256/", f.Name()), 
-							path.Join("/var/lib/registry/docker/registry/v2/blobs/sha256/", f.Name())); err != nil{
-							context.GetLogger(ctx).Errorf("NANNAN: %s, cannot rename this unpackpath filepath: %s", 
-								path.Join(unpackPath, "NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL/docker/registry/v2/blobs/sha256/", f.Name()), err)
-							return err
-						}
+
+				} else {
+					if err = os.Rename(path.Join(unpackPath, "NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL/docker/registry/v2/blobs/sha256/", f.Name()),
+						path.Join("/var/lib/registry/docker/registry/v2/blobs/sha256/", f.Name())); err != nil {
+						context.GetLogger(ctx).Errorf("NANNAN: %s, cannot rename this unpackpath filepath: %s, probaly a deuplicate file, Ignore it",
+							path.Join(unpackPath, "NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL/docker/registry/v2/blobs/sha256/", f.Name()), err)
+						//						return err
+					}
 				}
 			}
 			return nil
 		}
 	}
-	
 
-	
-	var bfdescriptors [] distribution.BFDescriptor
+	var bfdescriptors []distribution.BFDescriptor
 	var serverIps []string
 	serverForwardMap := make(map[string][]string)
-	
-	err = filepath.Walk(unpackPath, bw.CheckDuplicate(ctx, bw.blobStore.registry.serverIp, desc, bw.blobStore.registry.fileDescriptorCacheProvider, 
-			&bfdescriptors, 
-			&serverIps,
-			serverForwardMap))
+
+	rr, err := roundrobin.New(bw.blobStore.registry.blobServer.servers)
+	if err != nil {
+		panic(err)
+	}
+
+	start = time.Now()
+	err = filepath.Walk(unpackPath, bw.CheckDuplicate(ctx, bw.blobStore.registry.serverIp, desc, bw.blobStore.registry.fileDescriptorCacheProvider,
+		&bfdescriptors,
+		rr,
+		&serverIps,
+		serverForwardMap))
+	elapsed = time.Since(start)
+	fmt.Println("NANNAN: digest calculation + file index lookup time: %.3f, %v", elapsed.Seconds(), blobPath)
 	if err != nil {
 		context.GetLogger(ctx).Errorf("NANNAN: %s", err)
 	}
-	
+
 	serverIps = append(serverIps, bw.blobStore.registry.serverIp) //NANNAN add this serverip
-	
+
 	des := distribution.BFRecipeDescriptor{
-		BlobDigest: desc.Digest,
+		BlobDigest:    desc.Digest,
 		BFDescriptors: bfdescriptors,
-		ServerIps: RemoveDuplicateIpsFromIps(serverIps),
+		ServerIps:     RemoveDuplicateIpsFromIps(serverIps),
 	}
 //	context.GetLogger(ctx).Debug("NANNAN: set distribution.BFRecipeDescriptor: %v", des)
+	elapsed = time.Since(start)
 	err = bw.blobStore.registry.fileDescriptorCacheProvider.SetBFRecipe(ctx, desc.Digest, des)
+	elapsed = time.Since(start)
+	fmt.Println("NANNAN: layer recipe update time: %.3f, %v", elapsed.Seconds(), blobPath)
 	if err != nil {
 		return err
 	}
 	// let's do forwarding
 	var wg sync.WaitGroup
-	mvtarpaths, err := bw.PrepareForward(ctx, serverForwardMap)
-	if err != nil{
+	mvtarpaths, err := bw.PrepareForward(ctx, serverForwardMap, gid)
+	if err != nil {
 		return err
 	}
-	
-	if len(mvtarpaths) == 0{
+
+	if len(mvtarpaths) == 0 {
 		return nil
 	}
-	
+
 	context.GetLogger(ctx).Debug("NANNAN: mvtarpaths are %v", mvtarpaths)
-//	ch := make(chan error, len(mvtarpaths))
-	for _, path := range mvtarpaths{
+	for _, path := range mvtarpaths {
 		wg.Add(1)
 		go bw.ForwardToRegistry(ctx, path, &wg) //ForwardToRegistry(ctx context.Context, regname string, path string)
 		go func() {
-	        wg.Wait()
-//	        close(sizes)
-	    }()
+			wg.Wait()
+		}()
 	}
-	
+
 	return err
 }
 
 /*
 NANNAN check dedup
  Metrics: lock
- 
 */
 
-func (bw *blobWriter) CheckDuplicate(ctx context.Context, serverIp string, desc distribution.Descriptor, db cache.FileDescriptorCacheProvider, 
-	bfdescriptors *[] distribution.BFDescriptor, 
-	serverIps *[] string,
+func (bw *blobWriter) CheckDuplicate(ctx context.Context, serverIp string, desc distribution.Descriptor, db cache.FileDescriptorCacheProvider,
+	bfdescriptors *[]distribution.BFDescriptor,
+	rr roundrobin.RoundRobin,
+	serverIps *[]string,
 	serverForwardMap map[string][]string) filepath.WalkFunc {
-//	totalFiles := 0
-//	sameFiles := 0
-//	reguFiles := 0
-//	rmFiles := 0
-	
+
 	return func(fpath string, info os.FileInfo, err error) error {
 //		context.GetLogger(ctx).Debug("NANNAN: START CHECK DUPLICATES :=>")
 
@@ -600,129 +606,96 @@ func (bw *blobWriter) CheckDuplicate(ctx context.Context, serverIp string, desc 
 			context.GetLogger(ctx).Errorf("NANNAN: ", err)
 			return err
 		}
-//		context.GetLogger(ctx).Debug("NANNAN: totalFiles,sameFiles,reguFiles,rmFiles", totalFiles, sameFiles, reguFiles, rmFiles)
-//		if info.IsDir() {
-//			context.GetLogger(ctx).Debug("NANNAN: TODO process directories")
-//			
-//			return nil
-//		}
-		
-		//NANNAN: CHECK file stat, skip symlink and hardlink
-//		totalFiles = totalFiles + 1
-		
-		if ! (info.Mode().IsRegular()){
+
+		if !(info.Mode().IsRegular()) {
 //			context.GetLogger(ctx).Debug("NANNAN: TODO process sysmlink and othrs")
 			return nil
 		}
-		
-//		reguFiles = reguFiles + 1
-			
-		fp, err := os.Open(fpath) 
+
+		fp, err := os.Open(fpath)
 		if err != nil {
 			context.GetLogger(ctx).Errorf("NANNAN: %s", err)
 			return nil
 		}
-		
+
 		defer fp.Close()
-		
+
 		digestFn := algorithm.FromReader
 		dgst, err := digestFn(fp)
 		if err != nil {
 			context.GetLogger(ctx).Errorf("NANNAN: %s: %v", fpath, err)
 			return err
 		}
-		
-		//NANNAN: add file to map	
 
-		// var serverIps []string
 		des, err := db.StatFile(ctx, dgst)
 		if err == nil {
-			// file content already present	
+			// file content already present
 			//first update layer metadata
 			//delete this file
-//			sameFiles = sameFiles + 1
-			//if fpath == des.FilePath{
-			//	context.GetLogger(ctx).Debug("NANNAN: This layer tarball has already deduped: %v!\n", dgst)
-			//	return nil
-			//}
 			err := os.Remove(fpath)
 			if err != nil {
-			  context.GetLogger(ctx).Errorf("NANNAN: %s", err)
-			  return err
+				context.GetLogger(ctx).Errorf("NANNAN: %s", err)
+				return err
 			}
-//			rmFiles = rmFiles + 1
-//			context.GetLogger(ctx).Debug("NANNAN: REMVE file %s", path)
-			
+
 			dfp := des.FilePath
 			bfdescriptor := distribution.BFDescriptor{
-				BlobFilePath: fpath,
-				Digest:    dgst,
+				BlobFilePath:   fpath,
+				Digest:         dgst,
 				DigestFilePath: dfp,
-				ServerIp:	des.ServerIp,
+				ServerIp:       des.ServerIp,
 			}
-			
+
 			*bfdescriptors = append(*bfdescriptors, bfdescriptor)
 			*serverIps = append(*serverIps, des.ServerIp)
-			
+
 			return nil
 		} else if err != redisgo.Nil {
 			context.GetLogger(ctx).Errorf("NANNAN: checkDuplicate: error stating content (%v): %v", dgst, err)
-			// real error, return it
-//			fmt.Println(err)
 			return err
-			//return distribution.Descriptor{}, err	
 		}
-		
+
 		//to avoid invalid filepath, rename the original file to digest //tarfpath := strings.SplitN(dgst.String(), ":", 2)[1]
-		
+
 		reFPath := path.Join(path.Dir(fpath), strings.SplitN(dgst.String(), ":", 2)[1])
 		err = os.Rename(fpath, reFPath)
-		if err != nil{
+		if err != nil {
 			context.GetLogger(ctx).Errorf("NANNAN: fail to rename path (%v): %v", fpath, reFPath)
 			return err
 		}
-		
+
 		fpath = reFPath
-		//serverForwardMap := make(map[string][]string)
-		server, _:= bw.blobStore.registry.blobServer.ring.GetNode(dgst.String())
+		server := rr.Next().Hostname()
 		context.GetLogger(ctx).Debug("NANNAN: file: %v (%v) will be forwarded to server (%v): %v", dgst.String(), reFPath, server)
-	//	var desc distribution.FileDescriptor	
-		//make map of []
-		// need to forward to other servers
-		if server != serverIp{ 
+		if server != serverIp {
 			serverForwardMap[server] = append(serverForwardMap[server], fpath)
 		}
-	
+
 		des = distribution.FileDescriptor{
-			
-	//		Size: int64(len(p)),
-			// NOTE(stevvooe): The central blob store firewalls media types from
-			// other users. The caller should look this up and override the value
-			// for the specific repository.
 			FilePath: fpath,
-			Digest:    dgst,
+			Digest:   dgst,
+			ServerIp: server, //serverIp,
 		}
-		
+
 		err = db.SetFileDescriptor(ctx, dgst, des)
 		if err != nil {
 			return err
 		}
 		//NANNAN: Here, we distributed all the files to different servers.
-		
+
 		dfp := des.FilePath
 		bfdescriptor := distribution.BFDescriptor{
-			BlobFilePath: fpath,
-			Digest:    dgst,
+			BlobFilePath:   fpath,
+			Digest:         dgst,
 			DigestFilePath: dfp,
-			ServerIp: server,//serverIp,
+			ServerIp:       server, //serverIp,
 		}
-				
+
 		*bfdescriptors = append(*bfdescriptors, bfdescriptor)
-		
+
 		return nil
 	}
 }
-
 
 // Cancel the blob upload process, releasing any resources associated with
 // the writer and canceling the operation.

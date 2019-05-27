@@ -31,7 +31,7 @@ import (
 	"github.com/docker/distribution/registry/storage"
 	memorycache "github.com/docker/distribution/registry/storage/cache/memory"
 	rediscache "github.com/docker/distribution/registry/storage/cache/redis"
-//	redisDedup "github.com/docker/distribution/registry/storage/cache/redisDedup"
+	//	redisDedup "github.com/docker/distribution/registry/storage/cache/redisDedup"
 	storagedriver "github.com/docker/distribution/registry/storage/driver"
 	"github.com/docker/distribution/registry/storage/driver/factory"
 	storagemiddleware "github.com/docker/distribution/registry/storage/driver/middleware"
@@ -41,10 +41,10 @@ import (
 	"github.com/gorilla/mux"
 	"golang.org/x/net/context"
 	//redis cluster
-//	"github.com/chasex/redis-go-cluster"
-//	redisc "github.com/mna/redisc"
+	//	"github.com/chasex/redis-go-cluster"
+	//	redisc "github.com/mna/redisc"
+	redisgo "github.com/go-redis/redis"
 	"github.com/gomodule/redigo/redis"
-	redisgo"github.com/go-redis/redis"
 )
 
 // randomSecretSize is the number of random bytes to generate if no secret
@@ -77,7 +77,7 @@ type App struct {
 		source notifications.SourceRecord
 	}
 
-	redis *redis.Pool
+	redis   *redis.Pool
 	cluster *redisgo.ClusterClient
 
 	// trustKey is a deprecated key used to sign manifests converted to
@@ -294,8 +294,18 @@ func NewApp(ctx context.Context, config *configuration.Configuration) *App {
 			}
 		}
 	}
-	
+
 	// configure storage caches
+
+	var servers []*url.URL
+
+	for _, registry := range config.Notifications.Registries {
+		registryurl := &url.URL{Host: registry}
+		servers = append(servers, registryurl)
+	}
+
+	ctxu.GetLogger(app).Warn("server in the cluster: >>>>>>>>", servers)
+
 	var hostip string
 	if cc, ok := config.Storage["cache"]; ok {
 		v, ok := cc["blobdescriptor"]
@@ -305,31 +315,31 @@ func NewApp(ctx context.Context, config *configuration.Configuration) *App {
 			v = cc["layerinfo"]
 		}
 		//NANNAN: put here for redis and registry
-		
+
 		hostip = fmt.Sprintf("%v", cc["hostip"])
 		switch v {
-			// NANNAN: store blob descriptor
+		// NANNAN: store blob descriptor
 		case "redis":
 			if app.redis == nil {
 				panic("redis configuration required to use for layerinfo cache")
 			}
-			
+
 			cacheProvider := rediscache.NewRedisBlobDescriptorCacheProvider(app.redis)
-			
+
 			//NANNAN
 			filecacheProvider := rediscache.NewRedisFileDescriptorCacheProvider(app.redis, app.cluster, hostip)
-			
+
 			localOptions := append(options, storage.BlobDescriptorCacheProviderWithFileCache(cacheProvider, filecacheProvider))
-			app.registry, err = storage.NewRegistry(app, hostip, app.driver, localOptions...)
+			app.registry, err = storage.NewRegistry(app, hostip, servers, app.driver, localOptions...)
 			if err != nil {
 				panic("could not create registry: " + err.Error())
 			}
 			ctxu.GetLogger(app).Infof("using redis blob descriptor cache")
 		case "inmemory":
 			cacheProvider := memorycache.NewInMemoryBlobDescriptorCacheProvider()
-					
+
 			localOptions := append(options, storage.BlobDescriptorCacheProvider(cacheProvider))
-			app.registry, err = storage.NewRegistry(app, hostip, app.driver, localOptions...)
+			app.registry, err = storage.NewRegistry(app, hostip, servers, app.driver, localOptions...)
 			if err != nil {
 				panic("could not create registry: " + err.Error())
 			}
@@ -343,7 +353,7 @@ func NewApp(ctx context.Context, config *configuration.Configuration) *App {
 
 	if app.registry == nil {
 		// configure the registry if no cache section is available.
-		app.registry, err = storage.NewRegistry(app.Context, hostip, app.driver, options...)
+		app.registry, err = storage.NewRegistry(app.Context, hostip, servers, app.driver, options...)
 		if err != nil {
 			panic("could not create registry: " + err.Error())
 		}
@@ -543,7 +553,7 @@ func (app *App) configureRedis(configuration *configuration.Configuration) {
 					logger.Infof("redis: connect %v", configuration.Redis.Addr)
 				}
 			}
-//NANNAN: 30 * 30*configuration.Redis.DialTimeout
+			//NANNAN: 30 * 30*configuration.Redis.DialTimeout
 			conn, err := redis.DialTimeout("tcp",
 				configuration.Redis.Addr,
 				30*30*configuration.Redis.DialTimeout,
@@ -588,49 +598,15 @@ func (app *App) configureRedis(configuration *configuration.Configuration) {
 		},
 		Wait: false, // if a connection is not avialable, proceed without cache.
 	}
-	
-//	    maxidle: 16
-//    maxactive: 64
-//    idletimeout: 300s
-//  dialtimeout: 1000ms
-//  readtimeout: 1000ms
-//  writetimeout: 1000ms
 
 	app.redis = pool
 	//NANNAN: add redisc cluster
-//	cluster := redisc.Cluster{
-//	     StartupNodes: []string{"192.168.0.213:7000", "192.168.0.213:7001", "192.168.0.213:7002", "192.168.0.213:7003", "192.168.0.213:7004", "192.168.0.213:7005"},
-//	     DialOptions:  []redis.DialOption{redis.DialConnectTimeout(5 * time.Second)},
-//	     CreatePool: func (addr string, opts ...redis.DialOption) (*redis.Pool, error) {
-//					    return &redis.Pool{
-//					    	Dial: func() (redis.Conn, error) {
-//						    	conn, err := redis.DialTimeout("tcp",
-//											addr,
-//											30*30*1000ms,
-//											1000ms,
-//											1000ms)
-//						    	return conn, err
-//					    	},
-//					    	
-//					        MaxIdle:     16,
-//					        MaxActive:   64,
-//					        IdleTimeout: 300s,
-////					        Dial: func() (redis.Conn, error) {
-////					            return redis.Dial("tcp", addr, opts...)
-////					        },
-//					        TestOnBorrow: func(c redis.Conn, t time.Time) error {
-//					            _, err := c.Do("PING")
-//					            return err
-//					        },
-//					    }, nil
-//					    Wait: true, 
-//					},
-//    }
+
 	redisdb := redisgo.NewClusterClient(&redisgo.ClusterOptions{
-                Addrs: []string{"192.168.0.213:7000", "192.168.0.213:7001", "192.168.0.213:7002", "192.168.0.213:7003", "192.168.0.213:7004", "192.168.0.213:7005"},//[]string{":7000", ":7001", ":7002", ":7003", ":7004", ":7005"},
-        })
-    redisdb.Ping()
-        
+		Addrs: []string{"192.168.0.213:7000", "192.168.0.213:7001", "192.168.0.213:7002", "192.168.0.213:7003", "192.168.0.213:7004", "192.168.0.213:7005"}, //[]string{":7000", ":7001", ":7002", ":7003", ":7004", ":7005"},
+	})
+	redisdb.Ping()
+
 	app.cluster = redisdb
 	// setup expvar
 	registry := expvar.Get("registry")

@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	//log "github.com/Sirupsen/logrus"
+	log "github.com/Sirupsen/logrus"
 	"github.com/docker/distribution"
 	"github.com/docker/distribution/context"
 	"github.com/docker/distribution/reference"
