@@ -446,6 +446,20 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) e
 	}
 
 	layerPath := path.Join("/var/lib/registry", blobPath)
+	 // get the layer file size
+	 lfile, err := os.Open(layerPath)
+     if err != nil {
+         context.GetLogger(ctx).Errof("NANNAN: cannot open layer file :=>%s", layerPath)
+         return err
+     }
+     defer lfile.Close()
+	 stat, err := lfile.Stat()
+	 if err != nil {
+	 	context.GetLogger(ctx).Errof("NANNAN: cannot get size of layer file :=>%s", layerPath)
+		 return err
+	 }
+ 
+	comressSize := stat.Size()
 
 	context.GetLogger(ctx).Debug("NANNAN: START DEDUPLICATION FROM PATH :=>%s", layerPath)
 
@@ -529,9 +543,13 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) e
 		}
 	}
 
-	var bfdescriptors []distribution.BFDescriptor
+	bsfdescriptors := make(map[string][]distribution.BFDescriptor)
 	var serverIps []string
 	serverForwardMap := make(map[string][]string)
+	serverStoreCntMap := make(map[string]int)
+	sliceSizeMap := make(map[string]int)
+	
+	var dirSize int64 = 0
 
 	rr, err := roundrobin.New(bw.blobStore.registry.blobServer.servers)
 	if err != nil {
@@ -540,10 +558,14 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) e
 
 	start = time.Now()
 	err = filepath.Walk(unpackPath, bw.CheckDuplicate(ctx, bw.blobStore.registry.serverIp, desc, bw.blobStore.registry.fileDescriptorCacheProvider,
-		&bfdescriptors,
+		bsfdescriptors,
 		rr,
 		&serverIps,
-		serverForwardMap))
+		serverForwardMap,
+		serverStoreCntMap,
+		sliceSizeMap,
+		dirSize int64))
+	
 	elapsed = time.Since(start)
 	fmt.Println("NANNAN: digest calculation + file index lookup time: %.3f, %v", elapsed.Seconds(), blobPath)
 	if err != nil {
@@ -554,11 +576,15 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) e
 
 	des := distribution.BFRecipeDescriptor{
 		BlobDigest:    desc.Digest,
-		BFDescriptors: bfdescriptors,
+		BSFDescriptors: bsfdescriptors, //make(map[string][]distribution.BFDescriptor)
 		ServerIps:     RemoveDuplicateIpsFromIps(serverIps),
+		CompressSize:  comressSize,
+		UncompressSize:	dirSize,
+		SliceSizeMap: sliceSizeMap,
+		
 	}
 //	context.GetLogger(ctx).Debug("NANNAN: set distribution.BFRecipeDescriptor: %v", des)
-	elapsed = time.Since(start)
+	start := time.Now()
 	err = bw.blobStore.registry.fileDescriptorCacheProvider.SetBFRecipe(ctx, desc.Digest, des)
 	elapsed = time.Since(start)
 	fmt.Println("NANNAN: layer recipe update time: %.3f, %v", elapsed.Seconds(), blobPath)
@@ -594,10 +620,13 @@ NANNAN check dedup
 */
 
 func (bw *blobWriter) CheckDuplicate(ctx context.Context, serverIp string, desc distribution.Descriptor, db cache.FileDescriptorCacheProvider,
-	bfdescriptors *[]distribution.BFDescriptor,
+	bsfdescriptors map[string][]distribution.BFDescriptor,
 	rr roundrobin.RoundRobin,
 	serverIps *[]string,
-	serverForwardMap map[string][]string) filepath.WalkFunc {
+	serverForwardMap map[string][]string
+	serverStoreCntMap map[string]int,
+	sliceSizeMap map[string]int,
+	dirSize int64) filepath.WalkFunc {
 
 	return func(fpath string, info os.FileInfo, err error) error {
 //		context.GetLogger(ctx).Debug("NANNAN: START CHECK DUPLICATES :=>")
@@ -617,6 +646,15 @@ func (bw *blobWriter) CheckDuplicate(ctx context.Context, serverIp string, desc 
 			context.GetLogger(ctx).Errorf("NANNAN: %s", err)
 			return nil
 		}
+		
+		stat, err := fp.Stat()
+		if err != nil {
+		 	context.GetLogger(ctx).Errorf("NANNAN: %s", err)
+			return nil
+		}
+		
+		fsize := stat.Size()
+		dirSize += fsize
 
 		defer fp.Close()
 
@@ -646,8 +684,10 @@ func (bw *blobWriter) CheckDuplicate(ctx context.Context, serverIp string, desc 
 				ServerIp:       des.ServerIp,
 			}
 
-			*bfdescriptors = append(*bfdescriptors, bfdescriptor)
+			bfdescriptors[des.ServerIp] = append(bfdescriptors[des.ServerIp], bfdescriptor)
 			*serverIps = append(*serverIps, des.ServerIp)
+			serverStoreCntMap[des.ServerIp] += 1
+			sliceSizeMap[des.ServerIp] += fsize
 
 			return nil
 		} else if err != redisgo.Nil {
@@ -665,7 +705,16 @@ func (bw *blobWriter) CheckDuplicate(ctx context.Context, serverIp string, desc 
 		}
 
 		fpath = reFPath
-		server := rr.Next().Hostname()
+		// weighted roundrobin
+		for{
+			server := rr.Next().Hostname()
+			if 0 < serverStoreCntMap[server]{
+				serverStoreCntMap[server] -= 1
+				continue
+			}
+			break
+		}
+
 		context.GetLogger(ctx).Debug("NANNAN: file: %v (%v) will be forwarded to server (%v): %v", dgst.String(), reFPath, server)
 		if server != serverIp {
 			serverForwardMap[server] = append(serverForwardMap[server], fpath)
@@ -676,23 +725,23 @@ func (bw *blobWriter) CheckDuplicate(ctx context.Context, serverIp string, desc 
 			Digest:   dgst,
 			ServerIp: server, //serverIp,
 		}
-
 		err = db.SetFileDescriptor(ctx, dgst, des)
 		if err != nil {
 			return err
 		}
-		//NANNAN: Here, we distributed all the files to different servers.
-
-		dfp := des.FilePath
+		// change it to slice recipe
+//		dfp := des.FilePath
 		bfdescriptor := distribution.BFDescriptor{
 			BlobFilePath:   fpath,
 			Digest:         dgst,
-			DigestFilePath: dfp,
+			SliceDigest:	nil,
+			//DigestFilePath: dfp,
 			ServerIp:       server, //serverIp,
 		}
 
-		*bfdescriptors = append(*bfdescriptors, bfdescriptor)
-
+		bsfdescriptors[server] = append(bsfdescriptors[server], bfdescriptor)
+		sliceSizeMap[server] += fsize
+		
 		return nil
 	}
 }

@@ -40,20 +40,13 @@ var (
 	dbNoBlob = 0 
 	dbNoFile = 1 
 	dbNoBFRecipe = 2
+	dbNoSFRecipe = 3
+	dbNoSResProfile = 4
 )
 
 	
-
 type redisBlobDescriptorService struct {
-	pool *redis.Pool
-
-	// TODO(stevvooe): We use a pool because we don't have great control over
-	// the cache lifecycle to manage connections. A new connection if fetched
-	// for each operation. Once we have better lifecycle management of the
-	// request objects, we can change this to a connection.
-	
-	//NANNAN: get host ip address
-	
+	pool *redis.Pool	
 }
 
 // NewRedisBlobDescriptorCacheProvider returns a new redis-based
@@ -160,7 +153,6 @@ func (rbds *redisBlobDescriptorService) SetDescriptor(ctx context.Context, dgst 
 	defer conn.Close()
 	//NANNAN
 	if _, err := conn.Do("SELECT", dbNoBlob); err != nil {
-//		defer conn.Close()
 		return err
 	}
 
@@ -206,7 +198,6 @@ func (rsrbds *repositoryScopedRedisBlobDescriptorService) Stat(ctx context.Conte
 	//NANNAN
 	defer conn.Close()
 	if _, err := conn.Do("SELECT", dbNoBlob); err != nil {
-//		defer conn.Close()
 		return distribution.Descriptor{}, err
 	}
 	
@@ -248,7 +239,6 @@ func (rsrbds *repositoryScopedRedisBlobDescriptorService) Clear(ctx context.Cont
 	defer conn.Close()
 	//NANNAN
 	if _, err := conn.Do("SELECT", dbNoBlob); err != nil {
-//		defer conn.Close()
 		return err
 	}
 
@@ -284,7 +274,6 @@ func (rsrbds *repositoryScopedRedisBlobDescriptorService) SetDescriptor(ctx cont
 	defer conn.Close()
 	//NANNAN
 	if _, err := conn.Do("SELECT", dbNoBlob); err != nil {
-//		defer conn.Close()
 		return err
 	}
 
@@ -326,48 +315,20 @@ func (rsrbds *repositoryScopedRedisBlobDescriptorService) repositoryBlobSetKey(r
 
 
 //NANNAN: for deduplication
-//var RedisPool *redis.Pool
-
 type redisFileDescriptorService struct {
 	pool *redis.Pool
-
-	// TODO(stevvooe): We use a pool because we don't have great control over
-	// the cache lifecycle to manage connections. A new connection if fetched
-	// for each operation. Once we have better lifecycle management of the
-	// request objects, we can change this to a connection.
 	serverIp   string
-	
-	cluster *redisgo.ClusterClient
+	cluster *redisgo.Client
 }
 
 // NewRedisBlobDescriptorCacheProvider returns a new redis-based
 // BlobDescriptorCacheProvider using the provided redis connection pool.
-func NewRedisFileDescriptorCacheProvider(pool *redis.Pool, cluster *redisgo.ClusterClient, host_ip string) cache.FileDescriptorCacheProvider {
+func NewRedisFileDescriptorCacheProvider(pool *redis.Pool, cluster *redisgo.Client, host_ip string) cache.FileDescriptorCacheProvider {
 	
 	//NANNAN address
 	var serverIp string
 	serverIp = host_ip
 	os.Stdout.WriteString("NANNAN: hostip: " + serverIp + "\n")
-	// addrs, err := net.InterfaceAddrs()
-	// if err != nil{
-	// 	os.Stderr.WriteString("NANNAN: " + err.Error() + "\n")
-	// }
-	// for _, a := range addrs{
-	// 	if ipnet, ok := a.(*net.IPNet); ok && !ipnet.IP.IsLoopback(){
-	// 		if ipnet.IP.To4() != nil{
-	// 			os.Stderr.Println(ipnet.IP.String())
-	// 			if ipnet.IP.To4()[0] == 192 && ipnet.IP.To4()[1] == 168 {
-	// 			    os.Stdout.WriteString(ipnet.IP.String() + "\n")
-	// 			serverIp = ipnet.IP.String()
-	// 			}
-	// 		}
-	// 	}
-	// }
-	//NANNAN only refresh once
-//	if err := cluster.Refresh(); err != nil {
-//		os.Stdout.WriteString("NANNAN: Refresh failed: " + err.Error() + "\n")
-////	    log.Fatalf("Refresh failed: %v", err)
-//	}
 	
 	return &redisFileDescriptorService{
 		pool: pool,
@@ -375,7 +336,10 @@ func NewRedisFileDescriptorCacheProvider(pool *redis.Pool, cluster *redisgo.Clus
 		serverIp: serverIp,
 	}
 }
-
+//	dbNoBFRecipe = 2
+//	dbNoSFRecipe = 3
+//	dbNoSResProfile = 4
+	
 //"files::sha256:7173b809ca12ec5dee4506cd86be934c4596dd234ee82c0662eac04a8c2c71dc"
 func (rfds *redisFileDescriptorService) fileDescriptorHashKey(dgst digest.Digest) string {
 	return "files::" + dgst.String()
@@ -383,21 +347,7 @@ func (rfds *redisFileDescriptorService) fileDescriptorHashKey(dgst digest.Digest
 
 var _ distribution.FileDescriptorService = &redisFileDescriptorService{}
 
-func (rfds *redisFileDescriptorService) StatFile(ctx context.Context, dgst digest.Digest) (distribution.FileDescriptor, error) {
-//	conn := rfds.cluster.Get()
-//	defer conn.Close()
-	
-//	if _, err := conn.Do("SELECT", dbNoFile); err != nil {
-////		defer conn.Close()
-//		return distribution.FileDescriptor{}, err
-//	}
-    
-//    reply, err := redis.Values(conn.Do("HMGET", rfds.fileDescriptorHashKey(dgst), "digest", "filePath", "serverIp"))
-//    	//, "fileSize", "layerDescriptor"
-//	if err != nil {
-//		return distribution.FileDescriptor{}, err
-//	}
-	
+func (rfds *redisFileDescriptorService) StatFile(ctx context.Context, dgst digest.Digest) (distribution.FileDescriptor, error) {		
 	reply, err := rfds.cluster.Get(rfds.fileDescriptorHashKey(dgst)).Result()
 	if err == redisgo.Nil {
 //		context.GetLogger(ctx).Debug("NANNAN: key %s doesnot exist", dgst.String())
@@ -415,34 +365,10 @@ func (rfds *redisFileDescriptorService) StatFile(ctx context.Context, dgst diges
 			return desc, nil
 		}
 	}
-
-	// NOTE(stevvooe): The "size" field used to be "length". We treat a
-	// missing "size" field here as an unknown blob, which causes a cache
-	// miss, effectively migrating the field.
-//	if len(reply) < 2 || reply[0] == nil || reply[1] == nil { // don't care if mediatype is nil
-//		return distribution.FileDescriptor{}, distribution.ErrBlobUnknown
-//	}
-
-//	var desc distribution.FileDescriptor
-//	if _, err = redis.Scan(reply, &desc.Digest, &desc.FilePath, &desc.ServerIp); err != nil {
-//		
-//		return distribution.FileDescriptor{}, err
-//	}
-//	//NANNAN: find it, then add serverip to requestedserverip 
-//	desc.RequestedServerIps = append(desc.RequestedServerIps, rfds.serverIp)
-//	
-//	return desc, nil
 }
 
 func (rfds *redisFileDescriptorService) SetFileDescriptor(ctx context.Context, dgst digest.Digest, desc distribution.FileDescriptor) error {
 	
-//	conn := rfds.cluster.Get()
-//	defer conn.Close()
-	
-//	if _, err := conn.Do("SELECT", dbNoFile); err != nil {
-////		defer conn.Close()
-//		return err
-//	}
 	var requestedServerIps []string
 	desc.RequestedServerIps = requestedServerIps
 //        desc.ServerIp = rfds.serverIp
@@ -452,20 +378,6 @@ func (rfds *redisFileDescriptorService) SetFileDescriptor(ctx context.Context, d
 		context.GetLogger(ctx).Errorf("NANNAN: redis cluster cannot set value for key %s", err)
 		return err
 	}
-	
-//	if _, err := conn.Do("HMSET", rfds.fileDescriptorHashKey(dgst),
-//		"digest", desc.Digest,
-//		"serverIp", rfds.serverIp, //NANNAN SET TO the first registry ip address for global dedup; even for local dedup, it is correct?!
-//		"requestedServerIps", requestedServerIps, // NANNAN: set to none initially.
-//		"filePath", desc.FilePath); err != nil {
-//		return err
-//	}
-
-//	// Only set mediatype if not already set.
-//	if _, err := conn.Do("HSETNX", rbds.blobDescriptorHashKey(dgst),
-//		"mediatype", desc.MediaType); err != nil {
-//		return err
-//	}
 
 	return nil
 }
@@ -476,6 +388,7 @@ func (rfds *redisFileDescriptorService) BFRecipeHashKey(dgst digest.Digest) stri
 }
 
 func (rfds *redisFileDescriptorService) StatBFRecipe(ctx context.Context, dgst digest.Digest) (distribution.BFRecipeDescriptor, error) {
+	
 	conn := rfds.pool.Get()
 	defer conn.Close()
 	
@@ -517,23 +430,7 @@ func (rfds *redisFileDescriptorService) StatBFRecipe(ctx context.Context, dgst d
 	return desc, nil
 }
 
-//`
-//type BFRecipeDescriptor struct{
-//
-//	BlobDigest      Digest.digest
-//	BFDescriptors   []distribution.BFDescriptor
-//}
-//
-//type BFDescriptor struct{
-//
-//	BlobFilePath    string
-//	Digest          Digest.digest,
-//	DigestFilePath  string	
-//}
-//`
-
 func (rfds *redisFileDescriptorService) SetBFRecipe(ctx context.Context, dgst digest.Digest, desc distribution.BFRecipeDescriptor) error {
-	
 	conn := rfds.pool.Get()
 	defer conn.Close()
 	
@@ -565,3 +462,4 @@ func (rfds *redisFileDescriptorService) SetBFRecipe(ctx context.Context, dgst di
 
 	return nil
 }
+

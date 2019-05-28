@@ -165,8 +165,8 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 	// get filepaths from redis
 	start := time.Now()
 	desc, err := bs.fileDescriptorCacheProvider.StatBFRecipe(ctx, dgst)
-	elapsed := time.Since(start)
-	fmt.Println("NANNAN: metadata lookup time: %.3f, %v", elapsed.Seconds(), dgst)
+	DurationML := time.Since(start).Seconds()
+	fmt.Println("NANNAN: metadata lookup time: %.3f, %v", DurationML, dgst)
 
 	if err != nil {
 		// get from traditional registry, this is a manifest
@@ -236,7 +236,7 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 	var wg sync.WaitGroup
 //	defer ants.Release()
 	start = time.Now()
-	for _, bfdescriptor := range desc.BFDescriptors {
+	for _, bfdescriptor := range desc.BSFDescriptors[bs.serverIp] {
 		
 		if bfdescriptor.ServerIp != bs.serverIp {
 			context.GetLogger(ctx).Debug("NANNAN: this is not a locally available file, ", bfdescriptor.ServerIp) // not locally available
@@ -246,11 +246,11 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 		tarfpath := reg.ReplaceAllString(strings.SplitN(bfdescriptor.BlobFilePath, "diff", 2)[1], "") // replace alphanumeric
 		destfpath := path.Join(packPath, tarfpath)
 		wg.Add(1)
-		ants.Submit(mvFile(ctx, strings.TrimPrefix(bfdescriptor.DigestFilePath, "/var/lib/registry"), destfpath, wg))
+		ants.Submit(mvFile(ctx, strings.TrimPrefix(bfdescriptor.FilePath, "/var/lib/registry"), destfpath, wg))
 	}
 	wg.Wait()
-	elapsed = time.Since(start)
-	fmt.Println("NANNAN: slice IO cp time: %.3f, %v", elapsed.Seconds(), dgst)
+	DurationCP = time.Since(start).Seconds()
+	fmt.Println("NANNAN: slice IO cp time: %.3f, %v", DurationCP, dgst)
 
 //	packpath := path.Join("/var/lib/registry", packPath)
 	start = time.Now()
@@ -323,8 +323,13 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 	}
 	start = time.Now()
 	http.ServeContent(w, r, _desc.Digest.String(), time.Time{}, packFile)
-	elapsed = time.Since(start)
-	fmt.Println("NANNAN: slice network transfer time: %.3f, %v", elapsed.Seconds(), dgst)
+	DurationNTT = time.Since(start).Seconds()
+	fmt.Println("NANNAN: slice network transfer time: %.3f, %v", DurationNTT, dgst)
+	
+	DurationRS := DurationNTT + DurationCMP + DurationCP + DurationML
+	
+	fmt.Println("NANNAN: slice restore time: %.3f, %v", DurationRS, dgst)
+	
 	//delete tmp_dir and packFile here
 
 	if err = os.RemoveAll(path.Join("/var/lib/registry", "/docker/registry/v2/pull_tars/pull_tmp_tarfile", tmp_dir)); err != nil {
@@ -337,6 +342,26 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 	if err = os.RemoveAll(packpath); err != nil {
 		context.GetLogger(ctx).Errorf("NANNAN: cannot remove all file in packpath: %s: %s",
 			packpath, err)
+		return err
+	}
+	
+	bsdedupDescriptor := distribution.BSResDescriptor{
+		ServerIp:		bs.serverIp,
+	
+		DurationRS:	    DurationRS,
+	
+		DurationNTT:     DurationNTT,
+		DurationCMP:     DurationCMP,
+		DurationCP:      DurationCP,
+		DurationML:      DurationML,
+		
+		SliceSize:       desc.SliceSizeMap[bs.serverIp],
+	}
+	
+	des.BSResDescriptors = bsdedupDescriptor
+	//update with response time
+	err = bw.blobStore.registry.fileDescriptorCacheProvider.SetBFRecipe(ctx, desc.Digest, des)
+	if err != nil {
 		return err
 	}
 

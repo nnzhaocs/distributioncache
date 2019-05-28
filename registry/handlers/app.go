@@ -565,6 +565,8 @@ func (app *App) configureRedis(configuration *configuration.Configuration) {
 				done(err)
 				return nil, err
 			}
+			
+			conn.Do("FLUSHALL")
 
 			// authorize the connection
 			if configuration.Redis.Password != "" {
@@ -602,11 +604,14 @@ func (app *App) configureRedis(configuration *configuration.Configuration) {
 	app.redis = pool
 	//NANNAN: add redisc cluster
 
-	redisdb := redisgo.NewClusterClient(&redisgo.ClusterOptions{
-		Addrs: []string{"192.168.0.213:7000", "192.168.0.213:7001", "192.168.0.213:7002", "192.168.0.213:7003", "192.168.0.213:7004", "192.168.0.213:7005"}, //[]string{":7000", ":7001", ":7002", ":7003", ":7004", ":7005"},
+	redisdb := redisgo.NewClient(&redisgo.Options{
+			Addr:     "localhost:6379",
+		//Addrs: []string{"192.168.0.170:6379", "192.168.0.213:7001", "192.168.0.213:7002", "192.168.0.213:7003", "192.168.0.213:7004", "192.168.0.213:7005"}, //[]string{":7000", ":7001", ":7002", ":7003", ":7004", ":7005"},
 	})
 	redisdb.Ping()
-
+	ok, err := redisdb.FlushAll().Result()
+	fmt.Println(ok, err)
+	
 	app.cluster = redisdb
 	// setup expvar
 	registry := expvar.Get("registry")

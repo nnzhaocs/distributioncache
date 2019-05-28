@@ -91,7 +91,8 @@ type FileDescriptor struct {
 	FilePath string
 	//NANNAN: 
 	ServerIp string
-	RequestedServerIps []string
+	//RequestedServerIps []string
+	size		int
 	
 }
 
@@ -119,19 +120,38 @@ func (d Descriptor) Descriptor() Descriptor {
 type BFRecipeDescriptor struct{
 
 	BlobDigest      digest.Digest
-	BFDescriptors   []BFDescriptor
-	ServerIps	[]string
+	BSFDescriptors   map[string][]BFDescriptor //this is slice map
 	
+	ServerIps	[]string //this is slice digest
+	
+	CompressSize		int
+	UncompressSize		int
+	
+	BSResDescriptors  map[string][]BSResDescriptor
+	SliceSizeMap      map[string]int
 }
 
+type BSResDescriptor struct{
+	
+	ServerIp		string
+	
+	DurationRS	    float64
+	DurationNTT     float64
+	DurationCMP     float64
+	DurationCP      float64
+	DurationML      float64
+	
+	SliceSize       int 
+}
 //NANNAN: for blob-files info
 type BFDescriptor struct{
 
 	BlobFilePath    string // filepath of this blobfile
 	Digest          digest.Digest
-	DigestFilePath  string	// digest file path
+	//DigestFilePath  string	// digest file path
 	
 	ServerIp		string
+	Size			int //byte
 }
 
 // BlobStatter makes blob descriptors available by digest. The service may
