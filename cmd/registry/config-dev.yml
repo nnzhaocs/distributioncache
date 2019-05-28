@@ -37,7 +37,7 @@ http:
     headers:
         X-Content-Type-Options: [nosniff]
 redis:
-  addr: 192.168.0.180:6379
+  addr: 192.168.0.180 :6379
   # NANNAN: give a name to filedescribtor
   # db: 0
   pool:
