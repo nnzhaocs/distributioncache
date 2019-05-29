@@ -564,7 +564,7 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) e
 		serverForwardMap,
 		serverStoreCntMap,
 		sliceSizeMap,
-		dirSize))
+		&dirSize))
 
 	elapsed = time.Since(start)
 	fmt.Println("NANNAN: digest calculation + file index lookup time: %.3f, %v", elapsed.Seconds(), blobPath)
@@ -625,7 +625,7 @@ func (bw *blobWriter) CheckDuplicate(ctx context.Context, serverIp string, desc 
 	serverForwardMap map[string][]string,
 	serverStoreCntMap map[string]int,
 	sliceSizeMap map[string]int64,
-	dirSize int64) filepath.WalkFunc {
+	*dirSize int64) filepath.WalkFunc {
 
 	return func(fpath string, info os.FileInfo, err error) error {
 		//		context.GetLogger(ctx).Debug("NANNAN: START CHECK DUPLICATES :=>")
@@ -653,7 +653,7 @@ func (bw *blobWriter) CheckDuplicate(ctx context.Context, serverIp string, desc 
 		}
 
 		fsize := stat.Size()
-		dirSize += fsize
+		*dirSize += fsize
 
 		defer fp.Close()
 
