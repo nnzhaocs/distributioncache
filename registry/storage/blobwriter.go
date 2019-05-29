@@ -550,7 +550,7 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) e
 	sliceSizeMap := make(map[string]int64)
 
 	var dirSize int64 = 0
-
+	fmt.Println("NANNAN: =====> servers are: ", bw.blobStore.registry.blobServer.servers)
 	rr, err := roundrobin.New(bw.blobStore.registry.blobServer.servers)
 	if err != nil {
 		panic(err)
@@ -707,7 +707,8 @@ func (bw *blobWriter) CheckDuplicate(ctx context.Context, serverIp string, desc 
 		// weighted roundrobin
 		var server string
 		for {
-			server := rr.Next().Hostname()
+			server = rr.Next().Hostname()
+			fmt.Println("NANNAN: ======> SERVER IS: ", server)
 			if 0 < serverStoreCntMap[server] {
 				serverStoreCntMap[server] -= 1
 				continue

@@ -23,7 +23,7 @@ storage:
       enabled: true
     cache:
         blobdescriptor: redis
-        hostip: 192.168.0.170
+        hostip: 192.168.0.180
     filesystem:
         rootdirectory: /var/lib/registry
     maintenance:
@@ -37,7 +37,7 @@ http:
     headers:
         X-Content-Type-Options: [nosniff]
 redis:
-  addr: 192.168.0.180 :6379
+  addr: 192.168.0.180:6379
   # NANNAN: give a name to filedescribtor
   # db: 0
   pool:

@@ -605,7 +605,7 @@ func (app *App) configureRedis(configuration *configuration.Configuration) {
 	//NANNAN: add redisc cluster
 
 	redisdb := redisgo.NewClient(&redisgo.Options{
-		Addr: "localhost:6379",
+		Addr: "192.168.0.176:6379",
 		//Addrs: []string{"192.168.0.170:6379", "192.168.0.213:7001", "192.168.0.213:7002", "192.168.0.213:7003", "192.168.0.213:7004", "192.168.0.213:7005"}, //[]string{":7000", ":7001", ":7002", ":7003", ":7004", ":7005"},
 	})
 	redisdb.Ping()
