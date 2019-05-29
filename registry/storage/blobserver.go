@@ -135,38 +135,38 @@ func getGID() float64 {
 	return r1.Float64()
 }
 
-type struct Task {
-	Ctx 	context.Context  
-	Src 	string  
-	Desc	 string  
-	Wg 		sync.WaitGroup
-	Bs 		*blobServer
+type Task struct {
+	Ctx  context.Context
+	Src  string
+	Desc string
+	Wg   sync.WaitGroup
+	Bs   *blobServer
 }
 
 func mvFile(i interface{}) {
 	task, ok := i.(*Task)
 	if !ok {
 		fmt.Println(ok)
-		return 
+		return
 	}
 	ctx := task.Ctx
 	src := task.Src
 	desc := task.Desc
 	wg := task.Wg
 	bs := task.Bs
-//	ctx context.Context, src string, desc string, wg sync.WaitGroup
-	
+	//	ctx context.Context, src string, desc string, wg sync.WaitGroup
+
 	contents, err := bs.driver.GetContent(ctx, src)
 	if err != nil {
 		context.GetLogger(ctx).Errorf("NANNAN: STILL SEND TAR %s, ", err)
-	}else{
+	} else {
 		err = bs.driver.PutContent(ctx, desc, contents)
 		if err != nil {
 			context.GetLogger(ctx).Errorf("NANNAN: STILL SEND TAR %s, ", err)
 		}
 	}
 	wg.Done()
-	return 
+	return
 }
 
 //func mvFile(ctx context.Context, src string, desc string, wg sync.WaitGroup, bs *blobServer) error {
@@ -282,11 +282,11 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 		destfpath := path.Join(packPath, tarfpath)
 		wg.Add(1)
 		antp.Invoke(&Task{
-			Ctx: 	ctx,  
-			Src: 	strings.TrimPrefix(bfdescriptor.BlobFilePath, "/var/lib/registry"), 
-			Desc:	 destfpath,  
-			Wg: 		wg,
-			Bs: 		bs,
+			Ctx:  ctx,
+			Src:  strings.TrimPrefix(bfdescriptor.BlobFilePath, "/var/lib/registry"),
+			Desc: destfpath,
+			Wg:   wg,
+			Bs:   bs,
 		})
 	}
 	wg.Wait()
@@ -400,7 +400,7 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 		SliceSize: desc.SliceSizeMap[bs.serverIp],
 	}
 
-	desc.BSResDescriptors = bsdedupDescriptor
+	desc.BSResDescriptors[bs.serverIp] = bsdedupDescriptor
 	//update with response time
 	err = bs.fileDescriptorCacheProvider.SetBFRecipe(ctx, desc.BlobDigest, desc)
 	if err != nil {

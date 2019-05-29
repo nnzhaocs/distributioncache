@@ -1,12 +1,13 @@
 package distribution
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"time"
-	"encoding/json"
+
 	"github.com/docker/distribution/context"
 	"github.com/docker/distribution/reference"
 	"github.com/opencontainers/go-digest"
@@ -75,9 +76,9 @@ type Descriptor struct {
 	// NOTE: Before adding a field here, please ensure that all
 	// other options have been exhausted. Much of the type relationships
 	// depend on the simplicity of this type.
-	
+
 	// NANNAN: if it's a layer, then, we add it's containning files'descriptor
-	
+
 }
 
 // NANNAN: if it's a layer, then, we add it's containning files'descriptor
@@ -89,22 +90,21 @@ type FileDescriptor struct {
 	Digest digest.Digest `json:"digest,omitempty"`
 
 	FilePath string
-	//NANNAN: 
+	//NANNAN:
 	ServerIp string
 	//RequestedServerIps []string
-	size		int
-	
+	size int
 }
 
 func (m *FileDescriptor) MarshalBinary() ([]byte, error) {
-    // _,  := json.Marshal(m)
+	// _,  := json.Marshal(m)
 	//fmt.Println("NANNAN: ================> json.Marshal err %v", err)
-    return json.Marshal(m)
+	return json.Marshal(m)
 }
 
-func(m *FileDescriptor)UnmarshalBinary(data []byte) error{
-  // convert data to yours, let's assume its json data
-  return json.Unmarshal(data, m)
+func (m *FileDescriptor) UnmarshalBinary(data []byte) error {
+	// convert data to yours, let's assume its json data
+	return json.Unmarshal(data, m)
 }
 
 // Descriptor returns the descriptor, to make it satisfy the Describable
@@ -117,41 +117,39 @@ func (d Descriptor) Descriptor() Descriptor {
 }
 
 // NANNAN: Descriptors for blob-file recipe
-type BFRecipeDescriptor struct{
+type BFRecipeDescriptor struct {
+	BlobDigest     digest.Digest
+	BSFDescriptors map[string][]BFDescriptor //this is slice map
 
-	BlobDigest      digest.Digest
-	BSFDescriptors   map[string][]BFDescriptor //this is slice map
-	
-	ServerIps	[]string //this is slice digest
-	
-	CompressSize		int64
-	UncompressSize		int64
-	
-	BSResDescriptors  map[string][]BSResDescriptor
-	SliceSizeMap      map[string]int64
+	ServerIps []string //this is slice digest
+
+	CompressSize   int64
+	UncompressSize int64
+
+	BSResDescriptors map[string]BSResDescriptor
+	SliceSizeMap     map[string]int64
 }
 
-type BSResDescriptor struct{
-	
-	ServerIp		string
-	
-	DurationRS	    float64
-	DurationNTT     float64
-	DurationCMP     float64
-	DurationCP      float64
-	DurationML      float64
-	
-	SliceSize       int 
+type BSResDescriptor struct {
+	ServerIp string
+
+	DurationRS  float64
+	DurationNTT float64
+	DurationCMP float64
+	DurationCP  float64
+	DurationML  float64
+
+	SliceSize int64
 }
+
 //NANNAN: for blob-files info
-type BFDescriptor struct{
-
-	BlobFilePath    string // filepath of this blobfile
-	Digest          digest.Digest
+type BFDescriptor struct {
+	BlobFilePath string // filepath of this blobfile
+	Digest       digest.Digest
 	//DigestFilePath  string	// digest file path
-	
-	ServerIp		string
-	Size			int //byte
+
+	ServerIp string
+	Size     int64 //byte
 }
 
 // BlobStatter makes blob descriptors available by digest. The service may
@@ -206,13 +204,11 @@ type BlobDescriptorService interface {
 // and recipeservice
 
 type FileDescriptorService interface {
-	
 	StatFile(ctx context.Context, dgst digest.Digest) (FileDescriptor, error)
 	SetFileDescriptor(ctx context.Context, dgst digest.Digest, desc FileDescriptor) error
-	
-	StatBFRecipe(ctx context.Context, dgst digest.Digest) (BFRecipeDescriptor, error) 
-	SetBFRecipe(ctx context.Context, dgst digest.Digest, desc BFRecipeDescriptor) error
 
+	StatBFRecipe(ctx context.Context, dgst digest.Digest) (BFRecipeDescriptor, error)
+	SetBFRecipe(ctx context.Context, dgst digest.Digest, desc BFRecipeDescriptor) error
 }
 
 // BlobDescriptorServiceFactory creates middleware for BlobDescriptorService.
@@ -258,7 +254,7 @@ type BlobServer interface {
 
 //Used by registry request to return list of registries
 type BlobURL interface {
-    URLWriter(ctx context.Context, w http.ResponseWriter, r *http.Request) error
+	URLWriter(ctx context.Context, w http.ResponseWriter, r *http.Request) error
 }
 
 // BlobIngester ingests blob data.
@@ -332,7 +328,7 @@ type BlobWriter interface {
 	// result in a no-op. This allows use of Cancel in a defer statement,
 	// increasing the assurance that it is correctly called.
 	Cancel(ctx context.Context) error
-	Dedup(ctx context.Context, desc Descriptor) (error)
+	Dedup(ctx context.Context, desc Descriptor) error
 }
 
 // BlobService combines the operations to access, read and write blobs. This

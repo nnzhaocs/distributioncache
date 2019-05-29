@@ -16,9 +16,9 @@ import (
 	//roundrobin "github.com/hlts2/round-robin"
 	//nannan
 	//	"github.com/serialx/hashring"
-	"github.com/panjf2000/ants"
+
 	"net/url"
-	"fmt"
+	//"fmt"
 )
 
 // registry is the top-level implementation of Registry for use in the storage
@@ -190,11 +190,11 @@ func NewRegistry(ctx context.Context, serverIp string, servers []*url.URL, drive
 		driver:  driver,
 		statter: statter,
 	}
-	
-	p, _ := ants.NewTimingPoolWithFunc(128, func(i interface{}){
-		
-	
-	})
+
+	/*p, _ := ants.NewTimingPoolWithFunc(128, func(i interface{}){
+
+
+	})*/
 
 	registry := &registry{
 		blobStore: bs,
@@ -205,7 +205,7 @@ func NewRegistry(ctx context.Context, serverIp string, servers []*url.URL, drive
 			cache:    new(blobcache.MemCache),
 			serverIp: serverIp,
 			servers:  servers,
-//			goroutinepool: ,
+			//			goroutinepool: ,
 			//			filecache:
 		},
 		statter:                statter,
