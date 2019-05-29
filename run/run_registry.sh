@@ -30,7 +30,7 @@ docker build -t nnzhaocs/socc-sift-dedup ./
 
 docker push nnzhaocs/socc-sfit-dedup
 
-sudo docker run -l error -p 5000:5000 --rm --mount type=bind,source=$HOME/testing/tmpfs,target=/var/lib/registry/docker/registry/v2/pull_tars/ -v ~/testing/layers:/var/lib/registry -e REGISTRY_STORAGE_CACHE_HOSTIP=192.168.0.171 --name dedup-9cluster -t nnzhaocs/socc-sfit-dedup:latest
+sudo docker run -p 5000:5000 --rm --mount type=bind,source=$HOME/testing/tmpfs,target=/var/lib/registry/docker/registry/v2/pull_tars/ -v ~/testing/layers:/var/lib/registry -e REGISTRY_STORAGE_CACHE_HOSTIP=192.168.0.171 -e REGISTRY_NOTIFICATIONS_REGISTRIES=192.168.0.170,192.168.0.171  --name dedup-9cluster -t nnzhaocs/socc-sfit-dedup:latest
 
 #========================> HOW TO CREATE A REDIS CLUSTER WITH DOCKER SWARM <===================
 
