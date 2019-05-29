@@ -41,6 +41,7 @@ docker run -p 7005:7005 -d -v $PWD/redis-cluster-7005.conf:/usr/local/etc/redis/
 
 (2) create a cluster
 docker exec -ti redis-0 redis-cli --cluster create 127.0.0.1:7000 127.0.0.1:7001 127.0.0.1:7002 127.0.0.1:7003 127.0.0.1:7004 127.0.0.1:7005 --cluster-replicas 1
+docker exec -ti redis-0 redis-cli --cluster create 192.168.0.170:7000 192.168.0.171:7000 192.168.0.172:7000 192.168.0.174:7000 192.168.0.176:7000 192.168.0.177:7000 192.168.0.178:7000 192.168.0.179:7000 192.168.0.180:7000 --cluster-:qreplicas 2
 
 (3) check?
 docker exec -ti  redis-rejson-2 redis-cli

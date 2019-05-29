@@ -19,6 +19,7 @@ import (
 	"path"
 	"regexp"
 	//"runtime"
+	"sync"
 
 	storagecache "github.com/docker/distribution/registry/storage/cache"
 	"github.com/docker/docker/pkg/archive"
@@ -134,13 +135,12 @@ func getGID() float64 {
 	return r1.Float64()
 }
 
+func mvFile(ctx context.Context, src string, desc string, wg sync.WaitGroup, bs *blobServer) error {
 
-func mvFile(ctx context.Context, src string, desc string, wg sync.WaitGroup) error {
-	
 	contents, err := bs.driver.GetContent(ctx, src)
 	if err != nil {
 		context.GetLogger(ctx).Errorf("NANNAN: STILL SEND TAR %s, ", err)
-	}else{
+	} else {
 		err = bs.driver.PutContent(ctx, desc, contents)
 		if err != nil {
 			context.GetLogger(ctx).Errorf("NANNAN: STILL SEND TAR %s, ", err)
@@ -232,27 +232,28 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 		context.GetLogger(ctx).Errorf("NANNAN: %s, ", err)
 		return err
 	}
-	
+
 	var wg sync.WaitGroup
-//	defer ants.Release()
+	//	defer ants.Release()
 	start = time.Now()
 	for _, bfdescriptor := range desc.BSFDescriptors[bs.serverIp] {
-		
+
 		if bfdescriptor.ServerIp != bs.serverIp {
 			context.GetLogger(ctx).Debug("NANNAN: this is not a locally available file, ", bfdescriptor.ServerIp) // not locally available
 			continue
 		}
-		
+
 		tarfpath := reg.ReplaceAllString(strings.SplitN(bfdescriptor.BlobFilePath, "diff", 2)[1], "") // replace alphanumeric
 		destfpath := path.Join(packPath, tarfpath)
 		wg.Add(1)
-		ants.Submit(mvFile(ctx, strings.TrimPrefix(bfdescriptor.FilePath, "/var/lib/registry"), destfpath, wg))
+		ants.Submit(mvFile(ctx, strings.TrimPrefix(bfdescriptor.BlobFilePath, "/var/lib/registry"), destfpath, wg, bs))
 	}
 	wg.Wait()
-	DurationCP = time.Since(start).Seconds()
+	DurationCP := time.Since(start).Seconds()
 	fmt.Println("NANNAN: slice IO cp time: %.3f, %v", DurationCP, dgst)
 
-//	packpath := path.Join("/var/lib/registry", packPath)
+	//packpath := path.Join("/var/lib/registry", packPath)
+	packpath := packPath
 	start = time.Now()
 	data, err := archive.Tar(packpath, archive.Gzip)
 	if err != nil {
@@ -260,8 +261,8 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 		return err
 	}
 
-	elapsed = time.Since(start)
-	fmt.Println("NANNAN: slice compression time: %.3f, %v", elapsed.Seconds(), dgst)
+	DurationCMP := time.Since(start).Seconds()
+	fmt.Println("NANNAN: slice compression time: %.3f, %v", DurationCMP, dgst)
 
 	defer data.Close()
 	newtardir := path.Join("/var/lib/registry", "/docker/registry/v2/pull_tars/pull_tmp_tarfile")
@@ -323,13 +324,13 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 	}
 	start = time.Now()
 	http.ServeContent(w, r, _desc.Digest.String(), time.Time{}, packFile)
-	DurationNTT = time.Since(start).Seconds()
+	DurationNTT := time.Since(start).Seconds()
 	fmt.Println("NANNAN: slice network transfer time: %.3f, %v", DurationNTT, dgst)
-	
+
 	DurationRS := DurationNTT + DurationCMP + DurationCP + DurationML
-	
+
 	fmt.Println("NANNAN: slice restore time: %.3f, %v", DurationRS, dgst)
-	
+
 	//delete tmp_dir and packFile here
 
 	if err = os.RemoveAll(path.Join("/var/lib/registry", "/docker/registry/v2/pull_tars/pull_tmp_tarfile", tmp_dir)); err != nil {
@@ -344,23 +345,23 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 			packpath, err)
 		return err
 	}
-	
+
 	bsdedupDescriptor := distribution.BSResDescriptor{
-		ServerIp:		bs.serverIp,
-	
-		DurationRS:	    DurationRS,
-	
-		DurationNTT:     DurationNTT,
-		DurationCMP:     DurationCMP,
-		DurationCP:      DurationCP,
-		DurationML:      DurationML,
-		
-		SliceSize:       desc.SliceSizeMap[bs.serverIp],
+		ServerIp: bs.serverIp,
+
+		DurationRS: DurationRS,
+
+		DurationNTT: DurationNTT,
+		DurationCMP: DurationCMP,
+		DurationCP:  DurationCP,
+		DurationML:  DurationML,
+
+		SliceSize: desc.SliceSizeMap[bs.serverIp],
 	}
-	
-	des.BSResDescriptors = bsdedupDescriptor
+
+	desc.BSResDescriptors = bsdedupDescriptor
 	//update with response time
-	err = bw.blobStore.registry.fileDescriptorCacheProvider.SetBFRecipe(ctx, desc.Digest, des)
+	err = bs.fileDescriptorCacheProvider.SetBFRecipe(ctx, desc.BlobDigest, desc)
 	if err != nil {
 		return err
 	}

@@ -7,18 +7,18 @@ import (
 	"github.com/docker/distribution/context"
 	"github.com/docker/distribution/reference"
 	"github.com/docker/distribution/registry/storage/cache"
-//	redis "github.com/garyburd/redigo/redis"
+	//	redis "github.com/garyburd/redigo/redis"
 	"github.com/opencontainers/go-digest"
 	//NANNAN
 	"encoding/json"
 	// "net"
 	"os"
-//	"flag"
+	//	"flag"
 	rejson "github.com/secondspass/go-rejson"
-//	"log"
+	//	"log"
 	redis "github.com/gomodule/redigo/redis"
-//	"github.com/go-redis/redis"
-//	redisc "github.com/mna/redisc"
+	//	"github.com/go-redis/redis"
+	//	redisc "github.com/mna/redisc"
 	redisgo "github.com/go-redis/redis"
 )
 
@@ -37,25 +37,24 @@ import (
 // HERE, we store dbNoBlobl and dbNoBFRecipe on a redis standalone
 // we store dbNoFile on a redis cluster
 var (
-	dbNoBlob = 0 
-	dbNoFile = 1 
-	dbNoBFRecipe = 2
-	dbNoSFRecipe = 3
+	dbNoBlob        = 0
+	dbNoFile        = 1
+	dbNoBFRecipe    = 2
+	dbNoSFRecipe    = 3
 	dbNoSResProfile = 4
 )
 
-	
 type redisBlobDescriptorService struct {
-	pool *redis.Pool	
+	pool *redis.Pool
 }
 
 // NewRedisBlobDescriptorCacheProvider returns a new redis-based
 // BlobDescriptorCacheProvider using the provided redis connection pool.
 func NewRedisBlobDescriptorCacheProvider(pool *redis.Pool) cache.BlobDescriptorCacheProvider {
-	
+
 	return &redisBlobDescriptorService{
 		pool: pool,
-//		serverIp: serverIp,
+		//		serverIp: serverIp,
 	}
 }
 
@@ -81,7 +80,7 @@ func (rbds *redisBlobDescriptorService) Stat(ctx context.Context, dgst digest.Di
 	defer conn.Close()
 	//NANNAN
 	if _, err := conn.Do("SELECT", dbNoBlob); err != nil {
-//		defer conn.Close()
+		//		defer conn.Close()
 		return distribution.Descriptor{}, err
 	}
 
@@ -97,7 +96,7 @@ func (rbds *redisBlobDescriptorService) Clear(ctx context.Context, dgst digest.D
 	defer conn.Close()
 	//NANNAN
 	if _, err := conn.Do("SELECT", dbNoBlob); err != nil {
-//		defer conn.Close()
+		//		defer conn.Close()
 		return err
 	}
 
@@ -200,7 +199,7 @@ func (rsrbds *repositoryScopedRedisBlobDescriptorService) Stat(ctx context.Conte
 	if _, err := conn.Do("SELECT", dbNoBlob); err != nil {
 		return distribution.Descriptor{}, err
 	}
-	
+
 	// Check membership to repository first
 	member, err := redis.Bool(conn.Do("SISMEMBER", rsrbds.repositoryBlobSetKey(rsrbds.repo), dgst))
 	if err != nil {
@@ -313,33 +312,33 @@ func (rsrbds *repositoryScopedRedisBlobDescriptorService) repositoryBlobSetKey(r
 	return "repository::" + rsrbds.repo + "::blobs"
 }
 
-
 //NANNAN: for deduplication
 type redisFileDescriptorService struct {
-	pool *redis.Pool
-	serverIp   string
-	cluster *redisgo.Client
+	pool     *redis.Pool
+	serverIp string
+	cluster  *redisgo.Client
 }
 
 // NewRedisBlobDescriptorCacheProvider returns a new redis-based
 // BlobDescriptorCacheProvider using the provided redis connection pool.
 func NewRedisFileDescriptorCacheProvider(pool *redis.Pool, cluster *redisgo.Client, host_ip string) cache.FileDescriptorCacheProvider {
-	
+
 	//NANNAN address
 	var serverIp string
 	serverIp = host_ip
 	os.Stdout.WriteString("NANNAN: hostip: " + serverIp + "\n")
-	
+
 	return &redisFileDescriptorService{
-		pool: pool,
-		cluster: cluster,
+		pool:     pool,
+		cluster:  cluster,
 		serverIp: serverIp,
 	}
 }
+
 //	dbNoBFRecipe = 2
 //	dbNoSFRecipe = 3
 //	dbNoSResProfile = 4
-	
+
 //"files::sha256:7173b809ca12ec5dee4506cd86be934c4596dd234ee82c0662eac04a8c2c71dc"
 func (rfds *redisFileDescriptorService) fileDescriptorHashKey(dgst digest.Digest) string {
 	return "files::" + dgst.String()
@@ -347,34 +346,34 @@ func (rfds *redisFileDescriptorService) fileDescriptorHashKey(dgst digest.Digest
 
 var _ distribution.FileDescriptorService = &redisFileDescriptorService{}
 
-func (rfds *redisFileDescriptorService) StatFile(ctx context.Context, dgst digest.Digest) (distribution.FileDescriptor, error) {		
+func (rfds *redisFileDescriptorService) StatFile(ctx context.Context, dgst digest.Digest) (distribution.FileDescriptor, error) {
 	reply, err := rfds.cluster.Get(rfds.fileDescriptorHashKey(dgst)).Result()
 	if err == redisgo.Nil {
-//		context.GetLogger(ctx).Debug("NANNAN: key %s doesnot exist", dgst.String())
+		//		context.GetLogger(ctx).Debug("NANNAN: key %s doesnot exist", dgst.String())
 		return distribution.FileDescriptor{}, err
-	}else if err != nil{
+	} else if err != nil {
 		context.GetLogger(ctx).Errorf("NANNAN: redis cluster error for key %s", err)
 		return distribution.FileDescriptor{}, err
-	}else{
+	} else {
 		var desc distribution.FileDescriptor
-		if err = desc.UnmarshalBinary([]byte(reply)); err !=nil{
-	         context.GetLogger(ctx).Errorf("NANNAN: redis cluster cannot UnmarshalBinary for key %s", err)
-	         return distribution.FileDescriptor{}, err
-		}else{
-			desc.RequestedServerIps = append(desc.RequestedServerIps, rfds.serverIp)
+		if err = desc.UnmarshalBinary([]byte(reply)); err != nil {
+			context.GetLogger(ctx).Errorf("NANNAN: redis cluster cannot UnmarshalBinary for key %s", err)
+			return distribution.FileDescriptor{}, err
+		} else {
+			//desc.RequestedServerIps = append(desc.RequestedServerIps, rfds.serverIp)
 			return desc, nil
 		}
 	}
 }
 
 func (rfds *redisFileDescriptorService) SetFileDescriptor(ctx context.Context, dgst digest.Digest, desc distribution.FileDescriptor) error {
-	
-	var requestedServerIps []string
-	desc.RequestedServerIps = requestedServerIps
-//        desc.ServerIp = rfds.serverIp
-//        context.GetLogger(ctx).Debug("NANNAN: redis cluster set value for file %v", rfds.fileDescriptorHashKey(dgst))
+
+	//var requestedServerIps []string
+	//desc.RequestedServerIps = requestedServerIps
+	//        desc.ServerIp = rfds.serverIp
+	//        context.GetLogger(ctx).Debug("NANNAN: redis cluster set value for file %v", rfds.fileDescriptorHashKey(dgst))
 	err := rfds.cluster.Set(rfds.fileDescriptorHashKey(dgst), &desc, 0).Err()
-	if err != nil{
+	if err != nil {
 		context.GetLogger(ctx).Errorf("NANNAN: redis cluster cannot set value for key %s", err)
 		return err
 	}
@@ -388,42 +387,42 @@ func (rfds *redisFileDescriptorService) BFRecipeHashKey(dgst digest.Digest) stri
 }
 
 func (rfds *redisFileDescriptorService) StatBFRecipe(ctx context.Context, dgst digest.Digest) (distribution.BFRecipeDescriptor, error) {
-	
+
 	conn := rfds.pool.Get()
 	defer conn.Close()
-	
+
 	if _, err := conn.Do("SELECT", dbNoBFRecipe); err != nil {
-//		defer conn.Close()
+		//		defer conn.Close()
 		return distribution.BFRecipeDescriptor{}, err
 	}
-    
-//    reply, err := redis.Values(conn.Do("HMGET", rfds.BFRecipeHashKey(dgst), "blobdigest", "filedescriptors"))
-//    	//, "fileSize", "layerDescriptor"
-//	if err != nil {
-//		return distribution.BFRecipeDescriptor{}, err
-//	}
+
+	//    reply, err := redis.Values(conn.Do("HMGET", rfds.BFRecipeHashKey(dgst), "blobdigest", "filedescriptors"))
+	//    	//, "fileSize", "layerDescriptor"
+	//	if err != nil {
+	//		return distribution.BFRecipeDescriptor{}, err
+	//	}
 
 	bfrJSON, err := redis.Bytes(rejson.JSONGet(conn, rfds.BFRecipeHashKey(dgst),
-	""))
-	if err != nil{
+		""))
+	if err != nil {
 		return distribution.BFRecipeDescriptor{}, err
 	}
 
 	// NOTE(stevvooe): The "size" field used to be "length". We treat a
 	// missing "size" field here as an unknown blob, which causes a cache
 	// miss, effectively migrating the field.
-//	if len(reply) < 2 || reply[0] == nil || reply[1] == nil { // don't care if mediatype is nil
-//		return distribution.BFRecipeDescriptor{}, distribution.ErrBlobUnknown
-//	}
+	//	if len(reply) < 2 || reply[0] == nil || reply[1] == nil { // don't care if mediatype is nil
+	//		return distribution.BFRecipeDescriptor{}, distribution.ErrBlobUnknown
+	//	}
 
-//	var desc distribution.FileDescriptor
-//	if _, err = redis.Scan(reply, &desc.BlobDigest, &desc.FileDescriptor); err != nil {
-//		return distribution.BFRecipeDescriptor{}, err
-//	}
+	//	var desc distribution.FileDescriptor
+	//	if _, err = redis.Scan(reply, &desc.BlobDigest, &desc.FileDescriptor); err != nil {
+	//		return distribution.BFRecipeDescriptor{}, err
+	//	}
 
 	desc := distribution.BFRecipeDescriptor{}
 	err = json.Unmarshal(bfrJSON, &desc)
-	if err != nil{
+	if err != nil {
 		return distribution.BFRecipeDescriptor{}, distribution.ErrBlobUnknown
 	}
 
@@ -433,33 +432,32 @@ func (rfds *redisFileDescriptorService) StatBFRecipe(ctx context.Context, dgst d
 func (rfds *redisFileDescriptorService) SetBFRecipe(ctx context.Context, dgst digest.Digest, desc distribution.BFRecipeDescriptor) error {
 	conn := rfds.pool.Get()
 	defer conn.Close()
-	
+
 	if _, err := conn.Do("SELECT", dbNoBFRecipe); err != nil {
-//		defer conn.Close()
+		//		defer conn.Close()
 		return err
 	}
-	
-//	if _, err := conn.Do("HMSET", rfds.BFRecipeHashKey(dgst),
-//		"blobdigest", desc.BlobDigest,
-//		"bfdescriptors", desc.BFDescriptors); err != nil {
-//		return err
-//	}
+
+	//	if _, err := conn.Do("HMSET", rfds.BFRecipeHashKey(dgst),
+	//		"blobdigest", desc.BlobDigest,
+	//		"bfdescriptors", desc.BFDescriptors); err != nil {
+	//		return err
+	//	}
 
 	//NANNAN: use re-json
-	
-	_, err := rejson.JSONSet(conn, rfds.BFRecipeHashKey(dgst), 
-	".", 
-	desc, false, false)
-	if err != nil{
+
+	_, err := rejson.JSONSet(conn, rfds.BFRecipeHashKey(dgst),
+		".",
+		desc, false, false)
+	if err != nil {
 		return err
 	}
 
-//	// Only set mediatype if not already set.
-//	if _, err := conn.Do("HSETNX", rbds.blobDescriptorHashKey(dgst),
-//		"mediatype", desc.MediaType); err != nil {
-//		return err
-//	}
+	//	// Only set mediatype if not already set.
+	//	if _, err := conn.Do("HSETNX", rbds.blobDescriptorHashKey(dgst),
+	//		"mediatype", desc.MediaType); err != nil {
+	//		return err
+	//	}
 
 	return nil
 }
-
