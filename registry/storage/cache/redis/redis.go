@@ -386,6 +386,10 @@ func (rfds *redisFileDescriptorService) BFRecipeHashKey(dgst digest.Digest) stri
 	return "Blob:File:Recipe::" + dgst.String()
 }
 
+func (rfds *redisFileDescriptorService) BSResRecipeHashKey(dgst digest.Digest, server string) string {
+	return "Blob:File:Recipe::RestoreTime::" + dgst.String() + server
+}
+
 func (rfds *redisFileDescriptorService) StatBFRecipe(ctx context.Context, dgst digest.Digest) (distribution.BFRecipeDescriptor, error) {
 
 	conn := rfds.pool.Get()
@@ -438,12 +442,6 @@ func (rfds *redisFileDescriptorService) SetBFRecipe(ctx context.Context, dgst di
 		return err
 	}
 
-	//	if _, err := conn.Do("HMSET", rfds.BFRecipeHashKey(dgst),
-	//		"blobdigest", desc.BlobDigest,
-	//		"bfdescriptors", desc.BFDescriptors); err != nil {
-	//		return err
-	//	}
-
 	//NANNAN: use re-json
 
 	_, err := rejson.JSONSet(conn, rfds.BFRecipeHashKey(dgst),
@@ -453,11 +451,29 @@ func (rfds *redisFileDescriptorService) SetBFRecipe(ctx context.Context, dgst di
 		return err
 	}
 
-	//	// Only set mediatype if not already set.
-	//	if _, err := conn.Do("HSETNX", rbds.blobDescriptorHashKey(dgst),
-	//		"mediatype", desc.MediaType); err != nil {
-	//		return err
-	//	}
+	//NANNAN: set dbNoSResProfile
+	//	conn := rfds.pool.Get()
+	//	defer conn.Close()
+	if len(desc.BSResDescriptors) > 0{
+		if _, err := conn.Do("SELECT", dbNoSResProfile); err != nil {
+			//		defer conn.Close()
+			return err
+		}
+	}else{
+		return nil
+	}
+	
+//	if len(desc.BSResDescriptors) > 0{
+	for server, BSResDescriptor := desc.BSResDescriptors{
+
+		_, err := rejson.JSONSet(conn, rfds.BSResRecipeHashKey(dgst),
+			".",
+			BSResDescriptor, false, false)
+		if err != nil {
+			return err
+		}
+	}
+//	}
 
 	return nil
 }
