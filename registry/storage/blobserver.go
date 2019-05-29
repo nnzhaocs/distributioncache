@@ -259,7 +259,7 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 	tmp_dir := fmt.Sprintf("%f", gid)
 	context.GetLogger(ctx).Debug("NANNAN: serveblob: the gid for this goroutine: =>%", tmp_dir)
 
-	packPath := path.Join("/var/lib/registry", "/docker/registry/v2/pull_tars/pull_tarfiles", tmp_dir)
+	packPath := path.Join("/docker/registry/v2/pull_tars/pull_tarfiles", tmp_dir)
 
 	reg, err := regexp.Compile("[^a-zA-Z0-9/.-]+")
 	if err != nil {
@@ -293,8 +293,8 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 	DurationCP := time.Since(start).Seconds()
 	fmt.Println("NANNAN: slice IO cp time: %.3f, %v", DurationCP, dgst)
 
-	//packpath := path.Join("/var/lib/registry", packPath)
-	packpath := packPath
+	packpath := path.Join("/var/lib/registry", packPath)
+	//packpath := packPath
 	start = time.Now()
 	data, err := archive.Tar(packpath, archive.Gzip)
 	if err != nil {
