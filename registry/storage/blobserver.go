@@ -139,8 +139,8 @@ type Task struct {
 	Ctx  context.Context
 	Src  string
 	Desc string
-//	Wg   sync.WaitGroup
-	Bs   *blobServer
+	//	Wg   sync.WaitGroup
+	Bs *blobServer
 }
 
 func mvFile(i interface{}) {
@@ -152,7 +152,7 @@ func mvFile(i interface{}) {
 	ctx := task.Ctx
 	src := task.Src
 	desc := task.Desc
-//	wg := task.Wg
+	//	wg := task.Wg
 	bs := task.Bs
 	//	ctx context.Context, src string, desc string, wg sync.WaitGroup
 
@@ -267,7 +267,7 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 	}
 
 	var wg sync.WaitGroup
-	antp, _ := ants.NewPoolWithFunc(len(desc.BSFDescriptors[bs.serverIp]), func(i interface{}){
+	antp, _ := ants.NewPoolWithFunc(len(desc.BSFDescriptors[bs.serverIp]), func(i interface{}) {
 		mvFile(i)
 		wg.Done()
 	})
@@ -287,8 +287,8 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 			Ctx:  ctx,
 			Src:  strings.TrimPrefix(bfdescriptor.BlobFilePath, "/var/lib/registry"),
 			Desc: destfpath,
-//			Wg:   wg,
-			Bs:   bs,
+			//			Wg:   wg,
+			Bs: bs,
 		})
 	}
 	wg.Wait()
@@ -382,13 +382,13 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 		return err
 	}
 	//packpath
-
-	if err = os.RemoveAll(packpath); err != nil {
-		context.GetLogger(ctx).Errorf("NANNAN: cannot remove all file in packpath: %s: %s",
-			packpath, err)
-		return err
-	}
-
+	/*
+		if err = os.RemoveAll(packpath); err != nil {
+			context.GetLogger(ctx).Errorf("NANNAN: cannot remove all file in packpath: %s: %s",
+				packpath, err)
+			return err
+		}
+	*/
 	bsdedupDescriptor := &distribution.BSResDescriptor{
 		ServerIp: bs.serverIp,
 
@@ -401,8 +401,8 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 
 		SliceSize: desc.SliceSizeMap[bs.serverIp],
 	}
-	
-//	BSResDescriptors := make(map[string]bsdedupDescriptor)
+
+	//	BSResDescriptors := make(map[string]bsdedupDescriptor)
 
 	desc.BSResDescriptors[bs.serverIp] = bsdedupDescriptor
 	//update with response time

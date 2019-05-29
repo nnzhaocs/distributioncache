@@ -464,11 +464,11 @@ func (rfds *redisFileDescriptorService) SetBFRecipe(ctx context.Context, dgst di
 	}
 	
 //	if len(desc.BSResDescriptors) > 0{
-	for server, BSResDescriptor := desc.BSResDescriptors{
+	for server, bsresDescriptor := desc.BSResDescriptors{
 
 		_, err := rejson.JSONSet(conn, rfds.BSResRecipeHashKey(dgst),
 			".",
-			BSResDescriptor, false, false)
+			bsresDescriptor, false, false)
 		if err != nil {
 			return err
 		}

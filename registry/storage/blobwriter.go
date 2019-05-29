@@ -574,15 +574,15 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) e
 
 	serverIps = append(serverIps, bw.blobStore.registry.serverIp) //NANNAN add this serverip
 
-	bsresDescriptors := make(map[string]distribution.BSResDescriptor)
-	
+	bsresDescriptors := make(map[string]*distribution.BSResDescriptor)
+
 	des := distribution.BFRecipeDescriptor{
-		BlobDigest:     desc.Digest,
-		BSFDescriptors: bsfdescriptors, //make(map[string][]distribution.BFDescriptor)
-		ServerIps:      RemoveDuplicateIpsFromIps(serverIps),
-		CompressSize:   comressSize,
-		UncompressSize: dirSize,
-		SliceSizeMap:   sliceSizeMap,
+		BlobDigest:       desc.Digest,
+		BSFDescriptors:   bsfdescriptors, //make(map[string][]distribution.BFDescriptor)
+		ServerIps:        RemoveDuplicateIpsFromIps(serverIps),
+		CompressSize:     comressSize,
+		UncompressSize:   dirSize,
+		SliceSizeMap:     sliceSizeMap,
 		BSResDescriptors: bsresDescriptors,
 	}
 	//	context.GetLogger(ctx).Debug("NANNAN: set distribution.BFRecipeDescriptor: %v", des)
