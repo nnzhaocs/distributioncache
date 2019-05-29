@@ -124,11 +124,11 @@ type BFRecipeDescriptor struct{
 	
 	ServerIps	[]string //this is slice digest
 	
-	CompressSize		int
-	UncompressSize		int
+	CompressSize		int64
+	UncompressSize		int64
 	
 	BSResDescriptors  map[string][]BSResDescriptor
-	SliceSizeMap      map[string]int
+	SliceSizeMap      map[string]int64
 }
 
 type BSResDescriptor struct{
