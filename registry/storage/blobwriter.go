@@ -625,7 +625,7 @@ func (bw *blobWriter) CheckDuplicate(ctx context.Context, serverIp string, desc 
 	serverForwardMap map[string][]string,
 	serverStoreCntMap map[string]int,
 	sliceSizeMap map[string]int64,
-	*dirSize int64) filepath.WalkFunc {
+	dirSize *int64) filepath.WalkFunc {
 
 	return func(fpath string, info os.FileInfo, err error) error {
 		//		context.GetLogger(ctx).Debug("NANNAN: START CHECK DUPLICATES :=>")
