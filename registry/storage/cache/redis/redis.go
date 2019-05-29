@@ -454,26 +454,26 @@ func (rfds *redisFileDescriptorService) SetBFRecipe(ctx context.Context, dgst di
 	//NANNAN: set dbNoSResProfile
 	//	conn := rfds.pool.Get()
 	//	defer conn.Close()
-	if len(desc.BSResDescriptors) > 0{
+	if len(desc.BSResDescriptors) > 0 {
 		if _, err := conn.Do("SELECT", dbNoSResProfile); err != nil {
 			//		defer conn.Close()
 			return err
 		}
-	}else{
+	} else {
 		return nil
 	}
-	
-//	if len(desc.BSResDescriptors) > 0{
-	for server, bsresDescriptor := desc.BSResDescriptors{
 
-		_, err := rejson.JSONSet(conn, rfds.BSResRecipeHashKey(dgst),
+	//	if len(desc.BSResDescriptors) > 0{
+	for server, bsresDescriptor := range desc.BSResDescriptors {
+
+		_, err := rejson.JSONSet(conn, rfds.BSResRecipeHashKey(dgst, server),
 			".",
 			bsresDescriptor, false, false)
 		if err != nil {
 			return err
 		}
 	}
-//	}
+	//	}
 
 	return nil
 }
