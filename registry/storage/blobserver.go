@@ -139,7 +139,7 @@ type Task struct {
 	Ctx  context.Context
 	Src  string
 	Desc string
-	Wg   sync.WaitGroup
+//	Wg   sync.WaitGroup
 	Bs   *blobServer
 }
 
@@ -152,7 +152,7 @@ func mvFile(i interface{}) {
 	ctx := task.Ctx
 	src := task.Src
 	desc := task.Desc
-	wg := task.Wg
+//	wg := task.Wg
 	bs := task.Bs
 	//	ctx context.Context, src string, desc string, wg sync.WaitGroup
 
@@ -165,7 +165,6 @@ func mvFile(i interface{}) {
 			context.GetLogger(ctx).Errorf("NANNAN: STILL SEND TAR %s, ", err)
 		}
 	}
-	wg.Done()
 	return
 }
 
@@ -268,7 +267,10 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 	}
 
 	var wg sync.WaitGroup
-	antp, _ := ants.NewPoolWithFunc(len(desc.BSFDescriptors[bs.serverIp]), mvFile)
+	antp, _ := ants.NewPoolWithFunc(len(desc.BSFDescriptors[bs.serverIp]), func(i interface{}){
+		mvFile(i)
+		wg.Done()
+	})
 	defer antp.Release()
 	start = time.Now()
 	for _, bfdescriptor := range desc.BSFDescriptors[bs.serverIp] {
@@ -285,7 +287,7 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 			Ctx:  ctx,
 			Src:  strings.TrimPrefix(bfdescriptor.BlobFilePath, "/var/lib/registry"),
 			Desc: destfpath,
-			Wg:   wg,
+//			Wg:   wg,
 			Bs:   bs,
 		})
 	}
