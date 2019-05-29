@@ -126,7 +126,7 @@ type BFRecipeDescriptor struct {
 	CompressSize   int64
 	UncompressSize int64
 
-	BSResDescriptors map[string]BSResDescriptor
+	BSResDescriptors map[string]*BSResDescriptor
 	SliceSizeMap     map[string]int64
 }
 

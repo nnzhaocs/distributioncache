@@ -389,20 +389,22 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 		return err
 	}
 
-//	bsdedupDescriptor := distribution.BSResDescriptor{
-		desc.BSResDescriptors[bs.serverIp].ServerIp = bs.serverIp
+	bsdedupDescriptor := &distribution.BSResDescriptor{
+		ServerIp: bs.serverIp,
 
-		desc.BSResDescriptors[bs.serverIp].DurationRS = DurationRS
-		desc.BSResDescriptors[bs.serverIp].DurationNTT = DurationNTT
-		desc.BSResDescriptors[bs.serverIp].DurationCMP = DurationCMP
-		desc.BSResDescriptors[bs.serverIp].DurationCP =  DurationCP
-		desc.BSResDescriptors[bs.serverIp].DurationML =  DurationML
+		DurationRS: DurationRS,
 
-		desc.BSResDescriptors[bs.serverIp].SliceSize = desc.SliceSizeMap[bs.serverIp]
-//	}
+		DurationNTT: DurationNTT,
+		DurationCMP: DurationCMP,
+		DurationCP:  DurationCP,
+		DurationML:  DurationML,
 
-//	desc.BSResDescriptors[bs.serverIp].ServerIp = bs.serverIp
+		SliceSize: desc.SliceSizeMap[bs.serverIp],
+	}
 	
+//	BSResDescriptors := make(map[string]bsdedupDescriptor)
+
+	desc.BSResDescriptors[bs.serverIp] = bsdedupDescriptor
 	//update with response time
 	err = bs.fileDescriptorCacheProvider.SetBFRecipe(ctx, desc.BlobDigest, desc)
 	if err != nil {
