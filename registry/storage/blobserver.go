@@ -135,20 +135,54 @@ func getGID() float64 {
 	return r1.Float64()
 }
 
-func mvFile(ctx context.Context, src string, desc string, wg sync.WaitGroup, bs *blobServer) error {
+type struct Task {
+	Ctx 	context.Context  
+	Src 	string  
+	Desc	 string  
+	Wg 		sync.WaitGroup
+	Bs 		*blobServer
+}
 
+func mvFile(i interface{}) {
+	task, ok := i.(*Task)
+	if !ok {
+		fmt.Println(ok)
+		return 
+	}
+	ctx := task.Ctx
+	src := task.Src
+	desc := task.Desc
+	wg := task.Wg
+	bs := task.Bs
+//	ctx context.Context, src string, desc string, wg sync.WaitGroup
+	
 	contents, err := bs.driver.GetContent(ctx, src)
 	if err != nil {
 		context.GetLogger(ctx).Errorf("NANNAN: STILL SEND TAR %s, ", err)
-	} else {
+	}else{
 		err = bs.driver.PutContent(ctx, desc, contents)
 		if err != nil {
 			context.GetLogger(ctx).Errorf("NANNAN: STILL SEND TAR %s, ", err)
 		}
 	}
 	wg.Done()
-	return err
+	return 
 }
+
+//func mvFile(ctx context.Context, src string, desc string, wg sync.WaitGroup, bs *blobServer) error {
+//
+//	contents, err := bs.driver.GetContent(ctx, src)
+//	if err != nil {
+//		context.GetLogger(ctx).Errorf("NANNAN: STILL SEND TAR %s, ", err)
+//	} else {
+//		err = bs.driver.PutContent(ctx, desc, contents)
+//		if err != nil {
+//			context.GetLogger(ctx).Errorf("NANNAN: STILL SEND TAR %s, ", err)
+//		}
+//	}
+//	wg.Done()
+//	return err
+//}
 
 //NANNAN: TODO: process manfiests
 
@@ -234,7 +268,8 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 	}
 
 	var wg sync.WaitGroup
-	//	defer ants.Release()
+	antp, _ := ants.NewPoolWithFunc(len(desc.BSFDescriptors[bs.serverIp]), mvFile)
+	defer antp.Release()
 	start = time.Now()
 	for _, bfdescriptor := range desc.BSFDescriptors[bs.serverIp] {
 
@@ -246,7 +281,13 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 		tarfpath := reg.ReplaceAllString(strings.SplitN(bfdescriptor.BlobFilePath, "diff", 2)[1], "") // replace alphanumeric
 		destfpath := path.Join(packPath, tarfpath)
 		wg.Add(1)
-		ants.Submit(mvFile(ctx, strings.TrimPrefix(bfdescriptor.BlobFilePath, "/var/lib/registry"), destfpath, wg, bs))
+		antp.Invoke(&Task{
+			Ctx: 	ctx,  
+			Src: 	strings.TrimPrefix(bfdescriptor.BlobFilePath, "/var/lib/registry"), 
+			Desc:	 destfpath,  
+			Wg: 		wg,
+			Bs: 		bs,
+		})
 	}
 	wg.Wait()
 	DurationCP := time.Since(start).Seconds()
