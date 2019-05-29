@@ -18,19 +18,25 @@ docker stop container_id
 docker login
 
 docker push nnzhaocs/distribution:latest
+docker tag nnzhaocs/distribution:latest nnzhaocs/socc-sfit-dedup
 
 #docker run -p 5001:5000 -e ZOOKEEPER="hulk7:2181" -e MEMORY="100" --cpus 1 -e HOST="hulk0:5000" -v /home/nannan/dockerimages/layers:/var/lib/registry -e REGISTRY_STORAGE_CACHE_BLOBDESCRIPTOR=redis -e REGISTRY_REDIS_ADDR=192.168.0.170:6379  -t nnzhaocs/distribution:latest
 
 #docker run -p 5000:5000 -e MEMORY="100" --cpus 1 -e HOST="hulk0:5000" -v /home/nannan/dockerimages/layers:/var/lib/registry  -t nnzhaocs/distribution:latest
 
 #docker run -l error --config ~/testing/layers/config-dev.yaml -p 5000:5000 --rm -v /home/lustre/dockerimages/layers:/var/lib/registry -e REGISTRY_STORAGE_CACHE_HOSTIP=192.168.0.220 --name nnregistry -t nnzhaocs/distribution:latest
+#=======================> HOW TO BUILD AND RUN REGISTRY <====================
+docker build -t nnzhaocs/socc-sift-dedup ./
 
+docker push nnzhaocs/socc-sfit-dedup
 
 sudo docker run -l error -p 5000:5000 --rm --mount type=bind,source=$HOME/testing/tmpfs,target=/var/lib/registry/docker/registry/v2/pull_tars/ -v ~/testing/layers:/var/lib/registry -e REGISTRY_STORAGE_CACHE_HOSTIP=192.168.0.171 --name dedup-9cluster -t nnzhaocs/socc-sfit-dedup:latest
 
+#========================> HOW TO CREATE A REDIS CLUSTER WITH DOCKER SWARM <===================
 
+sudo docker service create --name rejson-cluster -p 6379:6379 --replicas=9 redislabs/rejson
 
-#========================> HOW TO RUN A REDIS CLUSTER WITH DOCKER <=============
+#========================> STALE HOW TO RUN A REDIS CLUSTER WITH DOCKER <=============
 $PWD is distribution/run dir
 
 #create a network
