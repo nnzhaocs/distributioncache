@@ -405,6 +405,7 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 	//	BSResDescriptors := make(map[string]bsdedupDescriptor)
 
 	desc.BSResDescriptors[bs.serverIp] = bsdedupDescriptor
+	desc.Type = "bsresponserecipe"
 	//update with response time
 	err = bs.fileDescriptorCacheProvider.SetBFRecipe(ctx, desc.BlobDigest, desc)
 	if err != nil {
