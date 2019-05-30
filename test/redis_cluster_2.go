@@ -32,7 +32,7 @@ type sliceDescriptor struct {
 	Tp     string
 }
 
-/*func (m *sliceDescriptor) MarshalBinary() ([]byte, error) {
+func (m *sliceDescriptor) MarshalBinary() ([]byte, error) {
 	str, err := json.Marshal(m)
 	fmt.Println(str, err)
 	return str, err
@@ -41,11 +41,9 @@ type sliceDescriptor struct {
 func (m *sliceDescriptor) UnmarshalBinary(data []byte) error {
 	return json.Unmarshal(data, m)
 }
-*/
-/*
+
+
 func (m *fileDescriptor) MarshalBinary() ([]byte, error) {
-	//requestedServerIps, _ := json.Marshal(m.requestedServerIps)
-	//m.requestedServerIps = requestedServerIps
 	str, err := json.Marshal(m.slicemap)
 	fmt.Println(str, err)
 	return json.Marshal(m)
@@ -56,7 +54,7 @@ func (m *fileDescriptor) UnmarshalBinary(data []byte) error {
 	err := json.Unmarshal(data, m)
 	return err
 }
-*/
+
 func (m *jsonvalue) MarshalBinary() ([]byte, error) {
 	return json.Marshal(m)
 }
@@ -65,6 +63,7 @@ func (m *jsonvalue) UnmarshalBinary(data []byte) error {
 	// convert data to yours, let's assume its json data
 	return json.Unmarshal(data, m)
 }
+/*
 func newPool() *redisgo.Pool {
 	return &redisgo.Pool{
 		// Maximum number of idle connections in the pool.
@@ -85,23 +84,32 @@ func newPool() *redisgo.Pool {
 	}
 
 }
-
+*/
 func main() {
-	redisdb := redis.NewClient(&redis.Options{
+	/*redisdb := redis.NewClient(&redis.Options{
 		Addr: "192.168.0.174:6379",
 		//Password: "", // no password set
 		//        DB:       0,  // use default DB
 
-	})
+	})*/
 
-	pong, err := redisdb.Ping().Result()
+	/*pong, err := redisdb.Ping().Result()
 	fmt.Println(pong, err)
 	ok, err := redisdb.FlushAll().Result()
-	fmt.Println(ok, err)
-	//redis.NewClusterClient(&redis.ClusterOptions{
-	//  	Addrs: []string{"192.168.0.213:7000", "192.168.0.213:7001", "192.168.0.213:7002", "192.168.0.213:7003", "192.168.0.213:7004", "192.168.0.213:7005"},//[]string{":7000", ":7001", ":7002", ":7003", ":7004", ":7005"},
-	//	})
-	redisdb.Ping()
+	fmt.Println(ok, err)*/
+	redisdb := redis.NewClusterClient(&redis.ClusterOptions{
+	  	Addrs: []string{
+			    "192.168.0.170:7000", "192.168.0.170:7001", \
+			    "192.168.0.171:7000", "192.168.0.171:7001", \
+		   	    "192.168.0.172:7000", "192.168.0.172:7001", \
+			    "192.168.0.174:7000", "192.168.0.174:7001", \
+			    "192.168.0.176:7000", "192.168.0.176:7001", \
+			    "192.168.0.177:7000", "192.168.0.177:7001", \
+			    "192.168.0.178:7000", "192.168.0.178:7001", \
+			    "192.168.0.179:7000", "192.168.0.179:7001", \
+			    "192.168.0.180:7000", "192.168.0.180:7001" \
+		})
+	//redisdb.Ping()
 
 	err = redisdb.Set("key", "value", 0).Err()
 	if err != nil {
@@ -126,14 +134,14 @@ func main() {
 	}
 	fmt.Printf("value: %v\n", newdata)
 
-	pool := newPool()
+	/*pool := newPool()
 	conn := pool.Get()
 	//err := ping(conn)
 	_, err = conn.Do("PING")
 	if err != nil {
 		fmt.Println(err)
 	}
-
+*/
 	slicemap := make(map[string][]sliceDescriptor)
 	var slices []sliceDescriptor
 	sd := sliceDescriptor{
@@ -170,25 +178,27 @@ func main() {
 		Slices:   slicemap,
 		FilePath: "/home/nannan/distribution",
 	}
-	_, err = rejson.JSONSet(conn, "key3", ".", fd, false, false)
+	err = redisdb.Set("keyfd", fd, 0).Err()
+	//_, err = rejson.JSONSet(conn, "key3", ".", fd, false, false)
 	if err != nil {
 		panic(err)
 		return
 	}
-	fmt.Println("key3", fd)
-	res3, err := redisgo.Bytes(rejson.JSONGet(conn, "key3", "."))
+	fmt.Println("keyfd", fd)
+	valfd, err := redisdb.Get("keyfd").Result()
+	//res3, err := redisgo.Bytes(rejson.JSONGet(conn, "key3", "."))
 	if err != nil {
 		panic(err)
 		return
 	}
-	fmt.Println(string(res3))
+	fmt.Println(string(valfd))
 	/*
 		val2 := make(map[string][]sliceDescriptor)
 		err = json.Unmarshal(res3, &val2)
 		fmt.Println("key2", val2)
 	*/
 	val3 := fileDescriptor{}
-	err = json.Unmarshal(res3, &val3)
+	err = json.Unmarshal(valfd, &val3)
 	fmt.Println("keys3", val3)
 
 	//var m []sliceDescriptor
