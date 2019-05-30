@@ -566,7 +566,7 @@ func (app *App) configureRedis(configuration *configuration.Configuration) {
 				return nil, err
 			}
 
-			conn.Do("FLUSHALL")
+//			conn.Do("FLUSHALL")
 
 			// authorize the connection
 			if configuration.Redis.Password != "" {
@@ -600,9 +600,14 @@ func (app *App) configureRedis(configuration *configuration.Configuration) {
 		},
 		Wait: false, // if a connection is not avialable, proceed without cache.
 	}
+	
 
 	app.redis = pool
 	//NANNAN: add redisc cluster
+	
+	connflush := pool.Get()
+	connflush.Do("FLUSHALL")
+	defer connflush.Close()
 
 	redisdb := redis.NewClusterClient(&redis.ClusterOptions{
          Addrs: []string{
