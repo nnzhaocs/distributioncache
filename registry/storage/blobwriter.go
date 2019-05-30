@@ -584,6 +584,7 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) e
 		UncompressSize:   dirSize,
 		SliceSizeMap:     sliceSizeMap,
 		BSResDescriptors: bsresDescriptors,
+		Type:             "bsfdescriptors",
 	}
 	//	context.GetLogger(ctx).Debug("NANNAN: set distribution.BFRecipeDescriptor: %v", des)
 	start = time.Now()

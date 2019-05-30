@@ -9,8 +9,6 @@ import (
 	//"time"
 
 	"github.com/go-redis/redis"
-	redisgo "github.com/gomodule/redigo/redis"
-	rejson "github.com/nitishm/go-rejson"
 )
 
 var redisdb *redis.Client
@@ -42,10 +40,9 @@ func (m *sliceDescriptor) UnmarshalBinary(data []byte) error {
 	return json.Unmarshal(data, m)
 }
 
-
 func (m *fileDescriptor) MarshalBinary() ([]byte, error) {
-	str, err := json.Marshal(m.slicemap)
-	fmt.Println(str, err)
+	//str, err := json.Marshal(m.slicemap)
+	//fmt.Println(str, err)
 	return json.Marshal(m)
 }
 
@@ -63,6 +60,7 @@ func (m *jsonvalue) UnmarshalBinary(data []byte) error {
 	// convert data to yours, let's assume its json data
 	return json.Unmarshal(data, m)
 }
+
 /*
 func newPool() *redisgo.Pool {
 	return &redisgo.Pool{
@@ -98,20 +96,20 @@ func main() {
 	ok, err := redisdb.FlushAll().Result()
 	fmt.Println(ok, err)*/
 	redisdb := redis.NewClusterClient(&redis.ClusterOptions{
-	  	Addrs: []string{
-			    "192.168.0.170:7000", "192.168.0.170:7001", \
-			    "192.168.0.171:7000", "192.168.0.171:7001", \
-		   	    "192.168.0.172:7000", "192.168.0.172:7001", \
-			    "192.168.0.174:7000", "192.168.0.174:7001", \
-			    "192.168.0.176:7000", "192.168.0.176:7001", \
-			    "192.168.0.177:7000", "192.168.0.177:7001", \
-			    "192.168.0.178:7000", "192.168.0.178:7001", \
-			    "192.168.0.179:7000", "192.168.0.179:7001", \
-			    "192.168.0.180:7000", "192.168.0.180:7001" \
-		})
+		Addrs: []string{
+			"192.168.0.170:7000", "192.168.0.170:7001",
+			"192.168.0.171:7000", "192.168.0.171:7001",
+			"192.168.0.172:7000", "192.168.0.172:7001",
+			"192.168.0.174:7000", "192.168.0.174:7001",
+			"192.168.0.176:7000", "192.168.0.176:7001",
+			"192.168.0.177:7000", "192.168.0.177:7001",
+			"192.168.0.178:7000", "192.168.0.178:7001",
+			"192.168.0.179:7000", "192.168.0.179:7001",
+			"192.168.0.180:7000", "192.168.0.180:7001",
+		}})
 	//redisdb.Ping()
 
-	err = redisdb.Set("key", "value", 0).Err()
+	err := redisdb.Set("key", "value", 0).Err()
 	if err != nil {
 		panic(err)
 	}
@@ -141,7 +139,7 @@ func main() {
 	if err != nil {
 		fmt.Println(err)
 	}
-*/
+	*/
 	slicemap := make(map[string][]sliceDescriptor)
 	var slices []sliceDescriptor
 	sd := sliceDescriptor{
@@ -198,7 +196,7 @@ func main() {
 		fmt.Println("key2", val2)
 	*/
 	val3 := fileDescriptor{}
-	err = json.Unmarshal(valfd, &val3)
+	err = val3.UnmarshalBinary([]byte(valfd))
 	fmt.Println("keys3", val3)
 
 	//var m []sliceDescriptor
