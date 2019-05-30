@@ -316,12 +316,12 @@ func (rsrbds *repositoryScopedRedisBlobDescriptorService) repositoryBlobSetKey(r
 type redisFileDescriptorService struct {
 	pool     *redis.Pool
 	serverIp string
-	cluster  *redisgo.Client
+	cluster  *redisgo.ClusterClient
 }
 
 // NewRedisBlobDescriptorCacheProvider returns a new redis-based
 // BlobDescriptorCacheProvider using the provided redis connection pool.
-func NewRedisFileDescriptorCacheProvider(pool *redis.Pool, cluster *redisgo.Client, host_ip string) cache.FileDescriptorCacheProvider {
+func NewRedisFileDescriptorCacheProvider(pool *redis.Pool, cluster *redisgo.ClusterClient, host_ip string) cache.FileDescriptorCacheProvider {
 
 	//NANNAN address
 	var serverIp string
@@ -334,10 +334,6 @@ func NewRedisFileDescriptorCacheProvider(pool *redis.Pool, cluster *redisgo.Clie
 		serverIp: serverIp,
 	}
 }
-
-//	dbNoBFRecipe = 2
-//	dbNoSFRecipe = 3
-//	dbNoSResProfile = 4
 
 //"files::sha256:7173b809ca12ec5dee4506cd86be934c4596dd234ee82c0662eac04a8c2c71dc"
 func (rfds *redisFileDescriptorService) fileDescriptorHashKey(dgst digest.Digest) string {
@@ -391,89 +387,106 @@ func (rfds *redisFileDescriptorService) BSResRecipeHashKey(dgst digest.Digest, s
 }
 
 func (rfds *redisFileDescriptorService) StatBFRecipe(ctx context.Context, dgst digest.Digest) (distribution.BFRecipeDescriptor, error) {
-
-	conn := rfds.pool.Get()
-	defer conn.Close()
-
-	if _, err := conn.Do("SELECT", dbNoBFRecipe); err != nil {
-		//		defer conn.Close()
+	
+	reply, err := rfds.cluster.Get(rfds.BFRecipeHashKey(dgst)).Result()
+	if err == redisgo.Nil {
+		//		context.GetLogger(ctx).Debug("NANNAN: key %s doesnot exist", dgst.String())
 		return distribution.BFRecipeDescriptor{}, err
-	}
-
-	//    reply, err := redis.Values(conn.Do("HMGET", rfds.BFRecipeHashKey(dgst), "blobdigest", "filedescriptors"))
-	//    	//, "fileSize", "layerDescriptor"
-	//	if err != nil {
-	//		return distribution.BFRecipeDescriptor{}, err
-	//	}
-
-	bfrJSON, err := redis.Bytes(rejson.JSONGet(conn, rfds.BFRecipeHashKey(dgst),
-		""))
-	if err != nil {
+	} else if err != nil {
+		context.GetLogger(ctx).Errorf("NANNAN: redis cluster error for key %s", err)
 		return distribution.BFRecipeDescriptor{}, err
+	} else {
+		var desc distribution.BFRecipeDescriptor
+		if err = desc.UnmarshalBinary([]byte(reply)); err != nil {
+			context.GetLogger(ctx).Errorf("NANNAN: redis cluster cannot UnmarshalBinary for key %s", err)
+			return distribution.BFRecipeDescriptor{}, err
+		} else {
+			//desc.RequestedServerIps = append(desc.RequestedServerIps, rfds.serverIp)
+			return desc, nil
+		}
 	}
 
-	// NOTE(stevvooe): The "size" field used to be "length". We treat a
-	// missing "size" field here as an unknown blob, which causes a cache
-	// miss, effectively migrating the field.
-	//	if len(reply) < 2 || reply[0] == nil || reply[1] == nil { // don't care if mediatype is nil
-	//		return distribution.BFRecipeDescriptor{}, distribution.ErrBlobUnknown
-	//	}
-
-	//	var desc distribution.FileDescriptor
-	//	if _, err = redis.Scan(reply, &desc.BlobDigest, &desc.FileDescriptor); err != nil {
-	//		return distribution.BFRecipeDescriptor{}, err
-	//	}
-
-	desc := distribution.BFRecipeDescriptor{}
-	err = json.Unmarshal(bfrJSON, &desc)
-	if err != nil {
-		return distribution.BFRecipeDescriptor{}, distribution.ErrBlobUnknown
-	}
-
-	return desc, nil
+//	conn := rfds.pool.Get()
+//	defer conn.Close()
+//
+//	if _, err := conn.Do("SELECT", dbNoBFRecipe); err != nil {
+//		//		defer conn.Close()
+//		return distribution.BFRecipeDescriptor{}, err
+//	}
+//
+//	//    reply, err := redis.Values(conn.Do("HMGET", rfds.BFRecipeHashKey(dgst), "blobdigest", "filedescriptors"))
+//	//    	//, "fileSize", "layerDescriptor"
+//	//	if err != nil {
+//	//		return distribution.BFRecipeDescriptor{}, err
+//	//	}
+//
+//	bfrJSON, err := redis.Bytes(rejson.JSONGet(conn, rfds.BFRecipeHashKey(dgst),
+//		""))
+//	if err != nil {
+//		return distribution.BFRecipeDescriptor{}, err
+//	}
+//
+//	// NOTE(stevvooe): The "size" field used to be "length". We treat a
+//	// missing "size" field here as an unknown blob, which causes a cache
+//	// miss, effectively migrating the field.
+//	//	if len(reply) < 2 || reply[0] == nil || reply[1] == nil { // don't care if mediatype is nil
+//	//		return distribution.BFRecipeDescriptor{}, distribution.ErrBlobUnknown
+//	//	}
+//
+//	//	var desc distribution.FileDescriptor
+//	//	if _, err = redis.Scan(reply, &desc.BlobDigest, &desc.FileDescriptor); err != nil {
+//	//		return distribution.BFRecipeDescriptor{}, err
+//	//	}
+//
+//	desc := distribution.BFRecipeDescriptor{}
+//	err = json.Unmarshal(bfrJSON, &desc)
+//	if err != nil {
+//		return distribution.BFRecipeDescriptor{}, distribution.ErrBlobUnknown
+//	}
+//
+//	return desc, nil
 }
 
 func (rfds *redisFileDescriptorService) SetBFRecipe(ctx context.Context, dgst digest.Digest, desc distribution.BFRecipeDescriptor) error {
-	conn := rfds.pool.Get()
-	defer conn.Close()
+//	conn := rfds.pool.Get()
+//	defer conn.Close()
+//
+//	if _, err := conn.Do("SELECT", dbNoBFRecipe); err != nil {
+//		//		defer conn.Close()
+//		return err
+//	}
+//
+//	//NANNAN: use re-json
+//
+//	_, err := rejson.JSONSet(conn, rfds.BFRecipeHashKey(dgst),
+//		".",
+//		desc, false, false)
+//	if err != nil {
+//		return err
+//	}
 
-	if _, err := conn.Do("SELECT", dbNoBFRecipe); err != nil {
-		//		defer conn.Close()
-		return err
-	}
-
-	//NANNAN: use re-json
-
-	_, err := rejson.JSONSet(conn, rfds.BFRecipeHashKey(dgst),
-		".",
-		desc, false, false)
-	if err != nil {
-		return err
-	}
-
-	//NANNAN: set dbNoSResProfile
-	//	conn := rfds.pool.Get()
-	//	defer conn.Close()
-	if len(desc.BSResDescriptors) > 0 {
-		if _, err := conn.Do("SELECT", dbNoSResProfile); err != nil {
-			//		defer conn.Close()
+	if desc.Type == "bsfdescriptors"{
+		err := rfds.cluster.Set(rfds.BFRecipeHashKey(dgst), &desc, 0).Err()
+		if err != nil {
+			context.GetLogger(ctx).Errorf("NANNAN: redis cluster cannot set value for key %s", err)
 			return err
 		}
-	} else {
 		return nil
 	}
 
-	//	if len(desc.BSResDescriptors) > 0{
-	for server, bsresDescriptor := range desc.BSResDescriptors {
+	//NANNAN: set bsresponserecipe
+	
+	if desc.Type == "bsresponserecipe"{
 
-		_, err := rejson.JSONSet(conn, rfds.BSResRecipeHashKey(dgst, server),
-			".",
-			bsresDescriptor, false, false)
-		if err != nil {
-			return err
+		if len(desc.BSResDescriptors) > 0 {
+			for server, bsresDescriptor := range desc.BSResDescriptors {
+				err := rfds.cluster.Set(rfds.BSResRecipeHashKey(dgst, server), bsresDescriptor, 0)
+				if err != nil {
+					return err
+				}
+			}
 		}
+	
+		return nil
 	}
-	//	}
-
-	return nil
 }

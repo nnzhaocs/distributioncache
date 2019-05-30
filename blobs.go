@@ -128,6 +128,7 @@ type BFRecipeDescriptor struct {
 
 	BSResDescriptors map[string]*BSResDescriptor
 	SliceSizeMap     map[string]int64
+	Type			string // bsresponserecipe or bsfdescriptors
 }
 
 type BSResDescriptor struct {
@@ -140,6 +141,28 @@ type BSResDescriptor struct {
 	DurationML  float64
 
 	SliceSize int64
+}
+
+func (m *BSResDescriptor) MarshalBinary() ([]byte, error) {
+	// _,  := json.Marshal(m)
+	//fmt.Println("NANNAN: ================> json.Marshal err %v", err)
+	return json.Marshal(m)
+}
+
+func (m *BSResDescriptor) UnmarshalBinary(data []byte) error {
+	// convert data to yours, let's assume its json data
+	return json.Unmarshal(data, m)
+}
+
+func (m *BFRecipeDescriptor) MarshalBinary() ([]byte, error) {
+	// _,  := json.Marshal(m)
+	//fmt.Println("NANNAN: ================> json.Marshal err %v", err)
+	return json.Marshal(m)
+}
+
+func (m *BFRecipeDescriptor) UnmarshalBinary(data []byte) error {
+	// convert data to yours, let's assume its json data
+	return json.Unmarshal(data, m)
 }
 
 //NANNAN: for blob-files info

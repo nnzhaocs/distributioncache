@@ -78,7 +78,7 @@ type App struct {
 	}
 
 	redis   *redis.Pool
-	cluster *redisgo.Client
+	cluster *redisgo.ClusterClient
 
 	// trustKey is a deprecated key used to sign manifests converted to
 	// schema1 for backward compatibility. It should not be used for any
@@ -604,10 +604,18 @@ func (app *App) configureRedis(configuration *configuration.Configuration) {
 	app.redis = pool
 	//NANNAN: add redisc cluster
 
-	redisdb := redisgo.NewClient(&redisgo.Options{
-		Addr: "192.168.0.176:6379",
-		//Addrs: []string{"192.168.0.170:6379", "192.168.0.213:7001", "192.168.0.213:7002", "192.168.0.213:7003", "192.168.0.213:7004", "192.168.0.213:7005"}, //[]string{":7000", ":7001", ":7002", ":7003", ":7004", ":7005"},
-	})
+	redisdb := redis.NewClusterClient(&redis.ClusterOptions{
+         Addrs: []string{
+             "192.168.0.170:7000", "192.168.0.170:7001",
+             "192.168.0.171:7000", "192.168.0.171:7001",
+             "192.168.0.172:7000", "192.168.0.172:7001",
+             "192.168.0.174:7000", "192.168.0.174:7001",
+             "192.168.0.176:7000", "192.168.0.176:7001",
+             "192.168.0.177:7000", "192.168.0.177:7001",
+             "192.168.0.178:7000", "192.168.0.178:7001",
+             "192.168.0.179:7000", "192.168.0.179:7001",
+             "192.168.0.180:7000", "192.168.0.180:7001",
+         }})
 	redisdb.Ping()
 	ok, err := redisdb.FlushAll().Result()
 	fmt.Println(ok, err)
