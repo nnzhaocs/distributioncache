@@ -265,6 +265,11 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 		context.GetLogger(ctx).Errorf("NANNAN: %s, ", err)
 		return err
 	}
+	
+	if len(desc.BSFDescriptors[bs.serverIp]) == 0{
+		context.GetLogger(ctx).Debug("NANNAN: this server doesn't have any files for this layer, ", len(desc.BSFDescriptors[bs.serverIp]))
+		return nil
+	}
 
 	var wg sync.WaitGroup
 	antp, _ := ants.NewPoolWithFunc(len(desc.BSFDescriptors[bs.serverIp]), func(i interface{}) {
