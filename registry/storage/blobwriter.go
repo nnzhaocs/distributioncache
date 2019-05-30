@@ -679,9 +679,9 @@ func (bw *blobWriter) CheckDuplicate(ctx context.Context, serverIp string, desc 
 				return err
 			}
 
-			//dfp := des.FilePath
+			dfp := des.FilePath
 			bfdescriptor := distribution.BFDescriptor{
-				BlobFilePath: fpath,
+				BlobFilePath: dfp, //fpath,
 				Digest:       dgst,
 				//DigestFilePath: dfp,
 				ServerIp: des.ServerIp,
