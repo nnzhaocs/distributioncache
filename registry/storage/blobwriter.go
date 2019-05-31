@@ -698,9 +698,9 @@ func (bw *blobWriter) CheckDuplicate(ctx context.Context, serverIp string, desc 
 			return err
 		}
 
-		//to avoid invalid filepath, rename the original file to digest //tarfpath := strings.SplitN(dgst.String(), ":", 2)[1]
-
-		reFPath := path.Join(path.Dir(fpath), strings.SplitN(dgst.String(), ":", 2)[1])
+		//to avoid invalid filepath, rename the original file to .../diff/digest //tarfpath := strings.SplitN(dgst.String(), ":", 2)[1]
+		diffpath := strings.SplitN(fpath, "diff", 2)[0] // replace alphanumeric
+		reFPath := path.Join(diffpath, "/diff/uniquefiles", strings.SplitN(dgst.String(), ":", 2)[1]) //path.Join(path.Dir(fpath), strings.SplitN(dgst.String(), ":", 2)[1])
 		err = os.Rename(fpath, reFPath)
 		if err != nil {
 			context.GetLogger(ctx).Errorf("NANNAN: fail to rename path (%v): %v", fpath, reFPath)
