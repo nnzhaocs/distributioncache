@@ -387,13 +387,13 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 		return err
 	}
 	//packpath
-	/*
-		if err = os.RemoveAll(packpath); err != nil {
-			context.GetLogger(ctx).Errorf("NANNAN: cannot remove all file in packpath: %s: %s",
-				packpath, err)
-			return err
-		}
-	*/
+	
+	if err = os.RemoveAll(packpath); err != nil {
+		context.GetLogger(ctx).Errorf("NANNAN: cannot remove all file in packpath: %s: %s",
+			packpath, err)
+		return err
+	}
+	
 	bsdedupDescriptor := &distribution.BSResDescriptor{
 		ServerIp: bs.serverIp,
 
