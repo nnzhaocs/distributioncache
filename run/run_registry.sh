@@ -20,6 +20,9 @@ docker login
 docker push nnzhaocs/distribution:latest
 docker tag nnzhaocs/distribution:latest nnzhaocs/socc-sfit-dedup
 
+sudo docker run -p 5000:5000 -d --rm --mount type=bind,source=/home/nannan/testing/tmpfs,target=/var/lib/registry/docker/registry/v2/pull_tars/ -v /home/nannan/testing/layers:/var/lib/registry -e REGISTRY_STORAGE_CACHE_HOSTIP=192.168.0.171 --name dedup-test -t nnzhaocs/distribution:latest
+
+
 #docker run -p 5001:5000 -e ZOOKEEPER="hulk7:2181" -e MEMORY="100" --cpus 1 -e HOST="hulk0:5000" -v /home/nannan/dockerimages/layers:/var/lib/registry -e REGISTRY_STORAGE_CACHE_BLOBDESCRIPTOR=redis -e REGISTRY_REDIS_ADDR=192.168.0.170:6379  -t nnzhaocs/distribution:latest
 
 #docker run -p 5000:5000 -e MEMORY="100" --cpus 1 -e HOST="hulk0:5000" -v /home/nannan/dockerimages/layers:/var/lib/registry  -t nnzhaocs/distribution:latest
