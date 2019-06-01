@@ -617,6 +617,12 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) e
 	return err
 }
 
+func getGID() float64 {
+	s1 := rand.NewSource(time.Now().UnixNano())
+	r1 := rand.New(s1)
+	return r1.Float64()
+}
+
 /*
 NANNAN check dedup
  Metrics: lock
@@ -698,9 +704,11 @@ func (bw *blobWriter) CheckDuplicate(ctx context.Context, serverIp string, desc 
 			return err
 		}
 
-		//to avoid invalid filepath, rename the original file to .../diff/digest //tarfpath := strings.SplitN(dgst.String(), ":", 2)[1]
+		//to avoid invalid filepath, rename the original file to .../diff/uniquefiles/randomid/digest //tarfpath := strings.SplitN(dgst.String(), ":", 2)[1]
 		diffpath := strings.SplitN(fpath, "diff", 2)[0] // replace alphanumeric
-		reFPath := path.Join(diffpath, "/diff/uniquefiles", strings.SplitN(dgst.String(), ":", 2)[1]) //path.Join(path.Dir(fpath), strings.SplitN(dgst.String(), ":", 2)[1])
+		gid := getGID()
+		tmp_dir := fmt.Sprintf("%f", gid)
+		reFPath := path.Join(diffpath, "/diff/uniquefiles", tmp_dir, strings.SplitN(dgst.String(), ":", 2)[1]) //path.Join(path.Dir(fpath), strings.SplitN(dgst.String(), ":", 2)[1])
 		err = os.Rename(fpath, reFPath)
 		if err != nil {
 			context.GetLogger(ctx).Errorf("NANNAN: fail to rename path (%v): %v", fpath, reFPath)

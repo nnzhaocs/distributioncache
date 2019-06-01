@@ -129,6 +129,10 @@ type BFRecipeDescriptor struct {
 	BSResDescriptors map[string]*BSResDescriptor
 	SliceSizeMap     map[string]int64
 	Type			string // bsresponserecipe or bsfdescriptors
+	
+	DurationCMP 	float64
+	DurationDCMP    float64
+	DurationNTT 	float64
 }
 
 type BSResDescriptor struct {
