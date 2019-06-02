@@ -617,12 +617,13 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) e
 	return err
 }
 
+/*
 func getGID() float64 {
 	s1 := rand.NewSource(time.Now().UnixNano())
 	r1 := rand.New(s1)
 	return r1.Float64()
 }
-
+*/
 /*
 NANNAN check dedup
  Metrics: lock
