@@ -24,7 +24,7 @@ docker tag nnzhaocs/distribution:latest nnzhaocs/socc-sfit-dedup
 pssh -h remotehosts.txt -l root -A 'docker stop $(docker ps -a -q)'
 pssh -h remotehosts.txt -l root -A 'rm -rf /home/nannan/testing/tmpfs/*'
 pssh -h remotehosts.txt -l root -A 'rm -rf /home/nannan/testing/layers/*'
-
+./flushall-cluster.sh
 
 ####:==========run siftregistry ==================
 sudo docker run -p 5000:5000 -d --rm --mount type=bind,source=/home/nannan/testing/tmpfs,target=/var/lib/registry/docker/registry/v2/pull_tars/ -v /home/nannan/testing/layers:/var/lib/registry -e "REGISTRY_STORAGE_CACHE_HOSTIP=$(ip -4 addr |grep 192.168 |grep -Po 'inet \K[\d.]+')" --name dedup-test -t nnzhaocs/distribution:latest
@@ -34,7 +34,11 @@ sudo docker service create --name traditionaldedupregistry --replicas 10 --mount
 
 ####:============run originalregistrycluster======================######
 
-sudo docker service create -p 5000:5000 --replicas=9 --mount type=tmpfs,target=/var/lib/registry/docker/registry/v2/pull_tars/ --mount type=bind,source=/home/nannan/testing/layers,target=/var/lib/registry -e "REGISTRY_STORAGE_CACHE_HOSTIP=$(ip -4 addr |grep 192.168 |grep -Po 'inet \K[\d.]+')" --name originalregistry  nnzhaocs/distribution:original
+#pssh -h remotehosts.txt -l root -A 'docker run --rm -d -p 5000:5000 --mount type=bind,source=/home/nannan/testing/tmpfs,target=/var/lib/registry/docker/registry/v2/pull_tars/ -v=/home/nannan/testing/layers:/var/lib/registry -e "REGISTRY_STORAGE_CACHE_HOSTIP=$(ip -4 addr |grep 192.168 |grep -Po 'inet \K[\d.]+')" --name originalregistry  nnzhaocs/distribution:original'
+
+pssh -h remotehosts.txt -l root -A -i 'docker run --rm -d -p 5000:5000 --mount type=bind,source=/home/nannan/testing/tmpfs,target=/var/lib/registry/docker/registry/v2/pull_tars/ -v=/home/nannan/testing/layers:/var/lib/registry -e "REGISTRY_STORAGE_CACHE_HOSTIP=$(ip -4 addr |grep 192.168 |grep -Po "inet \K[\d.]+")" --name originalregistry-3  nnzhaocs/distribution:original'
+
+#sudo docker service create -p 5000:5000 --replicas=9 --mount type=tmpfs,target=/var/lib/registry/docker/registry/v2/pull_tars/ --mount type=bind,source=/home/nannan/testing/layers,target=/var/lib/registry -e "REGISTRY_STORAGE_CACHE_HOSTIP=$(ip -4 addr |grep 192.168 |grep -Po 'inet \K[\d.]+')" --name originalregistry  nnzhaocs/distribution:original
 
 ####: ============run randomregistrycluster on amaranths============#####
 sudo docker service create --name randomregistry --replicas 5 --mount type=bind,source=/home/nannan/testing/layers,destination=/var/lib/registry -p 5000:5000 registry
@@ -55,7 +59,7 @@ sudo docker run -p 5000:5000 --rm --mount type=bind,source=/home/nannan/testing/
 
 
 
-#========================> HOW TO CREATE A REDIS CLUSTER WITH DOCKER SWARM <===================
+#========================> HOW TO CREATE A REDIS CLUSTER WITH DOCKER SWARM ,source=/home/nannan/testing<===================
 
 sudo docker service create --name rejson-cluster -p 6379:6379 --replicas=9 redislabs/rejson \
     --cluster-enabled yes\
