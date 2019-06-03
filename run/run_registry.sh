@@ -20,7 +20,20 @@ docker login
 docker push nnzhaocs/distribution:latest
 docker tag nnzhaocs/distribution:latest nnzhaocs/socc-sfit-dedup
 
-sudo docker run -p 5000:5000 -d --rm --mount type=bind,source=/home/nannan/testing/tmpfs,target=/var/lib/registry/docker/registry/v2/pull_tars/ -v /home/nannan/testing/layers:/var/lib/registry -e REGISTRY_STORAGE_CACHE_HOSTIP=192.168.0.171 --name dedup-test -t nnzhaocs/distribution:latest
+####:==========cleanup for registry =============
+pssh -h remotehosts.txt -l root -A 'docker stop $(docker ps -a -q)'
+pssh -h remotehosts.txt -l root -A 'rm -rf /home/nannan/testing/tmpfs/*'
+pssh -h remotehosts.txt -l root -A 'rm -rf /home/nannan/testing/layers/*'
+
+
+####:==========run siftregistry ==================
+sudo docker run -p 5000:5000 -d --rm --mount type=bind,source=/home/nannan/testing/tmpfs,target=/var/lib/registry/docker/registry/v2/pull_tars/ -v /home/nannan/testing/layers:/var/lib/registry -e "REGISTRY_STORAGE_CACHE_HOSTIP=$(ip -4 addr |grep 192.168 |grep -Po 'inet \K[\d.]+')" --name dedup-test -t nnzhaocs/distribution:latest
+
+####:============run originalregistrycluster======================######
+
+
+####: ============run randomregistrycluster on amaranths============#####
+sudo docker service create --name randomregistry --replicas 5 --mount type=bind,source=/home/nannan/testing/layers,destination=/var/lib/registry -p 5000:5000 registry
 
 
 #docker run -p 5001:5000 -e ZOOKEEPER="hulk7:2181" -e MEMORY="100" --cpus 1 -e HOST="hulk0:5000" -v /home/nannan/dockerimages/layers:/var/lib/registry -e REGISTRY_STORAGE_CACHE_BLOBDESCRIPTOR=redis -e REGISTRY_REDIS_ADDR=192.168.0.170:6379  -t nnzhaocs/distribution:latest
@@ -34,6 +47,9 @@ docker build -t nnzhaocs/socc-sift-dedup ./
 docker push nnzhaocs/socc-sfit-dedup
 
 sudo docker run -p 5000:5000 --rm --mount type=bind,source=/home/nannan/testing/tmpfs,target=/var/lib/registry/docker/registry/v2/pull_tars/ -v /home/nannan/testing/layers:/var/lib/registry -e REGISTRY_STORAGE_CACHE_HOSTIP=192.168.0.171 -e REGISTRY_NOTIFICATIONS_REGISTRIES=192.168.0.170,192.168.0.171  --name dedup-9cluster -t nnzhaocs/distribution:latest
+
+
+
 
 #========================> HOW TO CREATE A REDIS CLUSTER WITH DOCKER SWARM <===================
 
