@@ -29,8 +29,12 @@ pssh -h remotehosts.txt -l root -A 'rm -rf /home/nannan/testing/layers/*'
 ####:==========run siftregistry ==================
 sudo docker run -p 5000:5000 -d --rm --mount type=bind,source=/home/nannan/testing/tmpfs,target=/var/lib/registry/docker/registry/v2/pull_tars/ -v /home/nannan/testing/layers:/var/lib/registry -e "REGISTRY_STORAGE_CACHE_HOSTIP=$(ip -4 addr |grep 192.168 |grep -Po 'inet \K[\d.]+')" --name dedup-test -t nnzhaocs/distribution:latest
 
+####:============run traditionaldedupregistrycluster======================######
+sudo docker service create --name traditionaldedupregistry --replicas 10 --mount type=bind,source=/home/nannan/testing/tmpfs,target=/var/lib/registry/docker/registry/v2/pull_tars/ -v /home/nannan/testing/layers:/var/lib/registry -e "REGISTRY_STORAGE_CACHE_HOSTIP=$(ip -4 addr |grep 192.168 |grep -Po 'inet \K[\d.]+')"
+
 ####:============run originalregistrycluster======================######
 
+sudo docker service create -p 5000:5000 --replicas=9 --mount type=tmpfs,target=/var/lib/registry/docker/registry/v2/pull_tars/ --mount type=bind,source=/home/nannan/testing/layers,target=/var/lib/registry -e "REGISTRY_STORAGE_CACHE_HOSTIP=$(ip -4 addr |grep 192.168 |grep -Po 'inet \K[\d.]+')" --name originalregistry  nnzhaocs/distribution:original
 
 ####: ============run randomregistrycluster on amaranths============#####
 sudo docker service create --name randomregistry --replicas 5 --mount type=bind,source=/home/nannan/testing/layers,destination=/var/lib/registry -p 5000:5000 registry
