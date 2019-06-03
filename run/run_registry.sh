@@ -24,7 +24,7 @@ docker tag nnzhaocs/distribution:latest nnzhaocs/socc-sfit-dedup
 pssh -h remotehosts.txt -l root -A 'docker stop $(docker ps -a -q)'
 pssh -h remotehosts.txt -l root -A 'rm -rf /home/nannan/testing/tmpfs/*'
 pssh -h remotehosts.txt -l root -A 'rm -rf /home/nannan/testing/layers/*'
-
+./flushall-cluster.sh
 
 ####:==========run siftregistry ==================
 sudo docker run -p 5000:5000 -d --rm --mount type=bind,source=/home/nannan/testing/tmpfs,target=/var/lib/registry/docker/registry/v2/pull_tars/ -v /home/nannan/testing/layers:/var/lib/registry -e "REGISTRY_STORAGE_CACHE_HOSTIP=$(ip -4 addr |grep 192.168 |grep -Po 'inet \K[\d.]+')" --name dedup-test -t nnzhaocs/distribution:latest
