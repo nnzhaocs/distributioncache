@@ -24,14 +24,22 @@ docker tag nnzhaocs/distribution:latest nnzhaocs/socc-sfit-dedup
 pssh -h remotehosts.txt -l root -A 'docker stop $(docker ps -a -q)'
 pssh -h remotehosts.txt -l root -A 'rm -rf /home/nannan/testing/tmpfs/*'
 pssh -h remotehosts.txt -l root -A 'rm -rf /home/nannan/testing/layers/*'
+
 pssh -h remotehostthors.txt -l root -A -i 'mount -t tmpfs -o size=8G tmpfs /home/nannan/testing/tmpfs'
+
 ./flushall-cluster.sh 192.168.0.170
+
 
 ####:==========run siftregistry ==================
 sudo docker run -p 5000:5000 -d --rm --mount type=bind,source=/home/nannan/testing/tmpfs,target=/var/lib/registry/docker/registry/v2/pull_tars/ -v /home/nannan/testing/layers:/var/lib/registry -e "REGISTRY_STORAGE_CACHE_HOSTIP=$(ip -4 addr |grep 192.168 |grep -Po 'inet \K[\d.]+')" --name dedup-test -t nnzhaocs/distribution:latest
 
 ####:============run traditionaldedupregistrycluster======================######
-sudo docker service create --name traditionaldedupregistry --replicas 10 --mount type=bind,source=/home/nannan/testing/tmpfs,target=/var/lib/registry/docker/registry/v2/pull_tars/ -v /home/nannan/testing/layers:/var/lib/registry -e "REGISTRY_STORAGE_CACHE_HOSTIP=$(ip -4 addr |grep 192.168 |grep -Po 'inet \K[\d.]+')"
+#sudo docker service create --name traditionaldedupregistry --replicas 10 --mount type=bind,source=/home/nannan/testing/tmpfs,target=/var/lib/registry/docker/registry/v2/pull_tars/ -v /home/nannan/testing/layers:/var/lib/registry -e "REGISTRY_STORAGE_CACHE_HOSTIP=$(ip -4 addr |grep 192.168 |grep -Po 'inet \K[\d.]+')"
+
+pssh -h remotehosts.txt -l root -A -i 'docker run --rm -d -p 5000:5000 --mount type=bind,source=/home/nannan/testing/tmpfs,target=/var/lib/registry/docker/registry/v2/pull_tars/ -v=/home/nannan/testing/layers:/var/lib/registry -e "REGISTRY_STORAGE_CACHE_HOSTIP=$(ip -4 addr |grep 192.168 |grep -Po "inet \K[\d.]+")" --name traditionaldedup-3  nnzhaocs/distribution:traditionaldedup'
+
+#### set up amaranth registries #######
+
 
 ####:============run originalregistrycluster======================######
 
