@@ -710,6 +710,13 @@ func (bw *blobWriter) CheckDuplicate(ctx context.Context, serverIp string, desc 
 		gid := getGID()
 		tmp_dir := fmt.Sprintf("%f", gid)
 		reFPath := path.Join(diffpath, "/diff/uniquefiles", tmp_dir, strings.SplitN(dgst.String(), ":", 2)[1]) //path.Join(path.Dir(fpath), strings.SplitN(dgst.String(), ":", 2)[1])
+		
+		newdir := path.Join(diffpath, "/diff/uniquefiles", tmp_dir)
+		if os.MkdirAll(newdir, 0666) != nil {
+			context.GetLogger(ctx).Errorf("NANNAN: checkdedup <create dir for newly added files> %s, ", err)
+			return err
+		}
+		
 		err = os.Rename(fpath, reFPath)
 		if err != nil {
 			context.GetLogger(ctx).Errorf("NANNAN: fail to rename path (%v): %v", fpath, reFPath)
