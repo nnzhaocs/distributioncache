@@ -36,10 +36,49 @@ sudo docker run -p 5000:5000 -d --rm --mount type=bind,source=/home/nannan/testi
 ####:============run traditionaldedupregistrycluster======================######
 #sudo docker service create --name traditionaldedupregistry --replicas 10 --mount type=bind,source=/home/nannan/testing/tmpfs,target=/var/lib/registry/docker/registry/v2/pull_tars/ -v /home/nannan/testing/layers:/var/lib/registry -e "REGISTRY_STORAGE_CACHE_HOSTIP=$(ip -4 addr |grep 192.168 |grep -Po 'inet \K[\d.]+')"
 
-pssh -h remotehosts.txt -l root -A -i 'docker run --rm -d -p 5000:5000 --mount type=bind,source=/home/nannan/testing/tmpfs,target=/var/lib/registry/docker/registry/v2/pull_tars/ -v=/home/nannan/testing/layers:/var/lib/registry -e "REGISTRY_STORAGE_CACHE_HOSTIP=$(ip -4 addr |grep 192.168 |grep -Po "inet \K[\d.]+")" --name traditionaldedup-3  nnzhaocs/distribution:traditionaldedup'
+#####: For thors
+#pssh -h remotehosts.txt -l root -A -i 'docker run --rm -d -p 5000:5000 --mount type=bind,source=/home/nannan/testing/tmpfs,target=/var/lib/registry/docker/registry/v2/pull_tars/ -v=/home/nannan/testing/layers:/var/lib/registry -e "REGISTRY_STORAGE_CACHE_HOSTIP=$(ip -4 addr |grep 192.168.0.2 |grep -Po "inet \K[\d.]+")" --name traditionaldedup-3  nnzhaocs/distribution:traditionaldedup'
+#pssh -h remotehostthors.txt -l root -A -i 'docker run --rm -d -p 5000:5000 --mount type=bind,source=/home/nannan/testing/tmpfs,target=/var/lib/registry/docker/registry/v2/pull_tars/ -v=/home/nannan/testing/layers:/var/lib/registry -e "REGISTRY_STORAGE_CACHE_HOSTIP=$(ip -4 addr |grep 192.168.0.2 |grep -Po "inet \K[\d.]+")" --name traditionaldedup-3 --net=host nnzhaocs/distribution:traditionaldedup'
 
 #### set up amaranth registries #######
+#pssh -h remotehostthors.txt -l root -A -i 'docker run --rm -d -p 5000:5000 -v=/home/nannan/testing/layers:/var/lib/registry --name random-registry-cluster registry'
 
+1. cleanup hulks same as before, and cleanup amaranths as: 
+pssh -h remotehotamaranths.txt -l root -A 'docker stop $(docker ps -a -q)' 
+pssh -h remotehotamaranths.txt -l root -A 'rm -rf /home/nannan/testing/layers/*'
+
+2. setup amaranth registries first:
+pssh -h remotehotamaranths.txt -l root -A -i 'docker run --rm -d -p 5000:5000 -v=/home/nannan/testing/layers:/var/lib/registry --name random-registry-cluster registry'
+
+3. setup hulk registries:
+pssh -h remotehosts.txt -l root -A -i 'docker run --rm -d -p 5000:5000 --mount type=bind,source=/home/nannan/testing/tmpfs,target=/var/lib/registry/docker/registry/v2/pull_tars/ -v=/home/nannan/testing/layers:/var/lib/registry -e "REGISTRY_STORAGE_CACHE_HOSTIP=$(ip -4 addr |grep 192.168 |grep -Po "inet \K[\d.]+")" --name traditionaldedupregistry-3  nnzhaocs/distribution:traditionaldedup'
+
+4. run docker-performance:
+config_1.yaml configuration: 
+traditionaldedup: True; others are set to false; warmup threads: 10;
+Others same as before.
+
+
+5. save parameters:
+Two kinds of values: ones start with "Blob:File:Recipe::sha256" and ones start with "Blob:File:Recipe::RestoreTime::sha256"
+
+For the ones with "Blob:File:Recipe::RestoreTime::sha256*"
+we need to save:
+BlobDigest:
+UncompressSize:
+CompressSize:
+
+For the ones with "Blob:File:Recipe::sha256*"
+we need to save
+key
+SliceSize
+DurationCP
+DurationCMP
+DurationML
+DurationNTT
+DurationRS
+
+So inaddition to value fields, we need to save the key as well for "Blob:File:Recipe::sha256*"
 
 ####:============run originalregistrycluster======================######
 
