@@ -55,7 +55,7 @@ pssh -h remotehosts.txt -l root -A -i 'docker run --rm -d -p 5000:5000 --mount t
 
 4. run docker-performance:
 config_1.yaml configuration: 
-traditionaldedup: True; others are set to false; warmup threads: 10;
+traditionaldedup: True; others are set to false; warmup threads: 5;
 Others same as before.
 
 
