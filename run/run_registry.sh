@@ -43,9 +43,15 @@ sudo docker run -p 5000:5000 -d --rm --mount type=bind,source=/home/nannan/testi
 #### set up amaranth registries #######
 #pssh -h remotehostthors.txt -l root -A -i 'docker run --rm -d -p 5000:5000 -v=/home/nannan/testing/layers:/var/lib/registry --name random-registry-cluster registry'
 
-1. cleanup hulks same as before, and cleanup amaranths as: 
-pssh -h remotehotamaranths.txt -l root -A 'docker stop $(docker ps -a -q)' 
+1. cleanup hulks same as before, and cleanup amaranths as:
+pssh -h remotehotamaranths.txt -l root -A 'docker stop $(docker ps -a -q)'
 pssh -h remotehotamaranths.txt -l root -A 'rm -rf /home/nannan/testing/layers/*'
+
+pssh -h remotehosts.txt -l root -A 'docker stop $(docker ps -a -q)'
+pssh -h remotehosts.txt -l root -A 'rm -rf /home/nannan/testing/tmpfs/*'
+pssh -h remotehosts.txt -l root -A 'rm -rf /home/nannan/testing/layers/*'
+
+./flushall-cluster.sh 192.168.0.170
 
 2. setup amaranth registries first:
 pssh -h remotehotamaranths.txt -l root -A -i 'docker run --rm -d -p 5000:5000 -v=/home/nannan/testing/layers:/var/lib/registry --name random-registry-cluster registry'
@@ -54,8 +60,8 @@ pssh -h remotehotamaranths.txt -l root -A -i 'docker run --rm -d -p 5000:5000 -v
 pssh -h remotehosts.txt -l root -A -i 'docker run --rm -d -p 5000:5000 --mount type=bind,source=/home/nannan/testing/tmpfs,target=/var/lib/registry/docker/registry/v2/pull_tars/ -v=/home/nannan/testing/layers:/var/lib/registry -e "REGISTRY_STORAGE_CACHE_HOSTIP=$(ip -4 addr |grep 192.168 |grep -Po "inet \K[\d.]+")" --name traditionaldedupregistry-3  nnzhaocs/distribution:traditionaldedup'
 
 4. run docker-performance:
-config_1.yaml configuration: 
-traditionaldedup: True; others are set to false; warmup threads: 10;
+config_1.yaml configuration:
+traditionaldedup: True; others are set to false; warmup threads: 5;
 Others same as before.
 
 
