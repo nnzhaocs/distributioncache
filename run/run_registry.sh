@@ -20,12 +20,12 @@ docker login
 docker push nnzhaocs/distribution:latest
 docker tag nnzhaocs/distribution:latest nnzhaocs/socc-sfit-dedup
 
-####:==========cleanup for registry =============
+pssh -h remotehostthors.txt -l root -A -i 'mount -t tmpfs -o size=8G tmpfs /home/nannan/testing/tmpfs'
+
+####:==========cleanup for hulks =============
 pssh -h remotehosts.txt -l root -A 'docker stop $(docker ps -a -q)'
 pssh -h remotehosts.txt -l root -A 'rm -rf /home/nannan/testing/tmpfs/*'
 pssh -h remotehosts.txt -l root -A 'rm -rf /home/nannan/testing/layers/*'
-
-pssh -h remotehostthors.txt -l root -A -i 'mount -t tmpfs -o size=8G tmpfs /home/nannan/testing/tmpfs'
 
 ./flushall-cluster.sh 192.168.0.170
 
@@ -67,17 +67,17 @@ traditionaldedup: True; others are set to false; warmup threads: 5;
 Others same as before.
 
 
-5. save parameters:
-Two kinds of values: ones start with "Blob:File:Recipe::sha256" and ones start with "Blob:File:Recipe::RestoreTime::sha256"
+#5. save parameters:
+#Two kinds of values: ones start with "Blob:File:Recipe::sha256" and ones start with "Blob:File:Recipe::RestoreTime::sha256"
 
-For the ones with "Blob:File:Recipe::RestoreTime::sha256*"
-we need to save:
+#For the ones with "Blob:File:Recipe::RestoreTime::sha256*"
+#we need to save:
 BlobDigest:
 UncompressSize:
-CompressSize:
+#CompressSize:
 
-For the ones with "Blob:File:Recipe::sha256*"
-we need to save
+#For the ones with "Blob:File:Recipe::sha256*"
+#we need to save
 key
 SliceSize
 DurationCP
