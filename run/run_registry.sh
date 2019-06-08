@@ -23,43 +23,43 @@ docker tag nnzhaocs/distribution:latest nnzhaocs/socc-sfit-dedup
 pssh -h remotehostthors.txt -l root -A -i 'mount -t tmpfs -o size=8G tmpfs /home/nannan/testing/tmpfs'
 
 ####:==========cleanup for hulks =============
-pssh -h remotehosts.txt -l root -A 'docker stop $(docker ps -a -q)'
-pssh -h remotehosts.txt -l root -A 'rm -rf /home/nannan/testing/tmpfs/*'
-pssh -h remotehosts.txt -l root -A 'rm -rf /home/nannan/testing/layers/*'
+pssh -h remotehostshulk.txt -l root -A -i 'docker stop $(docker ps -a -q)'
+pssh -h remotehostshulk.txt -l root -A -i 'rm -rf /home/nannan/testing/tmpfs/*'
+pssh -h remotehostshulk.txt -l root -A -i 'rm -rf /home/nannan/testing/layers/*'
 
 ./flushall-cluster.sh 192.168.0.170
 
 
 ####:==========run siftregistry ==================
 #sudo docker run -p 5000:5000 -d --rm --mount type=bind,source=/home/nannan/testing/tmpfs,target=/var/lib/registry/docker/registry/v2/pull_tars/ -v /home/nannan/testing/layers:/var/lib/registry -e "REGISTRY_STORAGE_CACHE_HOSTIP=$(ip -4 addr |grep 192.168 |grep -Po 'inet \K[\d.]+')" --name dedup-test -t nnzhaocs/distribution:sift
-pssh -h remotehosts.txt -l root -A -i 'docker run --rm -d -p 5000:5000 --mount type=bind,source=/home/nannan/testing/tmpfs,target=/var/lib/registry/docker/registry/v2/pull_tars/ -v=/home/nannan/testing/layers:/var/lib/registry -e "REGISTRY_STORAGE_CACHE_HOSTIP=$(ip -4 addr |grep 192.168 |grep -Po "inet \K[\d.]+")" --name siftdedup-3  nnzhaocs/distribution:siftdedup'
+pssh -h remotehostshulk.txt -l root -A -i 'docker run --rm -d -p 5000:5000 --mount type=bind,source=/home/nannan/testing/tmpfs,target=/var/lib/registry/docker/registry/v2/pull_tars/ -v=/home/nannan/testing/layers:/var/lib/registry -e "REGISTRY_STORAGE_CACHE_HOSTIP=$(ip -4 addr |grep 192.168 |grep -Po "inet \K[\d.]+")" --name siftdedup-3  nnzhaocs/distribution:siftdedup'
 
 
 ####:============run traditionaldedupregistrycluster======================######
 #sudo docker service create --name traditionaldedupregistry --replicas 10 --mount type=bind,source=/home/nannan/testing/tmpfs,target=/var/lib/registry/docker/registry/v2/pull_tars/ -v /home/nannan/testing/layers:/var/lib/registry -e "REGISTRY_STORAGE_CACHE_HOSTIP=$(ip -4 addr |grep 192.168 |grep -Po 'inet \K[\d.]+')"
 
 #####: For thors
-#pssh -h remotehosts.txt -l root -A -i 'docker run --rm -d -p 5000:5000 --mount type=bind,source=/home/nannan/testing/tmpfs,target=/var/lib/registry/docker/registry/v2/pull_tars/ -v=/home/nannan/testing/layers:/var/lib/registry -e "REGISTRY_STORAGE_CACHE_HOSTIP=$(ip -4 addr |grep 192.168.0.2 |grep -Po "inet \K[\d.]+")" --name traditionaldedup-3  nnzhaocs/distribution:traditionaldedup'
+#pssh -h remotehostshulk.txt -l root -A -i 'docker run --rm -d -p 5000:5000 --mount type=bind,source=/home/nannan/testing/tmpfs,target=/var/lib/registry/docker/registry/v2/pull_tars/ -v=/home/nannan/testing/layers:/var/lib/registry -e "REGISTRY_STORAGE_CACHE_HOSTIP=$(ip -4 addr |grep 192.168.0.2 |grep -Po "inet \K[\d.]+")" --name traditionaldedup-3  nnzhaocs/distribution:traditionaldedup'
 #pssh -h remotehostthors.txt -l root -A -i 'docker run --rm -d -p 5000:5000 --mount type=bind,source=/home/nannan/testing/tmpfs,target=/var/lib/registry/docker/registry/v2/pull_tars/ -v=/home/nannan/testing/layers:/var/lib/registry -e "REGISTRY_STORAGE_CACHE_HOSTIP=$(ip -4 addr |grep 192.168.0.2 |grep -Po "inet \K[\d.]+")" --name traditionaldedup-3 --net=host nnzhaocs/distribution:traditionaldedup'
 
 #### set up amaranth registries #######
 #pssh -h remotehostthors.txt -l root -A -i 'docker run --rm -d -p 5000:5000 -v=/home/nannan/testing/layers:/var/lib/registry --name random-registry-cluster registry'
 
 1. cleanup hulks same as before, and cleanup amaranths as:
-pssh -h remotehotamaranths.txt -l root -A 'docker stop $(docker ps -a -q)'
-pssh -h remotehotamaranths.txt -l root -A 'rm -rf /home/nannan/testing/layers/*'
+pssh -h remotehostsamaranth.txt -l root -A -i 'docker stop $(docker ps -a -q)'
+pssh -h remotehostsamaranth.txt -l root -A -i 'rm -rf /home/nannan/testing/layers/*'
 
-pssh -h remotehosts.txt -l root -A 'docker stop $(docker ps -a -q)'
-pssh -h remotehosts.txt -l root -A 'rm -rf /home/nannan/testing/tmpfs/*'
-pssh -h remotehosts.txt -l root -A 'rm -rf /home/nannan/testing/layers/*'
+pssh -h remotehostshulk.txt -l root -A -i 'docker stop $(docker ps -a -q)'
+pssh -h remotehostshulk.txt -l root -A -i 'rm -rf /home/nannan/testing/tmpfs/*'
+pssh -h remotehostshulk.txt -l root -A -i 'rm -rf /home/nannan/testing/layers/*'
 
 ./flushall-cluster.sh 192.168.0.170
 
 2. setup amaranth registries first:
-pssh -h remotehotamaranths.txt -l root -A -i 'docker run --rm -d -p 5000:5000 -v=/home/nannan/testing/layers:/var/lib/registry --name random-registry-cluster registry'
+pssh -h remotehostsamaranth.txt -l root -A -i 'docker run --rm -d -p 5000:5000 -v=/home/nannan/testing/layers:/var/lib/registry --name random-registry-cluster registry'
 
 3. setup hulk registries:
-pssh -h remotehosts.txt -l root -A -i 'docker run --rm -d -p 5000:5000 --mount type=bind,source=/home/nannan/testing/tmpfs,target=/var/lib/registry/docker/registry/v2/pull_tars/ -v=/home/nannan/testing/layers:/var/lib/registry -e "REGISTRY_STORAGE_CACHE_HOSTIP=$(ip -4 addr |grep 192.168 |grep -Po "inet \K[\d.]+")" --name traditionaldedupregistry-3  nnzhaocs/distribution:traditionaldedup'
+pssh -h remotehostshulk.txt -l root -A -i 'docker run --rm -d -p 5000:5000 --mount type=bind,source=/home/nannan/testing/tmpfs,target=/var/lib/registry/docker/registry/v2/pull_tars/ -v=/home/nannan/testing/layers:/var/lib/registry -e "REGISTRY_STORAGE_CACHE_HOSTIP=$(ip -4 addr |grep 192.168 |grep -Po "inet \K[\d.]+")" --name traditionaldedupregistry-3  nnzhaocs/distribution:traditionaldedup'
 
 4. run docker-performance:
 config_1.yaml configuration:
@@ -90,9 +90,9 @@ So inaddition to value fields, we need to save the key as well for "Blob:File:Re
 
 ####:============run originalregistrycluster======================######
 
-#pssh -h remotehosts.txt -l root -A 'docker run --rm -d -p 5000:5000 --mount type=bind,source=/home/nannan/testing/tmpfs,target=/var/lib/registry/docker/registry/v2/pull_tars/ -v=/home/nannan/testing/layers:/var/lib/registry -e "REGISTRY_STORAGE_CACHE_HOSTIP=$(ip -4 addr |grep 192.168 |grep -Po 'inet \K[\d.]+')" --name originalregistry  nnzhaocs/distribution:original'
+#pssh -h remotehostshulk.txt -l root -A 'docker run --rm -d -p 5000:5000 --mount type=bind,source=/home/nannan/testing/tmpfs,target=/var/lib/registry/docker/registry/v2/pull_tars/ -v=/home/nannan/testing/layers:/var/lib/registry -e "REGISTRY_STORAGE_CACHE_HOSTIP=$(ip -4 addr |grep 192.168 |grep -Po 'inet \K[\d.]+')" --name originalregistry  nnzhaocs/distribution:original'
 
-pssh -h remotehosts.txt -l root -A -i 'docker run --rm -d -p 5000:5000 --mount type=bind,source=/home/nannan/testing/tmpfs,target=/var/lib/registry/docker/registry/v2/pull_tars/ -v=/home/nannan/testing/layers:/var/lib/registry -e "REGISTRY_STORAGE_CACHE_HOSTIP=$(ip -4 addr |grep 192.168 |grep -Po "inet \K[\d.]+")" --name originalregistry-3  nnzhaocs/distribution:original'
+pssh -h remotehostshulk.txt -l root -A -i 'docker run --rm -d -p 5000:5000 --mount type=bind,source=/home/nannan/testing/tmpfs,target=/var/lib/registry/docker/registry/v2/pull_tars/ -v=/home/nannan/testing/layers:/var/lib/registry -e "REGISTRY_STORAGE_CACHE_HOSTIP=$(ip -4 addr |grep 192.168 |grep -Po "inet \K[\d.]+")" --name originalregistry-3  nnzhaocs/distribution:original'
 
 #sudo docker service create -p 5000:5000 --replicas=9 --mount type=tmpfs,target=/var/lib/registry/docker/registry/v2/pull_tars/ --mount type=bind,source=/home/nannan/testing/layers,target=/var/lib/registry -e "REGISTRY_STORAGE_CACHE_HOSTIP=$(ip -4 addr |grep 192.168 |grep -Po 'inet \K[\d.]+')" --name originalregistry  nnzhaocs/distribution:original
 
