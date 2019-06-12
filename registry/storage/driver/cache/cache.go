@@ -43,6 +43,11 @@ func (cache *MemCache) Init() error {
 		cache.disksize,
 		cache.diskcnt)
 	
+	fmt.Printf("NANNAN: ====================> cache capacity: %ld, %ld, and %d =================> \n\n", 
+		cache.capacity,
+		cache.disksize,
+		cache.diskcnt)
+	
 	return err
 }
 
