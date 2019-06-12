@@ -29,14 +29,14 @@ storage:
     maintenance:
         uploadpurging:
             enabled: false
-    smalltar: 100 # file cnt
+    smalltar: 16 # file cnt
     blobcache: # file cache 
         type: lru # or arc
         size: 500   #mb
 #        sizelimit: 
     diskcache: # disk cache
         size: 500 #mb
-        cnt: 16 
+        cnt: 500
     
 http:
     addr: :5000
