@@ -42,6 +42,9 @@ type registry struct {
 	schema1SigningKey            libtrust.PrivateKey
 	blobDescriptorServiceFactory distribution.BlobDescriptorServiceFactory
 	manifestURLs                 manifestURLs
+	
+	smalltarfcnt				 int
+	
 	//ring					     hashring.HashRing
 }
 
@@ -75,12 +78,36 @@ func SetCacheSize(size int) RegistryOption {
 	}
 }
 
-func SetCacheSizeLimit(sizelim int) RegistryOption {
+//func SetCacheSizeLimit(sizelim int) RegistryOption {
+//	return func(registry *registry) error {
+//		registry.blobServer.cache.SetEntrylimit(sizelim)
+//		return nil
+//	}
+//}
+
+
+func SetSmallTarThreshold(smalltar int) RegistryOption {
 	return func(registry *registry) error {
-		registry.blobServer.cache.SetEntrylimit(sizelim)
+		registry.smalltarfcnt = smalltar
 		return nil
 	}
 }
+
+func SetDiskCacheSize(size int) RegistryOption {
+	return func(registry *registry) error {
+		registry.blobServer.cache.SetDiskCacheSize(size)
+		return nil
+	}
+}
+
+func SetDiskCacheCnt(cnt int) RegistryOption {
+	return func(registry *registry) error {
+		registry.blobServer.cache.SetDiskCacheCnt(cnt)
+		return nil
+	}
+}
+
+
 
 // EnableDelete is a functional option for NewRegistry. It enables deletion on
 // the registry.
@@ -191,11 +218,6 @@ func NewRegistry(ctx context.Context, serverIp string, servers []*url.URL, drive
 		statter: statter,
 	}
 
-	/*p, _ := ants.NewTimingPoolWithFunc(128, func(i interface{}){
-
-
-	})*/
-
 	registry := &registry{
 		blobStore: bs,
 		blobServer: &blobServer{
@@ -205,8 +227,6 @@ func NewRegistry(ctx context.Context, serverIp string, servers []*url.URL, drive
 			cache:    new(blobcache.MemCache),
 			serverIp: serverIp,
 			servers:  servers,
-			//			goroutinepool: ,
-			//			filecache:
 		},
 		statter:                statter,
 		resumableDigestEnabled: true,

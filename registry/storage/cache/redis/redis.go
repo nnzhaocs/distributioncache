@@ -405,65 +405,9 @@ func (rfds *redisFileDescriptorService) StatBFRecipe(ctx context.Context, dgst d
 			return desc, nil
 		}
 	}
-
-	//	conn := rfds.pool.Get()
-	//	defer conn.Close()
-	//
-	//	if _, err := conn.Do("SELECT", dbNoBFRecipe); err != nil {
-	//		//		defer conn.Close()
-	//		return distribution.BFRecipeDescriptor{}, err
-	//	}
-	//
-	//	//    reply, err := redis.Values(conn.Do("HMGET", rfds.BFRecipeHashKey(dgst), "blobdigest", "filedescriptors"))
-	//	//    	//, "fileSize", "layerDescriptor"
-	//	//	if err != nil {
-	//	//		return distribution.BFRecipeDescriptor{}, err
-	//	//	}
-	//
-	//	bfrJSON, err := redis.Bytes(rejson.JSONGet(conn, rfds.BFRecipeHashKey(dgst),
-	//		""))
-	//	if err != nil {
-	//		return distribution.BFRecipeDescriptor{}, err
-	//	}
-	//
-	//	// NOTE(stevvooe): The "size" field used to be "length". We treat a
-	//	// missing "size" field here as an unknown blob, which causes a cache
-	//	// miss, effectively migrating the field.
-	//	//	if len(reply) < 2 || reply[0] == nil || reply[1] == nil { // don't care if mediatype is nil
-	//	//		return distribution.BFRecipeDescriptor{}, distribution.ErrBlobUnknown
-	//	//	}
-	//
-	//	//	var desc distribution.FileDescriptor
-	//	//	if _, err = redis.Scan(reply, &desc.BlobDigest, &desc.FileDescriptor); err != nil {
-	//	//		return distribution.BFRecipeDescriptor{}, err
-	//	//	}
-	//
-	//	desc := distribution.BFRecipeDescriptor{}
-	//	err = json.Unmarshal(bfrJSON, &desc)
-	//	if err != nil {
-	//		return distribution.BFRecipeDescriptor{}, distribution.ErrBlobUnknown
-	//	}
-	//
-	//	return desc, nil
 }
 
 func (rfds *redisFileDescriptorService) SetBFRecipe(ctx context.Context, dgst digest.Digest, desc distribution.BFRecipeDescriptor) error {
-	//	conn := rfds.pool.Get()
-	//	defer conn.Close()
-	//
-	//	if _, err := conn.Do("SELECT", dbNoBFRecipe); err != nil {
-	//		//		defer conn.Close()
-	//		return err
-	//	}
-	//
-	//	//NANNAN: use re-json
-	//
-	//	_, err := rejson.JSONSet(conn, rfds.BFRecipeHashKey(dgst),
-	//		".",
-	//		desc, false, false)
-	//	if err != nil {
-	//		return err
-	//	}
 
 	if desc.Type == "bsfdescriptors" {
 		err := rfds.cluster.Set(rfds.BFRecipeHashKey(dgst), &desc, 0).Err()
@@ -489,3 +433,68 @@ func (rfds *redisFileDescriptorService) SetBFRecipe(ctx context.Context, dgst di
 	}
 	return nil
 }
+/*
+////// repo ---> layers
+
+type RLmap struct{
+	id string
+	layers []digest.Digest
+}
+
+type URLmap struct{
+	id string
+	repoRepullRatio []float32
+	layers []digest.Digest
+	layerRepullRatio []float32
+}
+
+func (rfds *redisFileDescriptorService) RLmapHashKey(repoid string) string {
+	return "RLmap::" + repoid // repo name
+}
+
+func (rfds *redisFileDescriptorService) URLmapHashKey(uid string) string {
+	return "URLmap::" + uid
+}
+
+func (rfds *redisFileDescriptorService) StatRLmap(ctx context.Context, id string) (distribution.RLmap, error) {
+
+	reply, err := rfds.cluster.Get(rfds.RLmapHashKey(id)).Result()
+	if err == redisgo.Nil {
+		//		context.GetLogger(ctx).Debug("NANNAN: key %s doesnot exist", dgst.String())
+		return distribution.RLmap{}, err
+	} else if err != nil {
+		context.GetLogger(ctx).Errorf("NANNAN: redis cluster error for key %s", err)
+		return distribution.RLmap{}, err
+	} else {
+		var desc distribution.RLmap
+		if err = desc.UnmarshalBinary([]byte(reply)); err != nil {
+			context.GetLogger(ctx).Errorf("NANNAN: redis cluster cannot UnmarshalBinary for key %s", err)
+			return distribution.RLmap{}, err
+		} else {
+			//desc.RequestedServerIps = append(desc.RequestedServerIps, rfds.serverIp)
+			return desc, nil
+		}
+	}
+}
+
+func (rfds *redisFileDescriptorService) StatURLmap(ctx context.Context, id string) (desc distribution.URLmap, error) {
+
+	reply, err := rfds.cluster.Get(rfds.URLmapHashKey(id)).Result()
+	if err == redisgo.Nil {
+		//		context.GetLogger(ctx).Debug("NANNAN: key %s doesnot exist", dgst.String())
+		return distribution.URLmap{}, err
+	} else if err != nil {
+		context.GetLogger(ctx).Errorf("NANNAN: redis cluster error for key %s", err)
+		return distribution.URLmap{}, err
+	} else {
+		var desc distribution.URLmap
+		if err = desc.UnmarshalBinary([]byte(reply)); err != nil {
+			context.GetLogger(ctx).Errorf("NANNAN: redis cluster cannot UnmarshalBinary for key %s", err)
+			return distribution.URLmap{}, err
+		} else {
+			//desc.RequestedServerIps = append(desc.RequestedServerIps, rfds.serverIp)
+			return desc, nil
+		}
+	}
+}
+*/

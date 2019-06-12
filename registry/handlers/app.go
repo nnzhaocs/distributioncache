@@ -258,9 +258,9 @@ func NewApp(ctx context.Context, config *configuration.Configuration) *App {
 			}
 		}
 	}
-	//  here use bigcache as blobcache; NANNAN: disabled too
+	//  here use bigcache as filecache; 
 	if cc, ok := config.Storage["blobcache"]; ok {
-		fmt.Printf("hehehehehere\n\n")
+		//fmt.Printf("hehehehehere\n\n")
 		c, ok := cc["type"]
 		if ok {
 			switch c {
@@ -278,23 +278,55 @@ func NewApp(ctx context.Context, config *configuration.Configuration) *App {
 		if ok {
 			switch size := size.(type) {
 			case int:
-				options = append(options, storage.SetCacheSize(size))
+				options = append(options, storage.SetCacheSize(size*1024*1024))
 			default:
 				panic(fmt.Sprintf("invalid type for cache size config: %#v", size))
 			}
 		}
 
-		sizelim, ok := cc["sizelimit"]
-		if ok {
-			switch sizelim := sizelim.(type) {
+//		sizelim, ok := cc["sizelimit"]
+//		if ok {
+//			switch sizelim := sizelim.(type) {
+//			case int:
+//				options = append(options, storage.SetCacheSizeLimit(sizelim))
+//			default:
+//				panic(fmt.Sprintf("invalid type for cache entry size limit config: %#v", sizelim))
+//			}
+//		}
+	}
+	//configure small tar threshold
+	if smalltar, ok := config.Storage["smalltar"]{
+		if ok{
+			switch smalltar := smalltar.(type) {
 			case int:
-				options = append(options, storage.SetCacheSizeLimit(sizelim))
+				options = append(options, storage.SetSmallTarThreshold(smalltar))
 			default:
-				panic(fmt.Sprintf("invalid type for cache entry size limit config: %#v", sizelim))
+				panic(fmt.Sprintf("invalid type for small tar threshold config: %#v", smalltar))
 			}
 		}
 	}
-
+	
+	if cc, ok := config.Storage["diskcache"]{
+		size, ok := cc["size"]
+		if ok{
+			switch size := size.(type) {
+			case int:
+				options = append(options, storage.SetDiskCacheSize(size))
+			default:
+				panic(fmt.Sprintf("invalid type for disk cache size: %#v", size))
+			}
+		}
+		cnt, ok := cc["cnt"]
+		if ok{
+			switch cnt := cnt.(type) {
+			case int:
+				options = append(options, storage.SetDiskCacheCnt(cnt))
+			default:
+				panic(fmt.Sprintf("invalid type for disk cache max file cnt: %#v", cnt))
+			}
+		}
+	}
+	
 	// configure storage caches
 
 	var servers []*url.URL

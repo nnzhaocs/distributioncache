@@ -496,6 +496,13 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) e
 	if err != nil {
 		context.GetLogger(ctx).Errorf("NANNAN: %s, cannot read this tar file", err)
 	}
+	
+	uniqueFileDistri = true
+	
+	if len(files) < bw.blobStore.registry.smalltarfcnt {
+		uniqueFileDistri = false
+	}
+	
 	for _, f := range files {
 		fmatch, _ := path.Match("NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL", f.Name())
 		if fmatch {
@@ -564,7 +571,8 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) e
 		serverForwardMap,
 		serverStoreCntMap,
 		sliceSizeMap,
-		&dirSize))
+		&dirSize,
+		uniqueFileDistri))
 
 	elapsed = time.Since(start)
 	fmt.Println("NANNAN: digest calculation + file index lookup time: %.3f, %v", elapsed.Seconds(), blobPath)
@@ -636,7 +644,8 @@ func (bw *blobWriter) CheckDuplicate(ctx context.Context, serverIp string, desc 
 	serverForwardMap map[string][]string,
 	serverStoreCntMap map[string]int,
 	sliceSizeMap map[string]int64,
-	dirSize *int64) filepath.WalkFunc {
+	dirSize *int64
+	uniqueFileDistri bool) filepath.WalkFunc {
 
 	return func(fpath string, info os.FileInfo, err error) error {
 		//		context.GetLogger(ctx).Debug("NANNAN: START CHECK DUPLICATES :=>")
@@ -726,14 +735,20 @@ func (bw *blobWriter) CheckDuplicate(ctx context.Context, serverIp string, desc 
 		fpath = reFPath
 		// weighted roundrobin
 		var server string
-		for {
-			server = rr.Next().Hostname()
-			fmt.Println("NANNAN: ======> SERVER IS: ", server)
-			if 0 < serverStoreCntMap[server] {
-				serverStoreCntMap[server] -= 1
-				continue
+		
+		if uniqueFileDistri{
+			for {
+				server = rr.Next().Hostname()
+				fmt.Println("NANNAN: ======> SERVER IS: ", server)
+				if 0 < serverStoreCntMap[server] {
+					serverStoreCntMap[server] -= 1
+					continue
+				}
+				break
 			}
-			break
+		}else{
+		
+			server = serverIp
 		}
 
 		context.GetLogger(ctx).Debug("NANNAN: file: %v (%v) will be forwarded to server (%v): %v", dgst.String(), reFPath, server)

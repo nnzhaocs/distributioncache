@@ -22,7 +22,7 @@ import (
 	"sync"
 
 	storagecache "github.com/docker/distribution/registry/storage/cache"
-	"github.com/docker/docker/pkg/archive"
+//	"github.com/docker/docker/pkg/archive"
 	//"github.com/serialx/hashring"
 	//	storagedriver "github.com/docker/distribution/registry/storage/driver"
 	"math/rand"
@@ -30,6 +30,7 @@ import (
 	"time"
 	//roundrobin "github.com/hlts2/round-robin"
 	"github.com/panjf2000/ants"
+	gzip "github.com/klauspost/pgzip"
 )
 
 // TODO(stevvooe): This should configurable in the future.
@@ -139,7 +140,6 @@ type Task struct {
 	Ctx  context.Context
 	Src  string
 	Desc string
-	//	Wg   sync.WaitGroup
 	Bs *blobServer
 }
 
@@ -152,38 +152,39 @@ func mvFile(i interface{}) {
 	ctx := task.Ctx
 	src := task.Src
 	desc := task.Desc
-	//	wg := task.Wg
 	bs := task.Bs
-	//	ctx context.Context, src string, desc string, wg sync.WaitGroup
 
-	contents, err := bs.driver.GetContent(ctx, src)
-	if err != nil {
-		context.GetLogger(ctx).Errorf("NANNAN: STILL SEND TAR %s, ", err)
-	} else {
-		err = bs.driver.PutContent(ctx, desc, contents)
+	v, err := bs.cache.mc.Get(src)
+	if err != nil{
+		context.GetLogger(ctx).Errorf("NANNAN: bs.cache error %s, ", err)
+	}
+	if v != nil{ //read hit
+//		br := bytes.NewReader(v)
+		contents := v
+	}else{
+		contents, err = bs.driver.GetContent(ctx, src)
 		if err != nil {
 			context.GetLogger(ctx).Errorf("NANNAN: STILL SEND TAR %s, ", err)
+		}else{
+			//put in cache
+			bs.cache.mc.Set(src, contents)
 		}
+	}
+	err = bs.driver.PutContent(ctx, desc, contents)
+	if err != nil {
+		context.GetLogger(ctx).Errorf("NANNAN: STILL SEND TAR %s, ", err)
+
 	}
 	return
 }
 
-//func mvFile(ctx context.Context, src string, desc string, wg sync.WaitGroup, bs *blobServer) error {
-//
-//	contents, err := bs.driver.GetContent(ctx, src)
-//	if err != nil {
-//		context.GetLogger(ctx).Errorf("NANNAN: STILL SEND TAR %s, ", err)
-//	} else {
-//		err = bs.driver.PutContent(ctx, desc, contents)
-//		if err != nil {
-//			context.GetLogger(ctx).Errorf("NANNAN: STILL SEND TAR %s, ", err)
-//		}
-//	}
-//	wg.Done()
-//	return err
-//}
-
 //NANNAN: TODO: process manfiests
+/*
+check if it's manifest.
+if it is, put all files in big cache.
+if its layer, restore layer from disk+cache
+delete and send to disk cache
+*/
 
 func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *http.Request, dgst digest.Digest) error {
 
@@ -292,7 +293,6 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 			Ctx:  ctx,
 			Src:  strings.TrimPrefix(bfdescriptor.BlobFilePath, "/var/lib/registry"),
 			Desc: destfpath,
-			//			Wg:   wg,
 			Bs: bs,
 		})
 	}
@@ -332,6 +332,14 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 		context.GetLogger(ctx).Errorf("NANNAN: %s, ", err)
 		return err
 	}
+	
+	// put into the disk cache
+	bytes, err := ioutil.ReadAll(data)
+	if err != nil{
+		context.GetLogger(ctx).Errorf("NANNAN: %s, ", err)
+	}
+	
+	bs.cache.dc.Put(dgst.String(), bytes)
 
 	path_old, err := bs.pathFn(_desc.Digest)
 	if err != nil {

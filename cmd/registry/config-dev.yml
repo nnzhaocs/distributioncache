@@ -29,6 +29,14 @@ storage:
     maintenance:
         uploadpurging:
             enabled: false
+    smalltar: 100 # file cnt
+    blobcache: # file cache 
+        type: lru # or arc
+        size: 500   #mb
+#        sizelimit: 
+    diskcache: # disk cache
+        size: 500 #mb
+        cnt: 16 
     
 http:
     addr: :5000
@@ -70,7 +78,6 @@ notifications:
         - 192.168.0.174
         - 192.168.0.176
         - 192.168.0.177
-        - 192.168.0.178
         - 192.168.0.179
         - 192.168.0.180 
 health:
