@@ -2,6 +2,7 @@ package storage
 
 import (
 	//	"bytes"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -255,14 +256,22 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 		http.ServeContent(w, r, _desc.Digest.String(), time.Time{}, br)
 		return nil
 	}
-	
+
 	//check disk cache
 	bytesreader, err := bs.cache.Dc.Get(dgst.String())
-	if err != nil{
+	if err != nil {
 		context.GetLogger(ctx).Errorf("NANNAN: serveblob: the gid for this goroutine: =>%", dgst.String())
 	}
-	
+
 	if bytesreader != nil {
+		context.GetLogger(ctx).Warnf("NANNAN: This is a disk cache hit")
+
+		path, err := bs.pathFn(_desc.Digest)
+		if err != nil {
+			return err
+
+		}
+
 		if bs.redirect {
 			redirectURL, err := bs.driver.URLFor(ctx, path, map[string]interface{}{"method": r.Method})
 			switch err.(type) {
@@ -278,12 +287,18 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 				return err
 			}
 		}
-
-//		br, err := newFileReader(ctx, bs.driver, path, _desc.Size) //stat.Size())
-//		if err != nil {
-//			return err
-//		}
-//		defer br.Close()
+		storageDir := "/docker/registry/v2/diskcache"
+		layerslicepath := storageDir + string(os.PathSeparator) + fmt.Sprintf("%x", sha256.Sum256([]byte(dgst.String()))) //(sha256.Sum256([]byte(dgst.String())))
+		lf, err := os.Open(layerslicepath)
+		if err != nil {
+			context.GetLogger(ctx).Errorf("NANNAN: cannot open cache file %v", err)
+			return err
+		}
+		//		br, err := newFileReader(ctx, bs.driver, path, _desc.Size) //stat.Size())
+		//		if err != nil {
+		//			return err
+		//		}
+		//		defer br.Close()
 
 		w.Header().Set("ETag", fmt.Sprintf(`"%s"`, _desc.Digest)) // If-None-Match handled by ServeContent
 		w.Header().Set("Cache-Control", fmt.Sprintf("max-age=%.f", blobCacheControlMaxAge.Seconds()))
@@ -302,13 +317,13 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 			w.Header().Set("Content-Length", fmt.Sprint(_desc.Size))
 		}
 
-		http.ServeContent(w, r, _desc.Digest.String(), time.Time{}, bytesreader)
+		http.ServeContent(w, r, _desc.Digest.String(), time.Time{}, lf)
 		return nil
-	
+
 	}
-	
+
 	//else restore slice
-	
+
 	gid := getGID()
 
 	tmp_dir := fmt.Sprintf("%f", gid)
