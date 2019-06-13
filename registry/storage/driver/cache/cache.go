@@ -79,7 +79,7 @@ func (cache *MemCache) SetSize(size int) error {
 
 func (cache *MemCache) SetDiskCacheSize(size int) error {
 	cache.disksize = int64(size * 1024 * 1024)
-	fmt.Printf("Disk Size: %d\n\n", cache.disksize)
+	fmt.Printf("Disk cache Size: %d\n\n", cache.disksize)
 	return nil
 }
 

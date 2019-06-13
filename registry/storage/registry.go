@@ -17,8 +17,8 @@ import (
 	//nannan
 	//	"github.com/serialx/hashring"
 
+	"fmt"
 	"net/url"
-	//"fmt"
 )
 
 // registry is the top-level implementation of Registry for use in the storage
