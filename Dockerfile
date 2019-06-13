@@ -37,4 +37,4 @@ EXPOSE 5000
 ENTRYPOINT ["registry"]
 CMD ["serve", "/etc/docker/registry/config.yml"]
 RUN mkdir -p /docker/registry/v2/pull_tars/
-RUN mkdir -p /docker/registry/v2/diskcache/
+RUN mkdir /docker/registry/v2/diskcache/
