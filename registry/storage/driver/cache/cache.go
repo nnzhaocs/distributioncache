@@ -48,7 +48,7 @@ func (cache *MemCache) Init() error {
 
 	cache.Dc = dc
 
-	fmt.Printf("NANNAN: ====================> cache capacity: %d MB, %ld B, and %d =================> \n\n",
+	fmt.Printf("NANNAN: ====================> cache capacity: %d MB, %d B, and %d =================> \n\n",
 		cache.capacity,
 		cache.disksize,
 		cache.diskcnt)
@@ -79,13 +79,13 @@ func (cache *MemCache) SetSize(size int) error {
 
 func (cache *MemCache) SetDiskCacheSize(size int) error {
 	cache.disksize = int64(size * 1024 * 1024)
-	fmt.Printf("Cache Size: %ld\n\n", cache.disksize)
+	fmt.Printf("Disk Size: %d\n\n", cache.disksize)
 	return nil
 }
 
 func (cache *MemCache) SetDiskCacheCnt(cnt int) error {
 	cache.diskcnt = cnt
-	fmt.Printf("Cache Size: %ld\n\n", cache.diskcnt)
+	fmt.Printf("Disk cnt: %d\n\n", cache.diskcnt)
 	return nil
 }
 
