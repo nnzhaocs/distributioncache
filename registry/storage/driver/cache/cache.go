@@ -2,33 +2,32 @@ package cache
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/allegro/bigcache"
 	//"github.com/juju/errors"
-	"github.com/ngaut/log"
+
 	diskcache "gopkg.in/stash.v1"
-	lru "github.com/hashicorp/golang-lru"
+	//lru "github.com/hashicorp/golang-lru"
 )
 
 type MemCache struct {
-	mc          *bigcache.BigCache
-	dc			*diskcache.Cache	
-//	numElements int64
-//	readMiss    float32
-//	readHit     float32
-	arc         bool
-	capacity    int64
-	disksize	int64
-	diskcnt		int
-//	entryLimit  int
+	Mc *bigcache.BigCache
+	Dc *diskcache.Cache
+	//	numElements int64
+	//	readMiss    float32
+	//	readHit     float32
+	arc      bool
+	capacity int
+	disksize int64
+	diskcnt  int
+	//	entryLimit  int
 }
 
 func (cache *MemCache) Init() error {
 	config := bigcache.Config{
-		Shards:           1024,
-//		LifeWindow:       600 * time.Minute,
-//		MaxEntrySize:     cache.entryLimit,
+		Shards: 1024,
+		//		LifeWindow:       600 * time.Minute,
+		//		MaxEntrySize:     cache.entryLimit,
 		Verbose:          true,
 		HardMaxCacheSize: cache.capacity,
 		OnRemove:         nil,
@@ -37,17 +36,23 @@ func (cache *MemCache) Init() error {
 	if err != nil {
 		return err
 	}
-	cache.mc = c
-	cache.dc = &diskcache.New(
+	cache.Mc = c
+	dc, err := diskcache.New(
 		"/docker/registry/v2/diskcache",
 		cache.disksize,
-		cache.diskcnt)
-	
-	fmt.Printf("NANNAN: ====================> cache capacity: %ld, %ld, and %d =================> \n\n", 
+		int64(cache.diskcnt))
+
+	if err != nil {
+		return err
+	}
+
+	cache.Dc = dc
+
+	fmt.Printf("NANNAN: ====================> cache capacity: %d MB, %ld B, and %d =================> \n\n",
 		cache.capacity,
 		cache.disksize,
 		cache.diskcnt)
-	
+
 	return err
 }
 
@@ -67,20 +72,20 @@ func (cache *MemCache) SetType(t string) error {
 }
 
 func (cache *MemCache) SetSize(size int) error {
-	cache.capacity = size*1024*1024
-	fmt.Printf("Cache Size: %ld\n\n", cache.capacity)
+	cache.capacity = size //* 1024 * 1024
+	fmt.Printf("Cache Size: %d MB\n\n", cache.capacity)
 	return nil
 }
 
 func (cache *MemCache) SetDiskCacheSize(size int) error {
-	cache.diskcache = size*1024*1024
-	fmt.Printf("Cache Size: %ld\n\n", cache.diskcache)
+	cache.disksize = int64(size * 1024 * 1024)
+	fmt.Printf("Cache Size: %ld\n\n", cache.disksize)
 	return nil
 }
 
 func (cache *MemCache) SetDiskCacheCnt(cnt int) error {
 	cache.diskcnt = cnt
-	fmt.Printf("Cache Size: %d\n\n", cache.diskcnt)
+	fmt.Printf("Cache Size: %ld\n\n", cache.diskcnt)
 	return nil
 }
 

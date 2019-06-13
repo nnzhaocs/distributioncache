@@ -184,7 +184,7 @@ func New(params Parameters) (*Driver, error) {
 	}
 
 	log.Warnf("IBM: create new driver")
-	memCache = cache.Init(4096)
+	//memCache = cache.Init(4096)
 
 	ct := &swift.Connection{
 		UserName:       params.Username,
@@ -301,29 +301,29 @@ func (d *driver) Name() string {
 // GetContent retrieves the content stored at "path" as a []byte.
 func (d *driver) GetContent(ctx context.Context, path string) ([]byte, error) {
 	log.Warnf("FAST: Swift Get Content %s", string(path))
-//	v, get_err := memCache.Get(string(path))
-//	if get_err != nil {
-//		//return errors.Trace(get_err)
-//		log.Warnf("yue:err=%s", get_err)
-//	}
-//	if v != nil { // yue: read hit
-//		log.Warnf("FAST: cache hit.. %s", string(v))
-//		return v, nil
-//	}
-        log.Warnf("FAST: cache miss.. %d", memCache.GetNumElem())
+	//	v, get_err := memCache.Get(string(path))
+	//	if get_err != nil {
+	//		//return errors.Trace(get_err)
+	//		log.Warnf("yue:err=%s", get_err)
+	//	}
+	//	if v != nil { // yue: read hit
+	//		log.Warnf("FAST: cache hit.. %s", string(v))
+	//		return v, nil
+	//	}
+	//log.Warnf("FAST: cache miss.. %d", memCache.GetNumElem())
 	content, err := d.Conn.ObjectGetBytes(d.Container, d.swiftPath(path))
 	if err == swift.ObjectNotFound {
 		return nil, storagedriver.PathNotFoundError{Path: path}
 	}
-//	log.Warnf("FAST: setting cache %s", content)
-//	memCache.Set(string(path), content)
+	//	log.Warnf("FAST: setting cache %s", content)
+	//	memCache.Set(string(path), content)
 	return content, err
 }
 
 // PutContent stores the []byte content at a location designated by "path".
 func (d *driver) PutContent(ctx context.Context, path string, contents []byte) error {
 	log.Warnf("FAST: Swift Put Content %s", string(path))
-	memCache.Set(string(path), contents)
+	//memCache.Set(string(path), contents)
 	err := d.Conn.ObjectPutBytes(d.Container, d.swiftPath(path), contents, contentType)
 	if err == swift.ObjectNotFound {
 		return storagedriver.PathNotFoundError{Path: path}

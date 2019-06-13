@@ -12,7 +12,6 @@ import (
 	"github.com/docker/distribution"
 	"github.com/docker/distribution/context"
 	storagedriver "github.com/docker/distribution/registry/storage/driver"
-	"github.com/opencontainers/go-digest"
 	//NANNAN
 	"os"
 	"path/filepath"
@@ -31,6 +30,7 @@ import (
 	//"strconv"
 	redisgo "github.com/go-redis/redis"
 	roundrobin "github.com/hlts2/round-robin"
+	digest "github.com/opencontainers/go-digest"
 )
 
 //NANNAN: TODO LIST
@@ -496,13 +496,13 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) e
 	if err != nil {
 		context.GetLogger(ctx).Errorf("NANNAN: %s, cannot read this tar file", err)
 	}
-	
-	uniqueFileDistri = true
-	
+
+	uniqueFileDistri := true
+
 	if len(files) < bw.blobStore.registry.smalltarfcnt {
 		uniqueFileDistri = false
 	}
-	
+
 	for _, f := range files {
 		fmatch, _ := path.Match("NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL", f.Name())
 		if fmatch {
@@ -644,7 +644,7 @@ func (bw *blobWriter) CheckDuplicate(ctx context.Context, serverIp string, desc 
 	serverForwardMap map[string][]string,
 	serverStoreCntMap map[string]int,
 	sliceSizeMap map[string]int64,
-	dirSize *int64
+	dirSize *int64,
 	uniqueFileDistri bool) filepath.WalkFunc {
 
 	return func(fpath string, info os.FileInfo, err error) error {
@@ -719,13 +719,13 @@ func (bw *blobWriter) CheckDuplicate(ctx context.Context, serverIp string, desc 
 		gid := getGID()
 		tmp_dir := fmt.Sprintf("%f", gid)
 		reFPath := path.Join(diffpath, "/diff/uniquefiles", tmp_dir, strings.SplitN(dgst.String(), ":", 2)[1]) //path.Join(path.Dir(fpath), strings.SplitN(dgst.String(), ":", 2)[1])
-		
+
 		newdir := path.Join(diffpath, "/diff/uniquefiles", tmp_dir)
 		if os.MkdirAll(newdir, 0666) != nil {
 			context.GetLogger(ctx).Errorf("NANNAN: checkdedup <create dir for newly added files> %s, ", err)
 			return err
 		}
-		
+
 		err = os.Rename(fpath, reFPath)
 		if err != nil {
 			context.GetLogger(ctx).Errorf("NANNAN: fail to rename path (%v): %v", fpath, reFPath)
@@ -735,8 +735,8 @@ func (bw *blobWriter) CheckDuplicate(ctx context.Context, serverIp string, desc 
 		fpath = reFPath
 		// weighted roundrobin
 		var server string
-		
-		if uniqueFileDistri{
+
+		if uniqueFileDistri {
 			for {
 				server = rr.Next().Hostname()
 				fmt.Println("NANNAN: ======> SERVER IS: ", server)
@@ -746,8 +746,8 @@ func (bw *blobWriter) CheckDuplicate(ctx context.Context, serverIp string, desc 
 				}
 				break
 			}
-		}else{
-		
+		} else {
+
 			server = serverIp
 		}
 

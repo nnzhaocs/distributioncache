@@ -29,7 +29,8 @@ storage:
     maintenance:
         uploadpurging:
             enabled: false
-    smalltar: 16 # file cnt
+    smalltar: 
+        fcnt: 16 # file cnt
     blobcache: # file cache 
         type: lru # or arc
         size: 500   #mb

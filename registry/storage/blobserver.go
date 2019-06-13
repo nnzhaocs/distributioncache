@@ -4,6 +4,7 @@ import (
 	//	"bytes"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strings"
@@ -12,7 +13,7 @@ import (
 	"github.com/docker/distribution/context"
 	"github.com/docker/distribution/registry/storage/driver"
 	"github.com/docker/distribution/registry/storage/driver/cache"
-	"github.com/opencontainers/go-digest"
+	"github.com/docker/docker/pkg/archive"
 	//NANNAN
 	"io"
 	"os"
@@ -22,7 +23,7 @@ import (
 	"sync"
 
 	storagecache "github.com/docker/distribution/registry/storage/cache"
-//	"github.com/docker/docker/pkg/archive"
+	//	"github.com/docker/docker/pkg/archive"
 	//"github.com/serialx/hashring"
 	//	storagedriver "github.com/docker/distribution/registry/storage/driver"
 	"math/rand"
@@ -30,7 +31,8 @@ import (
 	"time"
 	//roundrobin "github.com/hlts2/round-robin"
 	"github.com/panjf2000/ants"
-	gzip "github.com/klauspost/pgzip"
+	//gzip "github.com/klauspost/pgzip"
+	digest "github.com/opencontainers/go-digest"
 )
 
 // TODO(stevvooe): This should configurable in the future.
@@ -140,7 +142,7 @@ type Task struct {
 	Ctx  context.Context
 	Src  string
 	Desc string
-	Bs *blobServer
+	Bs   *blobServer
 }
 
 func mvFile(i interface{}) {
@@ -153,21 +155,21 @@ func mvFile(i interface{}) {
 	src := task.Src
 	desc := task.Desc
 	bs := task.Bs
-
-	v, err := bs.cache.mc.Get(src)
-	if err != nil{
+	var contents []byte
+	v, err := bs.cache.Mc.Get(src)
+	if err != nil {
 		context.GetLogger(ctx).Errorf("NANNAN: bs.cache error %s, ", err)
 	}
-	if v != nil{ //read hit
-//		br := bytes.NewReader(v)
-		contents := v
-	}else{
+	if v != nil { //read hit
+		//		br := bytes.NewReader(v)
+		contents = v
+	} else {
 		contents, err = bs.driver.GetContent(ctx, src)
 		if err != nil {
 			context.GetLogger(ctx).Errorf("NANNAN: STILL SEND TAR %s, ", err)
-		}else{
+		} else {
 			//put in cache
-			bs.cache.mc.Set(src, contents)
+			bs.cache.Mc.Set(src, contents)
 		}
 	}
 	err = bs.driver.PutContent(ctx, desc, contents)
@@ -266,8 +268,8 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 		context.GetLogger(ctx).Errorf("NANNAN: %s, ", err)
 		return err
 	}
-	
-	if len(desc.BSFDescriptors[bs.serverIp]) == 0{
+
+	if len(desc.BSFDescriptors[bs.serverIp]) == 0 {
 		context.GetLogger(ctx).Debug("NANNAN: this server doesn't have any files for this layer, ", len(desc.BSFDescriptors[bs.serverIp]))
 		return nil
 	}
@@ -293,7 +295,7 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 			Ctx:  ctx,
 			Src:  strings.TrimPrefix(bfdescriptor.BlobFilePath, "/var/lib/registry"),
 			Desc: destfpath,
-			Bs: bs,
+			Bs:   bs,
 		})
 	}
 	wg.Wait()
@@ -332,14 +334,14 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 		context.GetLogger(ctx).Errorf("NANNAN: %s, ", err)
 		return err
 	}
-	
+
 	// put into the disk cache
 	bytes, err := ioutil.ReadAll(data)
-	if err != nil{
+	if err != nil {
 		context.GetLogger(ctx).Errorf("NANNAN: %s, ", err)
 	}
-	
-	bs.cache.dc.Put(dgst.String(), bytes)
+
+	bs.cache.Dc.Put(dgst.String(), bytes)
 
 	path_old, err := bs.pathFn(_desc.Digest)
 	if err != nil {
@@ -395,13 +397,13 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 		return err
 	}
 	//packpath
-	
+
 	if err = os.RemoveAll(packpath); err != nil {
 		context.GetLogger(ctx).Errorf("NANNAN: cannot remove all file in packpath: %s: %s",
 			packpath, err)
 		return err
 	}
-	
+
 	bsdedupDescriptor := &distribution.BSResDescriptor{
 		ServerIp: bs.serverIp,
 

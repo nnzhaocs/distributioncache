@@ -42,9 +42,9 @@ type registry struct {
 	schema1SigningKey            libtrust.PrivateKey
 	blobDescriptorServiceFactory distribution.BlobDescriptorServiceFactory
 	manifestURLs                 manifestURLs
-	
-	smalltarfcnt				 int
-	
+
+	smalltarfcnt int
+
 	//ring					     hashring.HashRing
 }
 
@@ -85,7 +85,6 @@ func SetCacheSize(size int) RegistryOption {
 //	}
 //}
 
-
 func SetSmallTarThreshold(smalltar int) RegistryOption {
 	return func(registry *registry) error {
 		registry.smalltarfcnt = smalltar
@@ -106,8 +105,6 @@ func SetDiskCacheCnt(cnt int) RegistryOption {
 		return nil
 	}
 }
-
-
 
 // EnableDelete is a functional option for NewRegistry. It enables deletion on
 // the registry.
@@ -239,7 +236,6 @@ func NewRegistry(ctx context.Context, serverIp string, servers []*url.URL, drive
 		}
 	}
 	registry.blobServer.cache.Init()
-
 	return registry, nil
 }
 

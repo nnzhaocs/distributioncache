@@ -258,7 +258,7 @@ func NewApp(ctx context.Context, config *configuration.Configuration) *App {
 			}
 		}
 	}
-	//  here use bigcache as filecache; 
+	//  here use bigcache as filecache;
 	if cc, ok := config.Storage["blobcache"]; ok {
 		//fmt.Printf("hehehehehere\n\n")
 		c, ok := cc["type"]
@@ -278,25 +278,26 @@ func NewApp(ctx context.Context, config *configuration.Configuration) *App {
 		if ok {
 			switch size := size.(type) {
 			case int:
-				options = append(options, storage.SetCacheSize(size*1024*1024))
+				options = append(options, storage.SetCacheSize(size))
 			default:
 				panic(fmt.Sprintf("invalid type for cache size config: %#v", size))
 			}
 		}
 
-//		sizelim, ok := cc["sizelimit"]
-//		if ok {
-//			switch sizelim := sizelim.(type) {
-//			case int:
-//				options = append(options, storage.SetCacheSizeLimit(sizelim))
-//			default:
-//				panic(fmt.Sprintf("invalid type for cache entry size limit config: %#v", sizelim))
-//			}
-//		}
+		//		sizelim, ok := cc["sizelimit"]
+		//		if ok {
+		//			switch sizelim := sizelim.(type) {
+		//			case int:
+		//				options = append(options, storage.SetCacheSizeLimit(sizelim))
+		//			default:
+		//				panic(fmt.Sprintf("invalid type for cache entry size limit config: %#v", sizelim))
+		//			}
+		//		}
 	}
 	//configure small tar threshold
-	if smalltar, ok := config.Storage["smalltar"]{
-		if ok{
+	if cc, ok := config.Storage["smalltar"]; ok {
+		smalltar, ok := cc["fcnt"]
+		if ok {
 			switch smalltar := smalltar.(type) {
 			case int:
 				options = append(options, storage.SetSmallTarThreshold(smalltar))
@@ -305,10 +306,10 @@ func NewApp(ctx context.Context, config *configuration.Configuration) *App {
 			}
 		}
 	}
-	
-	if cc, ok := config.Storage["diskcache"]{
+
+	if cc, ok := config.Storage["diskcache"]; ok {
 		size, ok := cc["size"]
-		if ok{
+		if ok {
 			switch size := size.(type) {
 			case int:
 				options = append(options, storage.SetDiskCacheSize(size))
@@ -317,7 +318,7 @@ func NewApp(ctx context.Context, config *configuration.Configuration) *App {
 			}
 		}
 		cnt, ok := cc["cnt"]
-		if ok{
+		if ok {
 			switch cnt := cnt.(type) {
 			case int:
 				options = append(options, storage.SetDiskCacheCnt(cnt))
@@ -326,7 +327,7 @@ func NewApp(ctx context.Context, config *configuration.Configuration) *App {
 			}
 		}
 	}
-	
+
 	// configure storage caches
 
 	var servers []*url.URL
@@ -598,7 +599,7 @@ func (app *App) configureRedis(configuration *configuration.Configuration) {
 				return nil, err
 			}
 
-//			conn.Do("FLUSHALL")
+			//			conn.Do("FLUSHALL")
 
 			// authorize the connection
 			if configuration.Redis.Password != "" {
@@ -632,11 +633,10 @@ func (app *App) configureRedis(configuration *configuration.Configuration) {
 		},
 		Wait: false, // if a connection is not avialable, proceed without cache.
 	}
-	
 
 	app.redis = pool
 	//NANNAN: add redisc cluster
-	
+
 	connflush := pool.Get()
 	connflush.Do("FLUSHALL")
 	defer connflush.Close()
