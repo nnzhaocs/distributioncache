@@ -255,7 +255,60 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 		http.ServeContent(w, r, _desc.Digest.String(), time.Time{}, br)
 		return nil
 	}
+	
+	//check disk cache
+	bytesreader, err := bs.cache.Dc.Get(dgst.String())
+	if err != nil{
+		context.GetLogger(ctx).Errorf("NANNAN: serveblob: the gid for this goroutine: =>%", dgst.String())
+	}
+	
+	if bytesreader != nil {
+		if bs.redirect {
+			redirectURL, err := bs.driver.URLFor(ctx, path, map[string]interface{}{"method": r.Method})
+			switch err.(type) {
+			case nil:
+				// Redirect to storage URL.
+				http.Redirect(w, r, redirectURL, http.StatusTemporaryRedirect)
+				return err
 
+			case driver.ErrUnsupportedMethod:
+				// Fallback to serving the content directly.
+			default:
+				// Some unexpected error.
+				return err
+			}
+		}
+
+//		br, err := newFileReader(ctx, bs.driver, path, _desc.Size) //stat.Size())
+//		if err != nil {
+//			return err
+//		}
+//		defer br.Close()
+
+		w.Header().Set("ETag", fmt.Sprintf(`"%s"`, _desc.Digest)) // If-None-Match handled by ServeContent
+		w.Header().Set("Cache-Control", fmt.Sprintf("max-age=%.f", blobCacheControlMaxAge.Seconds()))
+
+		if w.Header().Get("Docker-Content-Digest") == "" {
+			w.Header().Set("Docker-Content-Digest", _desc.Digest.String())
+		}
+
+		if w.Header().Get("Content-Type") == "" {
+			// Set the content type if not already set.
+			w.Header().Set("Content-Type", _desc.MediaType)
+		}
+
+		if w.Header().Get("Content-Length") == "" {
+			// Set the content length if not already set.
+			w.Header().Set("Content-Length", fmt.Sprint(_desc.Size))
+		}
+
+		http.ServeContent(w, r, _desc.Digest.String(), time.Time{}, bytesreader)
+		return nil
+	
+	}
+	
+	//else restore slice
+	
 	gid := getGID()
 
 	tmp_dir := fmt.Sprintf("%f", gid)
