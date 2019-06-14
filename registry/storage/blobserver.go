@@ -165,7 +165,7 @@ func mvFile(i interface{}) {
 		//		br := bytes.NewReader(v)
 		contents = &v
 	} else {
-		data, err = bs.driver.GetContent(ctx, src)
+		data, err := bs.driver.GetContent(ctx, src)
 		if err != nil {
 			context.GetLogger(ctx).Errorf("NANNAN: STILL SEND TAR %s, ", err)
 		} else {

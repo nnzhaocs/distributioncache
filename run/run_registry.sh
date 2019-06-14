@@ -14,6 +14,7 @@ docker build -t nnzhaocs/distribution:registry .
 docker stop container_id
 
 #==========================>
+ps axf | grep docker | grep -v grep | awk '{print "kill -9 " (}' | sudo sh')}'
 
 docker login
 
@@ -24,6 +25,8 @@ pssh -h remotehostthors.txt -l root -A -i 'mount -t tmpfs -o size=8G tmpfs /home
 
 sudo mount 192.168.0.174:/home/nannan/dockerimages/layers hulk4
 sudo mount 192.168.0.171:/home/nannan/dockerimages/layers hulk1
+
+find $(pwd) -type f > ../hulk1_layers_less_50m.lst
 
 ####:=========setup redis cluster ===========
 -t 600 'cd /home/nannan/; wget http://download.redis.io/redis-stable.tar.gz; tar xzf redis-stable.tar.gz; cd redis-stable;  make'
@@ -67,14 +70,16 @@ redis-cli --cluster create 192.168.0.200:7000 192.168.0.200:7001 \
 
 ####:==========cleanup for hulks =============
 pssh -h remotehostshulk.txt -l root -A -i 'docker stop $(docker ps -a -q)'
+pssh -h remotehostshulk.txt -l root -A -i 'docker rm $(docker ps -a -q)'
+pssh -h remotehostshulk.txt -l root -A -i 'docker ps -a'
+pssh -h remotehostshulk.txt -l root -A -i 'ls /var/lib/docker/containers/'
 pssh -h remotehostshulk.txt -l root -A -i 'rm -rf /home/nannan/testing/tmpfs/*'
 pssh -h remotehostshulk.txt -l root -A -i 'rm -rf /home/nannan/testing/layers/*'
 
 ./flushall-cluster.sh 192.168.0.170
 
 ####: =========run dedupregistrycache ==============
-
-pssh -h remotehostshulk.txt -l root -A -i 'docker run --rm -d -p 5000:5000 --mount type=bind,source=/home/nannan/testing/tmpfs,target=/var/lib/registry/docker/registry/v2/pull_tars/ -v=/home/nannan/testing/layers:/var/lib/registry -e "REGISTRY_STORAGE_CACHE_HOSTIP=$(ip -4 addr |grep 192.168.0.2 |grep -Po "inet \K[\d.]+")" --name registrycache nnzhaocs/distribution:distributionlrucache'
+pssh -h remotehostthors.txt -l root -A -i 'docker run --rm -d -p 5000:5000 --mount type=bind,source=/home/nannan/testing/tmpfs,target=/var/lib/registry/docker/registry/v2/pull_tars/ -v=/home/nannan/testing/layers:/var/lib/registry -e  "REGISTRY_STORAGE_CACHE_HOSTIP=$(ip -4 addr |grep 192.168.0.2 |grep -Po "inet \K[\d.]+")" --name registrydedupcache nnzhaocs/distribution:distributionlrucache'
 
 ####:==========run siftregistry ==================
 #sudo docker run -p 5000:5000 -d --rm --mount type=bind,source=/home/nannan/testing/tmpfs,target=/var/lib/registry/docker/registry/v2/pull_tars/ -v /home/nannan/testing/layers:/var/lib/registry -e "REGISTRY_STORAGE_CACHE_HOSTIP=$(ip -4 addr |grep 192.168 |grep -Po 'inet \K[\d.]+')" --name dedup-test -t nnzhaocs/distribution:sift
@@ -146,4 +151,4 @@ redis-cli FLUSHALL
 sudo netstat -plnto
 
 https://linuxize.com/post/how-to-stop-and-disable-firewalld-on-centos-7/
-
+iptables -t filter -N DOCKER
