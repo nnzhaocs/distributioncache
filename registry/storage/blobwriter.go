@@ -481,13 +481,23 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) e
 	start := time.Now()
 	err = archiver.UntarPath(layerPath, unpackPath)
 	elapsed := time.Since(start)
-	fmt.Println("NANNAN: gzip decompression time: %.3f, %v", elapsed.Seconds(), blobPath)
-
+	
 	if err != nil {
 		//TODO: process manifest file
-		context.GetLogger(ctx).Errorf("NANNAN: %s, This may be a manifest file", err)
-		return err
+		if strings.Contains(string(err), "invalid tar header") {
+			context.GetLogger(ctx).Errorf("NANNAN: %s, This may be a manifest file", err)
+			err = os.Remove(unpackPath)
+			if err != nil {
+				context.GetLogger(ctx).Errorf("NANNAN: %s, cannot remove this", err)
+				return err
+			}
+			return err
+		}
+
+		//fmt.Println("NANNAN: gzip decompression time: %.3f, %v", elapsed.Seconds(), blobPath)
+		context.GetLogger(ctx).Warnf("NANNAN: %s, IGNORE MINOR ERRORS", err)
 	}
+	fmt.Println("NANNAN: gzip decompression time: %.3f, %v", elapsed.Seconds(), blobPath)
 
 	gid := GetGID()
 	//later check ..................
