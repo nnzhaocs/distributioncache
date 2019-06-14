@@ -156,24 +156,25 @@ func mvFile(i interface{}) {
 	src := task.Src
 	desc := task.Desc
 	bs := task.Bs
-	var contents []byte
+	var contents *[]byte
 	v, err := bs.cache.Mc.Get(src)
 	if err != nil {
 		context.GetLogger(ctx).Errorf("NANNAN: bs.cache error %s, ", err)
 	}
 	if v != nil { //read hit
 		//		br := bytes.NewReader(v)
-		contents = v
+		contents = &v
 	} else {
-		contents, err = bs.driver.GetContent(ctx, src)
+		data, err = bs.driver.GetContent(ctx, src)
 		if err != nil {
 			context.GetLogger(ctx).Errorf("NANNAN: STILL SEND TAR %s, ", err)
 		} else {
 			//put in cache
-			bs.cache.Mc.Set(src, contents)
+			bs.cache.Mc.Set(src, data)
 		}
+		contents = &data
 	}
-	err = bs.driver.PutContent(ctx, desc, contents)
+	err = bs.driver.PutContent(ctx, desc, *contents)
 	if err != nil {
 		context.GetLogger(ctx).Errorf("NANNAN: STILL SEND TAR %s, ", err)
 
@@ -260,7 +261,7 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 	//check disk cache
 	bytesreader, err := bs.cache.Dc.Get(dgst.String())
 	if err != nil {
-		context.GetLogger(ctx).Errorf("NANNAN: serveblob: the gid for this goroutine: =>%", dgst.String())
+		context.GetLogger(ctx).Errorf("NANNAN: serveblob: bigcache error", err)
 	}
 
 	if bytesreader != nil {
