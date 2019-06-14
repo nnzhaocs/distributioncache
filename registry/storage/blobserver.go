@@ -163,6 +163,7 @@ func mvFile(i interface{}) {
 	}
 	if v != nil { //read hit
 		//		br := bytes.NewReader(v)
+		context.GetLogger(ctx).Errorf("NANNAN: this is file cache hit")
 		contents = &v
 	} else {
 		data, err = bs.driver.GetContent(ctx, src)
