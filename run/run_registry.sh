@@ -25,6 +25,7 @@ pssh -h remotehostthors.txt -l root -A -i 'mount -t tmpfs -o size=8G tmpfs /home
 
 sudo mount 192.168.0.174:/home/nannan/dockerimages/layers hulk4
 sudo mount 192.168.0.171:/home/nannan/dockerimages/layers hulk1
+sudo mount 192.168.0.172:/home/nannan/dockerimages/docker-traces/data_centers/ data_centers
 
 find $(pwd) -type f > ../hulk1_layers_less_50m.lst
 
