@@ -28,6 +28,12 @@ sudo mount 192.168.0.171:/home/nannan/dockerimages/layers hulk1
 
 find $(pwd) -type f > ../hulk1_layers_less_50m.lst
 
+####:=========== gether docker logs together and extract results =====================
+create a new directory in hulk0 with timestamp
+mkdir $(date +%Y%m%d_%H%M%S)
+
+pssh -h remotehostshulk.txt -l root -A -i "sshpass -p 'nannan' scp /var/lib/docker/containers/*/*-json.log root@hulk0:/home/nannan/testing/resultslogs/   "
+
 ####:=========setup redis cluster ===========
 -t 600 'cd /home/nannan/; wget http://download.redis.io/redis-stable.tar.gz; tar xzf redis-stable.tar.gz; cd redis-stable;  make'
 'iptables -F'
@@ -152,3 +158,8 @@ sudo netstat -plnto
 
 https://linuxize.com/post/how-to-stop-and-disable-firewalld-on-centos-7/
 iptables -t filter -N DOCKER
+
+
+#### =============================> SETUP centralized log <============================
+
+
