@@ -162,10 +162,10 @@ func mvFile(i interface{}) {
 		context.GetLogger(ctx).Errorf("NANNAN: bs.cache error %s, ", err)
 	}
 	if v != nil { //read hit
-		//		br := bytes.NewReader(v)
-		context.GetLogger(ctx).Errorf("NANNAN: this is file cache hit")
+		fmt.Println("NANNAN: file cache hit\n")
 		contents = &v
 	} else {
+		fmt.Println("NANNAN: file cache miss\n")
 		data, err := bs.driver.GetContent(ctx, src)
 		if err != nil {
 			context.GetLogger(ctx).Errorf("NANNAN: STILL SEND TAR %s, ", err)
@@ -205,7 +205,7 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 	start := time.Now()
 	desc, err := bs.fileDescriptorCacheProvider.StatBFRecipe(ctx, dgst)
 	DurationML := time.Since(start).Seconds()
-	fmt.Println("NANNAN: metadata lookup time: %.3f, %v", DurationML, dgst)
+	fmt.Println("NANNAN: metadata lookup time: %.3f, %v\n", DurationML, dgst)
 
 	if err != nil {
 		// get from traditional registry, this is a manifest
@@ -266,7 +266,7 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 	}
 
 	if bytesreader != nil {
-		context.GetLogger(ctx).Warnf("NANNAN: This is a disk cache hit")
+		fmt.Println("NANNAN: slice cache hit\n")
 
 		path, err := bs.pathFn(_desc.Digest)
 		if err != nil {
@@ -293,7 +293,7 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 		layerslicepath := storageDir + string(os.PathSeparator) + fmt.Sprintf("%x", sha256.Sum256([]byte(dgst.String()))) //(sha256.Sum256([]byte(dgst.String())))
 		lf, err := os.Open(layerslicepath)
 		if err != nil {
-			context.GetLogger(ctx).Errorf("NANNAN: cannot open cache file %v", err)
+			context.GetLogger(ctx).Errorf("NANNAN: cannot open disk cache file %v", err)
 			return err
 		}
 		//		br, err := newFileReader(ctx, bs.driver, path, _desc.Size) //stat.Size())
@@ -325,7 +325,8 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 	}
 
 	//else restore slice
-
+	fmt.Println("NANNAN: slice cache miss\n")
+	
 	gid := getGID()
 
 	tmp_dir := fmt.Sprintf("%f", gid)
@@ -370,7 +371,7 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 	}
 	wg.Wait()
 	DurationCP := time.Since(start).Seconds()
-	fmt.Println("NANNAN: slice IO cp time: %.3f, %v", DurationCP, dgst)
+	fmt.Println("NANNAN: slice IO cp time: %.3f, %v\n", DurationCP, dgst)
 
 	packpath := path.Join("/var/lib/registry", packPath)
 	//packpath := packPath
@@ -382,7 +383,7 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 	}
 
 	DurationCMP := time.Since(start).Seconds()
-	fmt.Println("NANNAN: slice compression time: %.3f, %v", DurationCMP, dgst)
+	fmt.Println("NANNAN: slice compression time: %.3f, %v\n", DurationCMP, dgst)
 
 	defer data.Close()
 	newtardir := path.Join("/var/lib/registry", "/docker/registry/v2/pull_tars/pull_tmp_tarfile")
@@ -453,11 +454,11 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 	start = time.Now()
 	http.ServeContent(w, r, _desc.Digest.String(), time.Time{}, packFile)
 	DurationNTT := time.Since(start).Seconds()
-	fmt.Println("NANNAN: slice network transfer time: %.3f, %v", DurationNTT, dgst)
+	fmt.Println("NANNAN: slice network transfer time: %.3f, %v\n", DurationNTT, dgst)
 
 	DurationRS := DurationNTT + DurationCMP + DurationCP + DurationML
 
-	fmt.Println("NANNAN: slice restore time: %.3f, %v", DurationRS, dgst)
+	fmt.Println("NANNAN: slice restore time: %.3f, %v\n", DurationRS, dgst)
 
 	//delete tmp_dir and packFile here
 
@@ -474,28 +475,28 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 		return err
 	}
 
-	bsdedupDescriptor := &distribution.BSResDescriptor{
-		ServerIp: bs.serverIp,
-
-		DurationRS: DurationRS,
-
-		DurationNTT: DurationNTT,
-		DurationCMP: DurationCMP,
-		DurationCP:  DurationCP,
-		DurationML:  DurationML,
-
-		SliceSize: desc.SliceSizeMap[bs.serverIp],
-	}
-
-	//	BSResDescriptors := make(map[string]bsdedupDescriptor)
-
-	desc.BSResDescriptors[bs.serverIp] = bsdedupDescriptor
-	desc.Type = "bsresponserecipe"
-	//update with response time
-	err = bs.fileDescriptorCacheProvider.SetBFRecipe(ctx, desc.BlobDigest, desc)
-	if err != nil {
-		return err
-	}
+//	bsdedupDescriptor := &distribution.BSResDescriptor{
+//		ServerIp: bs.serverIp,
+//
+//		DurationRS: DurationRS,
+//
+//		DurationNTT: DurationNTT,
+//		DurationCMP: DurationCMP,
+//		DurationCP:  DurationCP,
+//		DurationML:  DurationML,
+//
+//		SliceSize: desc.SliceSizeMap[bs.serverIp],
+//	}
+//
+//	//	BSResDescriptors := make(map[string]bsdedupDescriptor)
+//
+//	desc.BSResDescriptors[bs.serverIp] = bsdedupDescriptor
+//	desc.Type = "bsresponserecipe"
+//	//update with response time
+//	err = bs.fileDescriptorCacheProvider.SetBFRecipe(ctx, desc.BlobDigest, desc)
+//	if err != nil {
+//		return err
+//	}
 
 	return nil
 }
