@@ -463,12 +463,12 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 	//	fmt.Println("NANNAN: slice restore time: %.3f, %v\n", DurationRS, dgst)
 
 	// put into the disk cache
-	bytes, err := ioutil.ReadAll(data)
+	bfss, err := ioutil.ReadAll(packFile)
 	if err != nil {
 		context.GetLogger(ctx).Errorf("NANNAN: %s, ", err)
 	}
 
-	bs.cache.Dc.Put(dgst.String(), bytes)
+	bs.cache.Dc.Put(dgst.String(), bfss)
 
 	//delete tmp_dir and packFile here
 	if err = os.RemoveAll(path.Join("/var/lib/registry", "/docker/registry/v2/pull_tars/pull_tmp_tarfile", tmp_dir)); err != nil {
