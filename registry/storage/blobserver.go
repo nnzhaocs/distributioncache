@@ -157,29 +157,31 @@ func mvFile(i interface{}) {
 	desc := task.Desc
 	bs := task.Bs
 	var contents *[]byte
-	v, err := bs.cache.Mc.Get(src)
-	if err != nil {
-		context.GetLogger(ctx).Errorf("NANNAN: bs.cache error %s, ", err)
-	}
-	if v != nil { //read hit
-		fmt.Println("NANNAN: file cache hit\n")
-		contents = &v
-	} else {
-		fmt.Println("NANNAN: file cache miss\n")
+//	v, err := bs.cache.Mc.Get(src)
+//	if err != nil {
+//		context.GetLogger(ctx).Errorf("NANNAN: bs.cache error %s, ", err)
+//	}
+//	if v != nil { //read hit
+//		fmt.Println("NANNAN: file cache hit\n")
+//		contents = &v
+//	} else {
+		fmt.Println("NANNAN: file cache miss")
 		data, err := bs.driver.GetContent(ctx, src)
 		if err != nil {
 			context.GetLogger(ctx).Errorf("NANNAN: STILL SEND TAR %s, ", err)
-		} else {
-			//put in cache
-			bs.cache.Mc.Set(src, data)
 		}
+		
+//		} else {
+			//put in cache
+//			bs.cache.Mc.Set(src, data)
+//		}
 		contents = &data
-	}
+//	}
 	err = bs.driver.PutContent(ctx, desc, *contents)
 	if err != nil {
 		context.GetLogger(ctx).Errorf("NANNAN: STILL SEND TAR %s, ", err)
-
 	}
+	
 	return
 }
 
