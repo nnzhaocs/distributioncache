@@ -74,7 +74,7 @@ redis-cli --cluster create 192.168.0.200:7000 192.168.0.200:7001 \
 192.168.0.223:7000 192.168.0.223:7001 \
 --cluster-replicas 3
 
-
+docker rmi $(docker images -a -q)
 ####:==========cleanup for hulks =============
 pssh -h remotehostshulk.txt -l root -A -i 'docker stop $(docker ps -a -q)'
 pssh -h remotehostshulk.txt -l root -A -i 'docker rm $(docker ps -a -q)'

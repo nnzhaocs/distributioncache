@@ -198,10 +198,10 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 	if err != nil {
 		return err
 	}
-	
+
 	desc, err := bs.fileDescriptorCacheProvider.StatBFRecipe(ctx, dgst)
 	DurationML := time.Since(start).Seconds()
-//	fmt.Println("NANNAN: metadata lookup time: %.3f, %v\n", DurationML, dgst)
+	//	fmt.Println("NANNAN: metadata lookup time: %.3f, %v\n", DurationML, dgst)
 
 	if err != nil {
 		// get from traditional registry, this is a manifest
@@ -250,13 +250,13 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 			// Set the content length if not already set.
 			w.Header().Set("Content-Length", fmt.Sprint(_desc.Size))
 		}
-		
+
 		start = time.Now()
 		http.ServeContent(w, r, _desc.Digest.String(), time.Time{}, br)
 		DurationNTT := time.Since(start).Seconds()
-		context.GetLogger(ctx).Debugf("NANNAN: manifest: metadata lookup time: %v, layer transfer time: %v, layer size: %v", 
-			DurationML, layerDurationNTT, _desc.Size)	
-			
+		context.GetLogger(ctx).Debugf("NANNAN: manifest: metadata lookup time: %v, layer transfer time: %v, layer size: %v",
+			DurationML, DurationNTT, _desc.Size)
+
 		return nil
 	}
 
@@ -266,7 +266,7 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 		context.GetLogger(ctx).Errorf("NANNAN: serveblob: bigcache error", err)
 	}
 
-	if bytesreader != nil {		
+	if bytesreader != nil {
 		context.GetLogger(ctx).Debug("NANNAN: slice cache hit")
 		path, err := bs.pathFn(_desc.Digest)
 		if err != nil {
@@ -289,7 +289,7 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 				return err
 			}
 		}
-		
+
 		storageDir := "/docker/registry/v2/diskcache"
 		layerslicepath := storageDir + string(os.PathSeparator) + fmt.Sprintf("%x", sha256.Sum256([]byte(dgst.String()))) //(sha256.Sum256([]byte(dgst.String())))
 		lf, err := os.Open(layerslicepath)
@@ -297,8 +297,16 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 			context.GetLogger(ctx).Errorf("NANNAN: cannot open disk cache file %v", err)
 			return err
 		}
-		
-		size := lf.Stat().Size()
+
+		lfstat, err := lf.Stat()
+		if err != nil {
+			context.GetLogger(ctx).Errorf("NANNAN: %s", err)
+			return nil
+
+		}
+
+		//fsize := stat.Size()
+		size := lfstat.Size()
 
 		w.Header().Set("ETag", fmt.Sprintf(`"%s"`, _desc.Digest)) // If-None-Match handled by ServeContent
 		w.Header().Set("Cache-Control", fmt.Sprintf("max-age=%.f", blobCacheControlMaxAge.Seconds()))
@@ -316,19 +324,19 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 			// Set the content length if not already set.
 			w.Header().Set("Content-Length", fmt.Sprint(size))
 		}
-		
+
 		start = time.Now()
 		http.ServeContent(w, r, _desc.Digest.String(), time.Time{}, lf)
 		DurationNTT := time.Since(start).Seconds()
-		context.GetLogger(ctx).Debugf("NANNAN: slice cache hit: metadata lookup time: %v, layer transfer time: %v, layer size: %v", 
-			DurationML, layerDurationNTT, size)
+		context.GetLogger(ctx).Debugf("NANNAN: slice cache hit: metadata lookup time: %v, layer transfer time: %v, layer size: %v",
+			DurationML, DurationNTT, size)
 		return nil
 
 	}
 
 	//else restore slice
 	context.GetLogger(ctx).Debug("NANNAN: slice cache miss")
-	
+
 	gid := getGID()
 
 	tmp_dir := fmt.Sprintf("%f", gid)
@@ -373,7 +381,7 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 	}
 	wg.Wait()
 	DurationCP := time.Since(start).Seconds()
-//	fmt.Println("NANNAN: slice IO cp time: %.3f, %v\n", DurationCP, dgst)
+	//	fmt.Println("NANNAN: slice IO cp time: %.3f, %v\n", DurationCP, dgst)
 
 	packpath := path.Join("/var/lib/registry", packPath)
 	//packpath := packPath
@@ -385,7 +393,7 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 	}
 
 	DurationCMP := time.Since(start).Seconds()
-//	fmt.Println("NANNAN: slice compression time: %.3f, %v\n", DurationCMP, dgst)
+	//	fmt.Println("NANNAN: slice compression time: %.3f, %v\n", DurationCMP, dgst)
 
 	defer data.Close()
 	newtardir := path.Join("/var/lib/registry", "/docker/registry/v2/pull_tars/pull_tmp_tarfile")
@@ -445,14 +453,14 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 		// Set the content length if not already set.
 		w.Header().Set("Content-Length", fmt.Sprint(size))
 	}
-	
+
 	start = time.Now()
 	http.ServeContent(w, r, _desc.Digest.String(), time.Time{}, packFile)
 	DurationNTT := time.Since(start).Seconds()
-	
-//	fmt.Println("NANNAN: slice network transfer time: %.3f, %v\n", DurationNTT, dgst)
-//	DurationRS := DurationNTT + DurationCMP + DurationCP + DurationML
-//	fmt.Println("NANNAN: slice restore time: %.3f, %v\n", DurationRS, dgst)
+
+	//	fmt.Println("NANNAN: slice network transfer time: %.3f, %v\n", DurationNTT, dgst)
+	//	DurationRS := DurationNTT + DurationCMP + DurationCP + DurationML
+	//	fmt.Println("NANNAN: slice restore time: %.3f, %v\n", DurationRS, dgst)
 
 	// put into the disk cache
 	bytes, err := ioutil.ReadAll(data)
@@ -468,17 +476,16 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 			path.Join("/var/lib/registry", "/docker/registry/v2/pull_tmp_tarfile", tmp_dir), err)
 		return err
 	}
-	
+
 	//packpath
 	if err = os.RemoveAll(packpath); err != nil {
 		context.GetLogger(ctx).Errorf("NANNAN: cannot remove all file in packpath: %s: %s",
 			packpath, err)
 		return err
 	}
-	
-	context.GetLogger(ctx).Debugf("NANNAN: slice cache miss: metadata lookup time: %v, slice cp time: %v, slice compression time: %v, slice transfer time: %v, slice size: %v", 
-			DurationML, DurationCP, DurationCMP, DurationNTT, size)
 
+	context.GetLogger(ctx).Debugf("NANNAN: slice cache miss: metadata lookup time: %v, slice cp time: %v, slice compression time: %v, slice transfer time: %v, slice size: %v",
+		DurationML, DurationCP, DurationCMP, DurationNTT, size)
 
 	return nil
 }

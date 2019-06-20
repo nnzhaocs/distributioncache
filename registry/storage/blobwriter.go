@@ -481,10 +481,10 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) e
 	start := time.Now()
 	err = archiver.UntarPath(layerPath, unpackPath)
 	elapsed := time.Since(start)
-	
+
 	if err != nil {
 		//TODO: process manifest file
-		if strings.Contains(string(err), "invalid tar header") {
+		if strings.Contains(err.Error(), "invalid tar header") {
 			context.GetLogger(ctx).Errorf("NANNAN: %s, This may be a manifest file", err)
 			err = os.Remove(unpackPath)
 			if err != nil {
