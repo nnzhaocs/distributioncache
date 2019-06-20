@@ -566,7 +566,7 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) e
 	sliceSizeMap := make(map[string]int64)
 
 	var dirSize int64 = 0
-//	fmt.Printf("NANNAN: =====> servers are: ", bw.blobStore.registry.blobServer.servers)
+	//	fmt.Printf("NANNAN: =====> servers are: ", bw.blobStore.registry.blobServer.servers)
 	rr, err := roundrobin.New(bw.blobStore.registry.blobServer.servers)
 	if err != nil {
 		panic(err)
@@ -576,7 +576,7 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) e
 	err = filepath.Walk(unpackPath, bw.CheckDuplicate(ctx, bw.blobStore.registry.serverIp, desc, bw.blobStore.registry.fileDescriptorCacheProvider,
 		bsfdescriptors,
 		rr,
-//		&serverIps,
+		//		&serverIps,
 		serverForwardMap,
 		serverStoreCntMap,
 		sliceSizeMap,
@@ -589,10 +589,10 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) e
 		context.GetLogger(ctx).Errorf("NANNAN: %s", err)
 	}
 
-//	serverIps = append(serverIps, bw.blobStore.registry.serverIp) //NANNAN add this serverip
-    serverIps := make([]string, len(bsfdescriptors))
+	//	serverIps = append(serverIps, bw.blobStore.registry.serverIp) //NANNAN add this serverip
+	serverIps := make([]string, len(bsfdescriptors))
 	i := 0
-	for sip := range bsfdescriptors{
+	for sip := range bsfdescriptors {
 		serverIps[i] = sip
 		i += 1
 	}
@@ -602,7 +602,7 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) e
 	des := distribution.BFRecipeDescriptor{
 		BlobDigest:       desc.Digest,
 		BSFDescriptors:   bsfdescriptors, //make(map[string][]distribution.BFDescriptor)
-		ServerIps:        serverIps, //RemoveDuplicateIpsFromIps(serverIps),
+		ServerIps:        serverIps,      //RemoveDuplicateIpsFromIps(serverIps),
 		CompressSize:     comressSize,
 		UncompressSize:   dirSize,
 		SliceSizeMap:     sliceSizeMap,
@@ -617,7 +617,7 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) e
 	if err != nil {
 		return err
 	}
-	
+
 	if len(serverForwardMap) == 0 {
 		return nil
 	}
@@ -659,7 +659,7 @@ NANNAN check dedup
 func (bw *blobWriter) CheckDuplicate(ctx context.Context, serverIp string, desc distribution.Descriptor, db cache.FileDescriptorCacheProvider,
 	bsfdescriptors map[string][]distribution.BFDescriptor,
 	rr roundrobin.RoundRobin,
-//	serverIps *[]string,
+	//	serverIps *[]string,
 	serverForwardMap map[string][]string,
 	serverStoreCntMap map[string]int,
 	sliceSizeMap map[string]int64,
@@ -723,7 +723,7 @@ func (bw *blobWriter) CheckDuplicate(ctx context.Context, serverIp string, desc 
 			}
 
 			bsfdescriptors[des.ServerIp] = append(bsfdescriptors[des.ServerIp], bfdescriptor)
-			*serverIps = append(*serverIps, des.ServerIp)
+			//*serverIps = append(*serverIps, des.ServerIp)
 			serverStoreCntMap[des.ServerIp] += 1
 			sliceSizeMap[des.ServerIp] += fsize
 
