@@ -1,11 +1,11 @@
 package storage
 
 import (
-		"bytes"
-		"crypto/sha256"
+	//	"bytes"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
-		"io/ioutil"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strings"
@@ -157,22 +157,22 @@ func mvFile(i interface{}) {
 	desc := task.Desc
 	bs := task.Bs
 	var contents *[]byte
-//	v, err := bs.cache.Mc.Get(src)
-//	if err != nil {
-//		context.GetLogger(ctx).Errorf("NANNAN: bs.cache error %s, ", err)
-//	}
-//	if v != nil { //read hit
-//		fmt.Println("NANNAN: file cache hit\n")
-//		contents = &v
-//	} else {
-		fmt.Printf("NANNAN: file cache miss")
-		data, err := bs.driver.GetContent(ctx, src)
-		if err != nil {
-			context.GetLogger(ctx).Errorf("NANNAN: STILL SEND TAR %s, ", err)
-//		} else {
-//			//put in cache
-//			bs.cache.Mc.Set(src, data)
-//		}
+	//	v, err := bs.cache.Mc.Get(src)
+	//	if err != nil {
+	//		context.GetLogger(ctx).Errorf("NANNAN: bs.cache error %s, ", err)
+	//	}
+	//	if v != nil { //read hit
+	//		fmt.Println("NANNAN: file cache hit\n")
+	//		contents = &v
+	//	} else {
+	fmt.Printf("NANNAN: file cache miss")
+	data, err := bs.driver.GetContent(ctx, src)
+	if err != nil {
+		context.GetLogger(ctx).Errorf("NANNAN: STILL SEND TAR %s, ", err)
+		//		} else {
+		//			//put in cache
+		//			bs.cache.Mc.Set(src, data)
+		//		}
 		contents = &data
 	}
 	err = bs.driver.PutContent(ctx, desc, *contents)
@@ -462,7 +462,7 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 	//	DurationRS := DurationNTT + DurationCMP + DurationCP + DurationML
 	//	fmt.Println("NANNAN: slice restore time: %.3f, %v\n", DurationRS, dgst)
 
-//	 put into the disk cache
+	//	 put into the disk cache
 	bfss, err := ioutil.ReadAll(packFile)
 	if err != nil {
 		context.GetLogger(ctx).Errorf("NANNAN: %s, ", err)
