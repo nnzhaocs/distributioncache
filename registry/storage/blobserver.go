@@ -463,11 +463,11 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 	//	fmt.Println("NANNAN: slice restore time: %.3f, %v\n", DurationRS, dgst)
 
 	//	 put into the disk cache
-	bfss, err := ioutil.ReadAll(packFile)
+	bfss, err := ioutil.ReadAll(data)
 	if err != nil {
 		context.GetLogger(ctx).Errorf("NANNAN: %s, ", err)
 	}
-
+	context.GetLogger(ctx).Debugf("NANNAN: slice cache put: %v B", len(bfss))
 	bs.cache.Dc.Put(dgst.String(), bfss)
 
 	//delete tmp_dir and packFile here
