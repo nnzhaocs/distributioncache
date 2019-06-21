@@ -456,13 +456,14 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) e
 
 	bytesreader, err := bw.blobStore.registry.blobServer.cache.Dc.Get(desc.Digest.String())
 	if err != nil {
-		context.GetLogger(ctx).Errorf("NANNAN: dedup: bigcache error", err)
+		context.GetLogger(ctx).Errorf("NANNAN: dedup: diskcache error: %v", err)
 	}
 	if bytesreader == nil {
-		bfss, err := ioutil.ReadAll(lfile)
+		bfss, err := ioutil.ReadFile(layerPath)
 		if err != nil {
 			context.GetLogger(ctx).Errorf("NANNAN: %s, ", err)
 		}
+		context.GetLogger(ctx).Debugf("NANNAN: slice cache put: %v B", len(bfss))
 		bw.blobStore.registry.blobServer.cache.Dc.Put(desc.Digest.String(), bfss)
 	}
 
