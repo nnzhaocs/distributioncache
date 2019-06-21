@@ -453,8 +453,8 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) e
 		return err
 	}
 	defer lfile.Close()
-	
-	bytesreader, err := bw.blobStore.cache.Dc.Get(desc.Digest.String())
+
+	bytesreader, err := bw.blobStore.registry.blobServer.cache.Dc.Get(desc.Digest.String())
 	if err != nil {
 		context.GetLogger(ctx).Errorf("NANNAN: dedup: bigcache error", err)
 	}
@@ -463,9 +463,9 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) e
 		if err != nil {
 			context.GetLogger(ctx).Errorf("NANNAN: %s, ", err)
 		}
-		bw.blobStore.cache.Dc.Put(desc.Digest.String(), bfss)
+		bw.blobStore.registry.blobServer.cache.Dc.Put(desc.Digest.String(), bfss)
 	}
-	
+
 	stat, err := lfile.Stat()
 	if err != nil {
 		context.GetLogger(ctx).Errorf("NANNAN: cannot get size of layer file :=>%s", layerPath)
