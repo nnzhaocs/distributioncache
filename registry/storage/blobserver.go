@@ -290,7 +290,7 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 			}
 		}
 
-		storageDir := "/docker/registry/v2/diskcache"
+		storageDir := "/var/lib/registry/docker/registry/v2/pull_tars/diskcache"
 		layerslicepath := storageDir + string(os.PathSeparator) + fmt.Sprintf("%x", sha256.Sum256([]byte(dgst.String()))) //(sha256.Sum256([]byte(dgst.String())))
 		lf, err := os.Open(layerslicepath)
 		if err != nil {
