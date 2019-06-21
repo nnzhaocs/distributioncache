@@ -88,7 +88,7 @@ func SetCacheSize(size int) RegistryOption {
 func SetSmallTarThreshold(smalltar int) RegistryOption {
 	return func(registry *registry) error {
 		registry.smalltarfcnt = smalltar
-		fmt.Printf("Small tar threshold config: %d", smalltar)
+		fmt.Printf("Small tar threshold config: %d\n", smalltar)
 		return nil
 	}
 }
