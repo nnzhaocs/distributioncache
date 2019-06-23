@@ -464,7 +464,11 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) e
 			context.GetLogger(ctx).Errorf("NANNAN: %s, ", err)
 		}
 		context.GetLogger(ctx).Debugf("NANNAN: slice cache put: %v B", len(bfss))
-		bw.blobStore.registry.blobServer.cache.Dc.Put(desc.Digest.String(), bfss)
+		err = bw.blobStore.registry.blobServer.cache.Dc.Put(desc.Digest.String(), bfss)
+		if err != nil {
+
+			context.GetLogger(ctx).Debugf("NANNAN: slice cache cannot write to: digest: %v: %v ", desc.Digest.String(), err)
+		}
 	}
 
 	stat, err := lfile.Stat()
@@ -784,7 +788,7 @@ func (bw *blobWriter) CheckDuplicate(ctx context.Context, serverIp string, desc 
 			server = serverIp
 		}
 
-		context.GetLogger(ctx).Debugf("NANNAN: file: %v (%v) will be forwarded to server (%v): %v", dgst.String(), reFPath, server)
+		context.GetLogger(ctx).Debugf("NANNAN: file: %v (%v) will be forwarded to server (%v)", dgst.String(), reFPath, server)
 		if server != serverIp {
 			serverForwardMap[server] = append(serverForwardMap[server], fpath)
 		}

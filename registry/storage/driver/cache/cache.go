@@ -38,7 +38,7 @@ func (cache *MemCache) Init() error {
 	}
 	cache.Mc = c
 	dc, err := diskcache.New(
-		"/var/lib/registry/docker/registry/v2/pull_tars/diskcache",
+		"/var/lib/registry/docker/registry/v2/pull_tars/diskcache/",
 		cache.disksize,
 		int64(cache.diskcnt))
 
