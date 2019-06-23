@@ -178,7 +178,6 @@ func mvFile(i interface{}) {
 	err = bs.driver.PutContent(ctx, desc, data)
 	if err != nil {
 		context.GetLogger(ctx).Errorf("NANNAN: STILL SEND TAR %s, ", err)
-
 	}
 	return
 }
@@ -396,7 +395,6 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 	DurationCMP := time.Since(start).Seconds()
 	//	fmt.Println("NANNAN: slice compression time: %.3f, %v\n", DurationCMP, dgst)
 
-	defer data.Close()
 	newtardir := path.Join("/var/lib/registry", "/docker/registry/v2/pull_tars/pull_tmp_tarfile")
 	if os.MkdirAll(newtardir, 0666) != nil {
 		context.GetLogger(ctx).Errorf("NANNAN: ServeBlob <COMPRESS create dir for tarfile> %s, ", err)
@@ -409,9 +407,13 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 		return err
 	}
 
-	defer packFile.Close()
-
 	size, err := io.Copy(packFile, data)
+	if err != nil {
+		context.GetLogger(ctx).Errorf("NANNAN: %s, ", err)
+		return err
+	}
+	data.Close()
+	err = packFile.Sync()
 	if err != nil {
 		context.GetLogger(ctx).Errorf("NANNAN: %s, ", err)
 		return err
@@ -464,7 +466,7 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 	//	fmt.Println("NANNAN: slice restore time: %.3f, %v\n", DurationRS, dgst)
 
 	//	 put into the disk cache
-	bfss, err := ioutil.ReadAll(data)
+	bfss, err := ioutil.ReadFile(packFile.Name())
 	if err != nil {
 		context.GetLogger(ctx).Errorf("NANNAN: %s, ", err)
 	}
@@ -473,6 +475,8 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 	if err != nil {
 		context.GetLogger(ctx).Debugf("NANNAN: slice cache cannot write to: digest: %v: %v ", dgst.String(), err)
 	}
+
+	packFile.Close()
 
 	//delete tmp_dir and packFile here
 	if err = os.RemoveAll(path.Join("/var/lib/registry", "/docker/registry/v2/pull_tars/pull_tmp_tarfile", tmp_dir)); err != nil {
