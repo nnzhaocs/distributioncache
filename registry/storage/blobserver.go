@@ -527,17 +527,10 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 	//		return nil
 	//	}
 
-<<<<<<< HEAD
-	if err != nil || (err == nil && len(desc.BSFDescriptors[bs.serverIp]) == 0){
+	if err != nil || (err == nil && len(desc.BSFDescriptors[bs.serverIp]) == 0) {
 		context.GetLogger(ctx).Warnf("NANNAN: THIS IS A MANIFEST OR COMPRESSED TAR %v", err)
 		DurationNTT, err := serveManifest(ctx, _desc, w, r)
-		if err != nil{
-=======
-	if err != nil || (err == nil && len(desc.BSFDescriptors[bs.serverIp]) == 0) {
-		context.GetLogger(ctx).Warnf("NANNAN: THIS IS A MANIFEST OR COMPRESSED TAR %s", err)
-		DurationNTT, err := bs.serveManifest(ctx, _desc, w, r)
 		if err != nil {
->>>>>>> b05b3382db1e12c5c9025b0aa5d4462846bf7873
 			return err
 		}
 		context.GetLogger(ctx).Debugf("NANNAN: manifest: metadata lookup time: %v, layer transfer time: %v, layer size: %v",
