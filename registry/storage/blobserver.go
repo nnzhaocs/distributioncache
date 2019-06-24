@@ -218,7 +218,7 @@ func mvFile(i interface{}) {
 	DurationFCP := time.Since(start).Seconds()
 //	reschan <- DurationFCP
 	
-	context.GetLogger(ctx).Errorf("NANNAN: wrote %d bytes to file %s duration: ", size, desc, DurationFCP)
+	context.GetLogger(ctx).Errorf("NANNAN: wrote %d bytes to file %s duration: %v", size, desc, DurationFCP)
 	return
 }
 
@@ -524,7 +524,7 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 //	}
 
 	if err != nil || (err == nil && len(desc.BSFDescriptors[bs.serverIp]) == 0){
-		context.GetLogger(ctx).Warnf("NANNAN: THIS IS A MANIFEST OR COMPRESSED TAR %s", err)
+		context.GetLogger(ctx).Warnf("NANNAN: THIS IS A MANIFEST OR COMPRESSED TAR %v", err)
 		DurationNTT, err := serveManifest(ctx, _desc, w, r)
 		if err != nil{
 			return err
