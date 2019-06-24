@@ -363,6 +363,7 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 	//in case there are same files inside the layer dir
 
 	start = time.Now()
+	fcntno := 1.0
 	for _, bfdescriptor := range desc.BSFDescriptors[bs.serverIp] {
 
 		if bfdescriptor.ServerIp != bs.serverIp {
@@ -370,9 +371,9 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 			continue
 		}
 
-		gid = getGID()
-		random_dir := fmt.Sprintf("%f", gid)
-
+		fcntno = fcntno + 0.1
+		random_dir := fmt.Sprintf("%f", fcntno)
+		//TODO: WRITE ERROR CHANNEL AND CATCH ERRORS
 		tarfpath := reg.ReplaceAllString(strings.SplitN(bfdescriptor.BlobFilePath, "diff", 2)[1], "") // replace alphanumeric
 		destfpath := path.Join(packPath, random_dir, tarfpath)
 		//		//context.GetLogger(ctx).Debugf("NANNAN: dest path: %v", destfpath) // not locally available
