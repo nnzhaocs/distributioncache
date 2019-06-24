@@ -469,6 +469,8 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) e
 
 			context.GetLogger(ctx).Debugf("NANNAN: slice cache cannot write to: digest: %v: %v ", desc.Digest.String(), err)
 		}
+	}else{
+		defer bytesreader.Close()
 	}
 
 	stat, err := lfile.Stat()
