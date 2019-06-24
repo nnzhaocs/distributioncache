@@ -277,8 +277,9 @@ func (bs *blobServer) serveManifest(ctx context.Context, _desc distribution.Desc
 	return DurationNTT, nil
 }
 
-func (bs *blobServer) serveBlobCache(ctx context.Context, _desc distribution.Descriptor, w http.ResponseWriter, r *http.Request) (float64, int64, error) {
+func (bs *blobServer) serveBlobCache(ctx context.Context, _desc distribution.Descriptor, w http.ResponseWriter, r *http.Request, bytesreader io.ReadCloser) (float64, int64, error) {
 
+	defer bytesreader.Close()
 	path, err := bs.pathFn(_desc.Digest)
 	if err != nil {
 		return 0.0, 0, err
@@ -546,7 +547,7 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 
 	if bytesreader != nil {
 		context.GetLogger(ctx).Debug("NANNAN: slice cache hit")
-		DurationNTT, size, err := bs.serveBlobCache(ctx, _desc, w, r)
+		DurationNTT, size, err := bs.serveBlobCache(ctx, _desc, w, r, bytesreader)
 		if err != nil {
 			return err
 		}
