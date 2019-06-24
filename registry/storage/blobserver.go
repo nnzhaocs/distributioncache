@@ -156,6 +156,26 @@ func mvFile(i interface{}) {
 	src := task.Src
 	desc := task.Desc
 	bs := task.Bs
+	
+	var _, err = os.Stat(desc)
+	if os.IsNotExist(err){
+		newdir := path.Dir(desc)
+		if os.MkdirAll(newdir, 0666) != nil {
+			context.GetLogger(ctx).Errorf("NANNAN: ServeBlob <COMPRESS create dir for tarfile> %s, ", err)
+			return
+		}
+		var fp, err := os.Create(desc)
+		defer fp.Close()
+		if err != nil{
+			context.GetLogger(ctx).Errorf("NANNAN: %v, ", err)
+			return
+		}
+	}else{
+		context.GetLogger(ctx).Errorf("NANNAN: file (%s) exists", desc)
+		return
+	}
+	
+	
 	//var contents *[]byte
 	//	v, err := bs.cache.Mc.Get(src)
 	//	if err != nil {
@@ -168,215 +188,169 @@ func mvFile(i interface{}) {
 	fmt.Printf("NANNAN: file cache miss\n")
 	data, err := bs.driver.GetContent(ctx, src)
 	if err != nil {
-		context.GetLogger(ctx).Errorf("NANNAN: STILL SEND TAR %s, ", err)
+		context.GetLogger(ctx).Errorf("NANNAN: read file %s generated error: %v", desc, err)
 		//		} else {
 		//			//put in cache
 		//			bs.cache.Mc.Set(src, data)
 		//		}
 		//contents = &data
 	}
-	err = bs.driver.PutContent(ctx, desc, data)
+	
+	/*err = bs.driver.PutContent(ctx, desc, data)
 	if err != nil {
-		context.GetLogger(ctx).Errorf("NANNAN: STILL SEND TAR %s, ", err)
+		context.GetLogger(ctx).Errorf("NANNAN: STILL SEND TAR %v, ", err)
+	}*/
+	size, err := fp.Write(data)
+	if err != nil{
+		context.GetLogger(ctx).Errorf("NANNAN: write file %s generated error: %v", desc, err)
 	}
+	fp.Sync()
+	context.GetLogger(ctx).Errorf("NANNAN: wrote %d bytes to file %s ", size, desc)
 	return
 }
 
-//NANNAN: TODO: process manfiests
-/*
-check if it's manifest.
-if it is, put all files in big cache.
-if its layer, restore layer from disk+cache
-delete and send to disk cache
-*/
 
-func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *http.Request, dgst digest.Digest) error {
-
-	start := time.Now()
-	_desc, err := bs.statter.Stat(ctx, dgst)
+func (bs *blobServer) serveManifest(ctx context.Context, _desc distribution.Descriptor, w http.ResponseWriter, r *http.Request) (float64, error){
+	// get from traditional registry, this is a manifest
+	path, err := bs.pathFn(_desc.Digest)
 	if err != nil {
-		return err
+		return 0.0, err
 	}
 
-	desc, err := bs.fileDescriptorCacheProvider.StatBFRecipe(ctx, dgst)
-	DurationML := time.Since(start).Seconds()
-	//	fmt.Println("NANNAN: metadata lookup time: %.3f, %v\n", DurationML, dgst)
+	if bs.redirect {
+		redirectURL, err := bs.driver.URLFor(ctx, path, map[string]interface{}{"method": r.Method})
+		switch err.(type) {
+		case nil:
+			// Redirect to storage URL.
+			http.Redirect(w, r, redirectURL, http.StatusTemporaryRedirect)
+			return 0.0, err
 
+		case driver.ErrUnsupportedMethod:
+			// Fallback to serving the content directly.
+		default:
+			// Some unexpected error.
+			return 0.0, err
+		}
+	}
+
+	br, err := newFileReader(ctx, bs.driver, path, _desc.Size) //stat.Size())
 	if err != nil {
-		// get from traditional registry, this is a manifest
-		context.GetLogger(ctx).Warnf("NANNAN: THIS IS A MANIFEST OR COMPRESSED TAR %s", err)
+		return 0.0, err
+	}
+	defer br.Close()
 
-		path, err := bs.pathFn(_desc.Digest)
-		if err != nil {
-			return err
-		}
+	w.Header().Set("ETag", fmt.Sprintf(`"%s"`, _desc.Digest)) // If-None-Match handled by ServeContent
+	w.Header().Set("Cache-Control", fmt.Sprintf("max-age=%.f", blobCacheControlMaxAge.Seconds()))
 
-		if bs.redirect {
-			redirectURL, err := bs.driver.URLFor(ctx, path, map[string]interface{}{"method": r.Method})
-			switch err.(type) {
-			case nil:
-				// Redirect to storage URL.
-				http.Redirect(w, r, redirectURL, http.StatusTemporaryRedirect)
-				return err
-
-			case driver.ErrUnsupportedMethod:
-				// Fallback to serving the content directly.
-			default:
-				// Some unexpected error.
-				return err
-			}
-		}
-
-		br, err := newFileReader(ctx, bs.driver, path, _desc.Size) //stat.Size())
-		if err != nil {
-			return err
-		}
-		defer br.Close()
-
-		w.Header().Set("ETag", fmt.Sprintf(`"%s"`, _desc.Digest)) // If-None-Match handled by ServeContent
-		w.Header().Set("Cache-Control", fmt.Sprintf("max-age=%.f", blobCacheControlMaxAge.Seconds()))
-
-		if w.Header().Get("Docker-Content-Digest") == "" {
-			w.Header().Set("Docker-Content-Digest", _desc.Digest.String())
-		}
-
-		if w.Header().Get("Content-Type") == "" {
-			// Set the content type if not already set.
-			w.Header().Set("Content-Type", _desc.MediaType)
-		}
-
-		if w.Header().Get("Content-Length") == "" {
-			// Set the content length if not already set.
-			w.Header().Set("Content-Length", fmt.Sprint(_desc.Size))
-		}
-
-		start = time.Now()
-		http.ServeContent(w, r, _desc.Digest.String(), time.Time{}, br)
-		DurationNTT := time.Since(start).Seconds()
-		context.GetLogger(ctx).Debugf("NANNAN: manifest: metadata lookup time: %v, layer transfer time: %v, layer size: %v",
-			DurationML, DurationNTT, _desc.Size)
-
-		return nil
+	if w.Header().Get("Docker-Content-Digest") == "" {
+		w.Header().Set("Docker-Content-Digest", _desc.Digest.String())
 	}
 
-	//check disk cache
-	bytesreader, err := bs.cache.Dc.Get(dgst.String())
+	if w.Header().Get("Content-Type") == "" {
+		// Set the content type if not already set.
+		w.Header().Set("Content-Type", _desc.MediaType)
+	}
+
+	if w.Header().Get("Content-Length") == "" {
+		// Set the content length if not already set.
+		w.Header().Set("Content-Length", fmt.Sprint(_desc.Size))
+	}
+
+	start = time.Now()
+	http.ServeContent(w, r, _desc.Digest.String(), time.Time{}, br)
+	DurationNTT := time.Since(start).Seconds()
+
+	return DurationNTT, nil
+}
+
+func (bs *blobServer) serveBlobCache(ctx context.Context, _desc distribution.Descriptor, w http.ResponseWriter, r *http.Request)(float64, error){
+
+	path, err := bs.pathFn(_desc.Digest)
 	if err != nil {
-		context.GetLogger(ctx).Errorf("NANNAN: serveblob: disk cache error: %v", err)
+		return 0.0, err
 	}
-
-	if bytesreader != nil {
-		context.GetLogger(ctx).Debug("NANNAN: slice cache hit")
-		path, err := bs.pathFn(_desc.Digest)
-		if err != nil {
-			return err
-
+	
+	if bs.redirect {
+		redirectURL, err := bs.driver.URLFor(ctx, path, map[string]interface{}{"method": r.Method})
+		switch err.(type) {
+		case nil:
+			// Redirect to storage URL.
+			http.Redirect(w, r, redirectURL, http.StatusTemporaryRedirect)
+			return 0.0, err
+	
+		case driver.ErrUnsupportedMethod:
+			// Fallback to serving the content directly.
+		default:
+			// Some unexpected error.
+			return 0.0, err
 		}
-
-		if bs.redirect {
-			redirectURL, err := bs.driver.URLFor(ctx, path, map[string]interface{}{"method": r.Method})
-			switch err.(type) {
-			case nil:
-				// Redirect to storage URL.
-				http.Redirect(w, r, redirectURL, http.StatusTemporaryRedirect)
-				return err
-
-			case driver.ErrUnsupportedMethod:
-				// Fallback to serving the content directly.
-			default:
-				// Some unexpected error.
-				return err
-			}
-		}
-
-		storageDir := "/var/lib/registry/docker/registry/v2/pull_tars/diskcache"
-		layerslicepath := storageDir + string(os.PathSeparator) + fmt.Sprintf("%x", sha256.Sum256([]byte(dgst.String()))) //(sha256.Sum256([]byte(dgst.String())))
-		lf, err := os.Open(layerslicepath)
-		if err != nil {
-			context.GetLogger(ctx).Errorf("NANNAN: cannot open disk cache file %v", err)
-			return err
-		}
-
-		lfstat, err := lf.Stat()
-		if err != nil {
-			context.GetLogger(ctx).Errorf("NANNAN: %s", err)
-			return nil
-
-		}
-
-		//fsize := stat.Size()
-		size := lfstat.Size()
-
-		w.Header().Set("ETag", fmt.Sprintf(`"%s"`, _desc.Digest)) // If-None-Match handled by ServeContent
-		w.Header().Set("Cache-Control", fmt.Sprintf("max-age=%.f", blobCacheControlMaxAge.Seconds()))
-
-		if w.Header().Get("Docker-Content-Digest") == "" {
-			w.Header().Set("Docker-Content-Digest", _desc.Digest.String())
-		}
-
-		if w.Header().Get("Content-Type") == "" {
-			// Set the content type if not already set.
-			w.Header().Set("Content-Type", _desc.MediaType)
-		}
-
-		if w.Header().Get("Content-Length") == "" {
-			// Set the content length if not already set.
-			w.Header().Set("Content-Length", fmt.Sprint(size))
-		}
-
-		start = time.Now()
-		http.ServeContent(w, r, _desc.Digest.String(), time.Time{}, lf)
-		DurationNTT := time.Since(start).Seconds()
-		context.GetLogger(ctx).Debugf("NANNAN: slice cache hit: metadata lookup time: %v, layer transfer time: %v, layer size: %v",
-			DurationML, DurationNTT, size)
-		return nil
-
 	}
-
-	//else restore slice
-	context.GetLogger(ctx).Debug("NANNAN: slice cache miss")
-
-	gid := getGID()
-
-	tmp_dir := fmt.Sprintf("%f", gid)
-	context.GetLogger(ctx).Debugf("NANNAN: serveblob: the gid for this goroutine: =>%v", tmp_dir)
-
-	packPath := path.Join("/docker/registry/v2/pull_tars/pull_tarfiles", tmp_dir)
-
-	reg, err := regexp.Compile("[^a-zA-Z0-9/.-]+")
+	
+	storageDir := "/var/lib/registry/docker/registry/v2/pull_tars/diskcache"
+	layerslicepath := storageDir + string(os.PathSeparator) + fmt.Sprintf("%x", sha256.Sum256([]byte(dgst.String()))) //(sha256.Sum256([]byte(dgst.String())))
+	lf, err := os.Open(layerslicepath)
 	if err != nil {
-		context.GetLogger(ctx).Errorf("NANNAN: %s, ", err)
-		return err
+		context.GetLogger(ctx).Errorf("NANNAN: cannot open disk cache file %v", err)
+		return 0.0, err
 	}
-
-	if len(desc.BSFDescriptors[bs.serverIp]) == 0 {
-		context.GetLogger(ctx).Debugf("NANNAN: this server doesn't have any files for this layer, %v ", len(desc.BSFDescriptors[bs.serverIp]))
-		return nil
+	
+	lfstat, err := lf.Stat()
+	if err != nil {
+		context.GetLogger(ctx).Errorf("NANNAN: %s", err)
+		return 0.0, err
+	
 	}
+	
+	size := lfstat.Size()
+	
+	w.Header().Set("ETag", fmt.Sprintf(`"%s"`, _desc.Digest)) // If-None-Match handled by ServeContent
+	w.Header().Set("Cache-Control", fmt.Sprintf("max-age=%.f", blobCacheControlMaxAge.Seconds()))
+	
+	if w.Header().Get("Docker-Content-Digest") == "" {
+		w.Header().Set("Docker-Content-Digest", _desc.Digest.String())
+	}
+	
+	if w.Header().Get("Content-Type") == "" {
+		// Set the content type if not already set.
+		w.Header().Set("Content-Type", _desc.MediaType)
+	}
+	
+	if w.Header().Get("Content-Length") == "" {
+		// Set the content length if not already set.
+		w.Header().Set("Content-Length", fmt.Sprint(size))
+	}
+	
+	start = time.Now()
+	http.ServeContent(w, r, _desc.Digest.String(), time.Time{}, lf)
+	DurationNTT := time.Since(start).Seconds()
+	
+	return DurationNTT, nil
+}
 
+func (bs *blobServer) moveAllFiles(ctx context.Context, desc distribution.BFRecipeDescriptor, packPath string)(float64, error){
+	
 	var wg sync.WaitGroup
 	antp, _ := ants.NewPoolWithFunc(len(desc.BSFDescriptors[bs.serverIp]), func(i interface{}) {
 		mvFile(i)
 		wg.Done()
 	})
-	defer antp.Release()
-	//in case there are same files inside the layer dir
-
-	start = time.Now()
+	defer antp.Release()	
 	fcntno := 1.0
+	
+	start := time.Now()
 	for _, bfdescriptor := range desc.BSFDescriptors[bs.serverIp] {
 
 		if bfdescriptor.ServerIp != bs.serverIp {
 			context.GetLogger(ctx).Debugf("NANNAN: this is not a locally available file, %v", bfdescriptor.ServerIp) // not locally available
 			continue
 		}
-
+		//in case there are same files inside the layer dir
 		fcntno = fcntno + 0.1
 		random_dir := fmt.Sprintf("%f", fcntno)
-		//TODO: WRITE ERROR CHANNEL AND CATCH ERRORS
+		
 		tarfpath := reg.ReplaceAllString(strings.SplitN(bfdescriptor.BlobFilePath, "diff", 2)[1], "") // replace alphanumeric
-		destfpath := path.Join(packPath, random_dir, tarfpath)
-		//		//context.GetLogger(ctx).Debugf("NANNAN: dest path: %v", destfpath) // not locally available
+		destfpath := path.Join("/var/lib/registry/", packPath, tarfpath+"-"+random_dir)
+		//context.GetLogger(ctx).Debugf("NANNAN: dest path: %v", destfpath) // not locally available
 		wg.Add(1)
 		antp.Invoke(&Task{
 			Ctx:  ctx,
@@ -387,47 +361,53 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 	}
 	wg.Wait()
 	DurationCP := time.Since(start).Seconds()
-	//	fmt.Println("NANNAN: slice IO cp time: %.3f, %v\n", DurationCP, dgst)
+	return DurationCP, nil
+}
 
+
+func (bs *blobServer) compressAndServe(ctx context.Context, w http.ResponseWriter, r *http.Request, _desc distribution.Descriptor, packPath string, tmp_dir string)(float64, float64, string, error){
+	
 	packpath := path.Join("/var/lib/registry", packPath)
-	//packpath := packPath
+
 	start = time.Now()
 	data, err := archive.Tar(packpath, archive.Gzip)
 	if err != nil {
 		context.GetLogger(ctx).Warnf("NANNAN: %s, ", err)
-		return err
+		return 0.0, 0.0, nil, err
 	}
+	defer data.Close()
 
 	DurationCMP := time.Since(start).Seconds()
-	//	fmt.Println("NANNAN: slice compression time: %.3f, %v\n", DurationCMP, dgst)
+	//fmt.Println("NANNAN: slice compression time: %.3f, %v\n", DurationCMP, dgst)
 
 	newtardir := path.Join("/var/lib/registry", "/docker/registry/v2/pull_tars/pull_tmp_tarfile")
 	if os.MkdirAll(newtardir, 0666) != nil {
 		context.GetLogger(ctx).Errorf("NANNAN: ServeBlob <COMPRESS create dir for tarfile> %s, ", err)
-		return err
+		return 0.0, 0.0, nil, err
 	}
 
 	packFile, err := os.Create(path.Join("/var/lib/registry", "/docker/registry/v2/pull_tars/pull_tmp_tarfile", tmp_dir)) //path.Join(parentDir, "tmp_tar.tar.gz")))
 	if err != nil {
 		context.GetLogger(ctx).Errorf("NANNAN: %s, ", err)
-		return err
+		return 0.0, 0.0, nil, err
 	}
+	defer packFile.Close()
 
 	size, err := io.Copy(packFile, data)
 	if err != nil {
 		context.GetLogger(ctx).Errorf("NANNAN: %s, ", err)
-		return err
+		return 0.0, 0.0, nil, err
 	}
-	data.Close()
+	
 	err = packFile.Sync()
 	if err != nil {
 		context.GetLogger(ctx).Errorf("NANNAN: %s, ", err)
-		return err
+		return 0.0, 0.0, nil, err
 	}
 
 	path_old, err := bs.pathFn(_desc.Digest)
 	if err != nil {
-		return err
+		return 0.0, 0.0, nil, err
 	}
 
 	if bs.redirect {
@@ -436,13 +416,13 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 		case nil:
 			// Redirect to storage URL.
 			http.Redirect(w, r, redirectURL, http.StatusTemporaryRedirect)
-			return err
+			return 0.0, 0.0, nil, err
 
 		case driver.ErrUnsupportedMethod:
 			// Fallback to serving the content directly.
 		default:
 			// Some unexpected error.
-			return err
+			return 0.0, 0.0, nil, err
 		}
 	}
 
@@ -470,9 +450,91 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 	//	fmt.Println("NANNAN: slice network transfer time: %.3f, %v\n", DurationNTT, dgst)
 	//	DurationRS := DurationNTT + DurationCMP + DurationCP + DurationML
 	//	fmt.Println("NANNAN: slice restore time: %.3f, %v\n", DurationRS, dgst)
-
+	return DurationCMP, DurationNTT, packFile.Name(), nil
 	//	 put into the disk cache
-	bfss, err := ioutil.ReadFile(packFile.Name())
+//	
+	
+}
+
+
+//NANNAN: TODO: process manfiests
+/*
+check if it's manifest.
+if it is, put all files in big cache.
+if its layer, restore layer from disk+cache
+delete and send to disk cache
+*/
+
+func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *http.Request, dgst digest.Digest) error {
+
+	start := time.Now()
+	_desc, err := bs.statter.Stat(ctx, dgst)
+	if err != nil {
+		return err
+	}
+
+	desc, err := bs.fileDescriptorCacheProvider.StatBFRecipe(ctx, dgst)
+	DurationML := time.Since(start).Seconds()
+	
+	//	fmt.Println("NANNAN: metadata lookup time: %.3f, %v\n", DurationML, dgst)
+//	if len(desc.BSFDescriptors[bs.serverIp]) == 0 {
+//		context.GetLogger(ctx).Debugf("NANNAN: this server doesn't have any files for this layer, %v ", len(desc.BSFDescriptors[bs.serverIp]))
+//		return nil
+//	}
+
+	if err != nil || (err == nil && len(desc.BSFDescriptors[bs.serverIp]) == 0){
+		context.GetLogger(ctx).Warnf("NANNAN: THIS IS A MANIFEST OR COMPRESSED TAR %s", err)
+		DurationNTT, err := serveManifest(ctx, _desc, w, r)
+		if err != nil{
+			return err
+		}		
+		context.GetLogger(ctx).Debugf("NANNAN: manifest: metadata lookup time: %v, layer transfer time: %v, layer size: %v",
+		DurationML, DurationNTT, _desc.Size)
+		return nil
+	}
+
+	//check disk cache
+	bytesreader, err := bs.cache.Dc.Get(dgst.String())
+	if err != nil {
+		context.GetLogger(ctx).Errorf("NANNAN: serveblob: disk cache error: %v", err)
+	}
+
+	if bytesreader != nil {
+		context.GetLogger(ctx).Debug("NANNAN: slice cache hit")
+		
+		DurationNTT, err :=  serveBlobCache(ctx, _desc, w, r)
+		if err != nil{
+			return err
+		}
+		context.GetLogger(ctx).Debugf("NANNAN: slice cache hit: metadata lookup time: %v, layer transfer time: %v, layer size: %v",
+		DurationML, DurationNTT, size)
+		return nil
+	}
+
+	//else restore slice
+	context.GetLogger(ctx).Debug("NANNAN: slice cache miss")
+
+	gid := getGID()
+	tmp_dir := fmt.Sprintf("%f", gid)
+	context.GetLogger(ctx).Debugf("NANNAN: serveblob: the gid for this goroutine: =>%v", tmp_dir)
+
+	packPath := path.Join("/docker/registry/v2/pull_tars/pull_tarfiles", tmp_dir)
+
+	reg, err := regexp.Compile("[^a-zA-Z0-9/.-]+")
+	if err != nil {
+		context.GetLogger(ctx).Errorf("NANNAN: %s, ", err)
+		return err
+	}
+	//WRITE ERROR CHANNEL AND CATCH ERRORS
+	DurationCP, _ := moveAllFiles(ctx, desc, packPath) 
+	//	fmt.Println("NANNAN: slice IO cp time: %.3f, %v\n", DurationCP, dgst)
+	
+	DurationCMP, DurationNTT, packFileName, err := compressAndServe(ctx, w, r, _desc, packPath, tmp_dir)
+	if err != nil{
+		return err
+	}
+
+	bfss, err := ioutil.ReadFile(packFileName)
 	if err != nil {
 		context.GetLogger(ctx).Errorf("NANNAN: %s, ", err)
 	}
@@ -481,8 +543,6 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 	if err != nil {
 		context.GetLogger(ctx).Debugf("NANNAN: slice cache cannot write to: digest: %v: %v ", dgst.String(), err)
 	}
-
-	packFile.Close()
 
 	//delete tmp_dir and packFile here
 	if err = os.RemoveAll(path.Join("/var/lib/registry", "/docker/registry/v2/pull_tars/pull_tmp_tarfile", tmp_dir)); err != nil {
