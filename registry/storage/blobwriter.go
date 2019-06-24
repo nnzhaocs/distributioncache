@@ -580,7 +580,7 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) e
 	sliceSizeMap := make(map[string]int64)
 
 	var dirSize int64 = 0
-	var fcnt    int64 = 0
+	var fcnt int64 = 0
 	//	fmt.Printf("NANNAN: =====> servers are: ", bw.blobStore.registry.blobServer.servers)
 	rr, err := roundrobin.New(bw.blobStore.registry.blobServer.servers)
 	if err != nil {
@@ -596,7 +596,7 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) e
 		serverStoreCntMap,
 		sliceSizeMap,
 		&dirSize,
-		uniqueFileDistri
+		uniqueFileDistri,
 		&fcnt))
 
 	elapsed = time.Since(start)
@@ -770,17 +770,17 @@ func (bw *blobWriter) CheckDuplicate(ctx context.Context, serverIp string, desc 
 
 		fpath = reFPath
 		// weighted roundrobin
-		
+
 		*fcnt += 1
-		
-		if *fcnt < bw.blobStore.registry.smalltarfcnt {
+
+		if *fcnt < int64(bw.blobStore.registry.smalltarfcnt) {
 			uniqueFileDistri = false
-		}else{
+		} else {
 			uniqueFileDistri = true
 		}
 
 		context.GetLogger(ctx).Warnf("NANNAN: uniqueFileDistri: %v", uniqueFileDistri)
-		
+
 		var server string
 
 		if uniqueFileDistri {

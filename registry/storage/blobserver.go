@@ -529,7 +529,7 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 
 	if err != nil || (err == nil && len(desc.BSFDescriptors[bs.serverIp]) == 0) {
 		context.GetLogger(ctx).Warnf("NANNAN: THIS IS A MANIFEST OR COMPRESSED TAR %v", err)
-		DurationNTT, err := serveManifest(ctx, _desc, w, r)
+		DurationNTT, err := bs.serveManifest(ctx, _desc, w, r)
 		if err != nil {
 			return err
 		}
