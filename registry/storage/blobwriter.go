@@ -527,10 +527,6 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) e
 
 	uniqueFileDistri := true
 
-	if len(files) < bw.blobStore.registry.smalltarfcnt {
-		uniqueFileDistri = false
-	}
-
 	for _, f := range files {
 		fmatch, _ := path.Match("NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL", f.Name())
 		if fmatch {
@@ -584,6 +580,7 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) e
 	sliceSizeMap := make(map[string]int64)
 
 	var dirSize int64 = 0
+	var fcnt    int64 = 0
 	//	fmt.Printf("NANNAN: =====> servers are: ", bw.blobStore.registry.blobServer.servers)
 	rr, err := roundrobin.New(bw.blobStore.registry.blobServer.servers)
 	if err != nil {
@@ -599,7 +596,8 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) e
 		serverStoreCntMap,
 		sliceSizeMap,
 		&dirSize,
-		uniqueFileDistri))
+		uniqueFileDistri
+		&fcnt))
 
 	elapsed = time.Since(start)
 	fmt.Printf("NANNAN: digest calculation + file index lookup time: %.3f, %v", elapsed.Seconds(), blobPath)
@@ -682,7 +680,8 @@ func (bw *blobWriter) CheckDuplicate(ctx context.Context, serverIp string, desc 
 	serverStoreCntMap map[string]int,
 	sliceSizeMap map[string]int64,
 	dirSize *int64,
-	uniqueFileDistri bool) filepath.WalkFunc {
+	uniqueFileDistri bool,
+	fcnt *int64) filepath.WalkFunc {
 
 	return func(fpath string, info os.FileInfo, err error) error {
 		//		context.GetLogger(ctx).Debug("NANNAN: START CHECK DUPLICATES :=>")
@@ -771,6 +770,17 @@ func (bw *blobWriter) CheckDuplicate(ctx context.Context, serverIp string, desc 
 
 		fpath = reFPath
 		// weighted roundrobin
+		
+		*fcnt += 1
+		
+		if *fcnt < bw.blobStore.registry.smalltarfcnt {
+			uniqueFileDistri = false
+		}else{
+			uniqueFileDistri = true
+		}
+
+		context.GetLogger(ctx).Warnf("NANNAN: uniqueFileDistri: %v", uniqueFileDistri)
+		
 		var server string
 
 		if uniqueFileDistri {
