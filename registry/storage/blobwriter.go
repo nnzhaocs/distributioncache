@@ -594,12 +594,12 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) e
 	// put this layer into cache
 	bytesreader, err := bw.blobStore.registry.blobServer.cache.Dc.Get(desc.Digest.String())
 	if err != nil {
-		context.GetLogger(ctx).Errorf("NANNAN: dedup: diskcache error: %v", err)
+		context.GetLogger(ctx).Errorf("NANNAN: dedup: diskcache error: %v: %s", err, desc.Digest.String())
 	}
 	if bytesreader == nil {
 		bfss, err := ioutil.ReadFile(layerPath)
 		if err != nil {
-			context.GetLogger(ctx).Errorf("NANNAN: %s, ", err)
+			context.GetLogger(ctx).Errorf("NANNAN: %s ", err)
 		}
 		context.GetLogger(ctx).Debugf("NANNAN: slice cache put: %v B for %s", len(bfss), desc.Digest.String())
 		if len(bfss) > 0 {		
@@ -637,8 +637,8 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) e
 		context.GetLogger(ctx).Errorf("NANNAN: %s", err)
 	}
 	
-	if fcnt == 0 || dirSize == 0 {
-		context.GetLogger(ctx).Errorf("NANNAN: fcnt == 0 or dirSize == 0: something wrong!!!")
+	if dirSize == 0 {
+		context.GetLogger(ctx).Errorf("NANNAN: dirSize == 0: something wrong!!!")
 		return nil
 	}
 
@@ -705,7 +705,8 @@ func getGID() float64 {
 */
 /*
 NANNAN check dedup
- Metrics: lock
+no lock
+and skip empty file
 */
 
 func (bw *blobWriter) CheckDuplicate(ctx context.Context, serverIp string, desc distribution.Descriptor, db cache.FileDescriptorCacheProvider,
@@ -745,6 +746,10 @@ func (bw *blobWriter) CheckDuplicate(ctx context.Context, serverIp string, desc 
 		}
 
 		fsize := stat.Size()
+		if fsize <= 0{
+			return nil
+		}
+		
 		*dirSize += fsize
 
 		defer fp.Close()
