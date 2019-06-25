@@ -430,13 +430,13 @@ NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL/docker/registry/v2/blobs/sha256/1b/
 8b6566f585bad55b6fb9efb1dc1b6532fd08bb1796b4b42a3050aacb961f1f3f
 */
 
-func checkNeedDedupOrNot(unpackPath string)(bool, error){
-	
+func checkNeedDedupOrNot(ctx context.Context, unpackPath string) (bool, error) {
+
 	files, err := ioutil.ReadDir(unpackPath)
 	if err != nil {
 		context.GetLogger(ctx).Errorf("NANNAN: %s, cannot read this tar file", err)
 	}
-	
+
 	for _, f := range files {
 		fmatch, _ := path.Match("NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL", f.Name())
 		if fmatch {
@@ -484,23 +484,22 @@ func checkNeedDedupOrNot(unpackPath string)(bool, error){
 		}
 		return true, nil
 	}
+	return true, nil
 }
-
 
 func IsEmpty(name string) (bool, error) {
-    f, err := os.Open(name)
-    if err != nil {
-        return false, err
-    }
-    defer f.Close()
+	f, err := os.Open(name)
+	if err != nil {
+		return false, err
+	}
+	defer f.Close()
 
-    _, err = f.Readdirnames(1) // Or f.Readdir(1)
-    if err == io.EOF {
-        return true, nil
-    }
-    return false, err // Either not empty or error, suits both cases
+	_, err = f.Readdirnames(1) // Or f.Readdir(1)
+	if err == io.EOF {
+		return true, nil
+	}
+	return false, err // Either not empty or error, suits both cases
 }
-
 
 func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) error {
 
@@ -565,7 +564,7 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) e
 		context.GetLogger(ctx).Warnf("NANNAN: %s, IGNORE MINOR ERRORS", err)
 	}
 	fmt.Printf("NANNAN: gzip decompression time: %.3f, %v", elapsed.Seconds(), blobPath)
-	
+
 	// check if it's a empty dir
 	isEmpty, _ := IsEmpty(unpackPath)
 	if isEmpty == true {
@@ -574,15 +573,15 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) e
 	}
 
 	// check if we need to dedup this tarball
-	needdedup, _ := checkNeedDedupOrNot(unpackPath)
+	needdedup, _ := checkNeedDedupOrNot(ctx, unpackPath)
 	if needdedup == false {
 		context.GetLogger(ctx).Debugf("NANNAN: This layer doesn't need deduplication, sent from othrs nodes during dedup: %s", layerPath)
 		return nil
 	}
-	
+
 	gid := GetGID()
 	uniqueFileDistri := true
-	
+
 	bsfdescriptors := make(map[string][]distribution.BFDescriptor)
 	serverForwardMap := make(map[string][]string)
 	serverStoreCntMap := make(map[string]int)
@@ -590,7 +589,7 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) e
 
 	var dirSize int64 = 0
 	var fcnt int64 = 0
-	
+
 	// put this layer into cache
 	bytesreader, err := bw.blobStore.registry.blobServer.cache.Dc.Get(desc.Digest.String())
 	if err != nil {
@@ -602,16 +601,16 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) e
 			context.GetLogger(ctx).Errorf("NANNAN: %s, ", err)
 		}
 		context.GetLogger(ctx).Debugf("NANNAN: slice cache put: %v B for %s", len(bfss), desc.Digest.String())
-		if len(bfss) > 0 {		
+		if len(bfss) > 0 {
 			err = bw.blobStore.registry.blobServer.cache.Dc.Put(desc.Digest.String(), bfss)
 			if err != nil {
 				context.GetLogger(ctx).Debugf("NANNAN: slice cache cannot write to: digest: %v: %v ", desc.Digest.String(), err)
 			}
 		}
-	}else{
+	} else {
 		defer bytesreader.Close()
 	}
-	
+
 	//	fmt.Printf("NANNAN: =====> servers are: ", bw.blobStore.registry.blobServer.servers)
 	rr, err := roundrobin.New(bw.blobStore.registry.blobServer.servers)
 	if err != nil {
@@ -636,7 +635,7 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) e
 	if err != nil {
 		context.GetLogger(ctx).Errorf("NANNAN: %s", err)
 	}
-	
+
 	if fcnt == 0 || dirSize == 0 {
 		context.GetLogger(ctx).Errorf("NANNAN: fcnt == 0 or dirSize == 0: something wrong!!!")
 		return nil
@@ -668,11 +667,11 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) e
 	if err != nil {
 		return err
 	}
-	
+
 	if len(serverForwardMap) == 0 {
 		return nil
 	}
-		
+
 	// let's do forwarding
 	var wg sync.WaitGroup
 	mvtarpaths, err := bw.PrepareForward(ctx, serverForwardMap, gid)
