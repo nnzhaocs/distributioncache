@@ -430,105 +430,13 @@ NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL/docker/registry/v2/blobs/sha256/1b/
 8b6566f585bad55b6fb9efb1dc1b6532fd08bb1796b4b42a3050aacb961f1f3f
 */
 
-func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) error {
-
-	context.GetLogger(ctx).Debug("NANNAN: (*blobWriter).Dedup")
-
-	blobPath, err := PathFor(BlobDataPathSpec{
-		Digest: desc.Digest,
-	})
-	context.GetLogger(ctx).Debugf("NANNAN: blob = %v:%v", blobPath, desc.Digest)
-
-	_, err = bw.blobStore.registry.fileDescriptorCacheProvider.StatBFRecipe(ctx, desc.Digest)
-	if err == nil {
-		context.GetLogger(ctx).Debug("NANNAN: THIS LAYER TARBALL ALREADY DEDUPED :=>%v", desc.Digest)
-		return nil
-	}
-
-	layerPath := path.Join("/var/lib/registry", blobPath)
-	// get the layer file size
-	lfile, err := os.Open(layerPath)
-	if err != nil {
-		context.GetLogger(ctx).Errorf("NANNAN: cannot open layer file :=>%s", layerPath)
-		return err
-	}
-	defer lfile.Close()
-
-	bytesreader, err := bw.blobStore.registry.blobServer.cache.Dc.Get(desc.Digest.String())
-	if err != nil {
-		context.GetLogger(ctx).Errorf("NANNAN: dedup: diskcache error: %v", err)
-	}
-	if bytesreader == nil {
-		bfss, err := ioutil.ReadFile(layerPath)
-		if err != nil {
-			context.GetLogger(ctx).Errorf("NANNAN: %s, ", err)
-		}
-		context.GetLogger(ctx).Debugf("NANNAN: slice cache put: %v B", len(bfss))
-		err = bw.blobStore.registry.blobServer.cache.Dc.Put(desc.Digest.String(), bfss)
-		if err != nil {
-
-			context.GetLogger(ctx).Debugf("NANNAN: slice cache cannot write to: digest: %v: %v ", desc.Digest.String(), err)
-		}
-	}else{
-		defer bytesreader.Close()
-	}
-
-	stat, err := lfile.Stat()
-	if err != nil {
-		context.GetLogger(ctx).Errorf("NANNAN: cannot get size of layer file :=>%s", layerPath)
-		return err
-	}
-
-	comressSize := stat.Size()
-
-	context.GetLogger(ctx).Debug("NANNAN: START DEDUPLICATION FROM PATH :=>%s", layerPath)
-
-	parentDir := path.Dir(layerPath)
-	unpackPath := path.Join(parentDir, "diff")
-
-	archiver := archive.NewDefaultArchiver()
-	options := &archive.TarOptions{
-		UIDMaps: archiver.IDMapping.UIDs(),
-		GIDMaps: archiver.IDMapping.GIDs(),
-	}
-	idMapping := idtools.NewIDMappingsFromMaps(options.UIDMaps, options.GIDMaps)
-	rootIDs := idMapping.RootPair()
-	err = idtools.MkdirAllAndChownNew(unpackPath, 0777, rootIDs)
-	if err != nil {
-		context.GetLogger(ctx).Errorf("NANNAN: %s", err)
-		return err
-	}
-	start := time.Now()
-	err = archiver.UntarPath(layerPath, unpackPath)
-	elapsed := time.Since(start)
-
-	if err != nil {
-		//TODO: process manifest file
-		if strings.Contains(err.Error(), "invalid tar header") {
-			context.GetLogger(ctx).Errorf("NANNAN: %s, This may be a manifest file", err)
-			err = os.Remove(unpackPath)
-			if err != nil {
-				context.GetLogger(ctx).Errorf("NANNAN: %s, cannot remove this", err)
-				return err
-			}
-			return err
-		}
-
-		//fmt.Println("NANNAN: gzip decompression time: %.3f, %v", elapsed.Seconds(), blobPath)
-		context.GetLogger(ctx).Warnf("NANNAN: %s, IGNORE MINOR ERRORS", err)
-	}
-	fmt.Printf("NANNAN: gzip decompression time: %.3f, %v", elapsed.Seconds(), blobPath)
-
-	gid := GetGID()
-	//later check ..................
-	// check if we need to dedup this tarball
+func checkNeedDedupOrNot(unpackPath string)(bool, error){
+	
 	files, err := ioutil.ReadDir(unpackPath)
 	if err != nil {
 		context.GetLogger(ctx).Errorf("NANNAN: %s, cannot read this tar file", err)
 	}
-
-	uniqueFileDistri := true
-
+	
 	for _, f := range files {
 		fmatch, _ := path.Match("NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL", f.Name())
 		if fmatch {
@@ -542,7 +450,7 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) e
 			files, err := ioutil.ReadDir(path.Join(unpackPath, "NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL/docker/registry/v2/blobs/sha256/"))
 			if err != nil {
 				context.GetLogger(ctx).Errorf("NANNAN: %s, cannot read this unpackpath file: %s", path.Join(unpackPath, "NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL/docker/registry/v2/blobs/sha256/"), err)
-				return err
+				return false, err
 			}
 			for _, f := range files {
 				context.GetLogger(ctx).Debugf("NANNAN: find a layer subdir: %s", f.Name())
@@ -552,7 +460,7 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) e
 					fds, err := ioutil.ReadDir(path.Join(unpackPath, "NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL/docker/registry/v2/blobs/sha256/", f.Name()))
 					if err != nil {
 						context.GetLogger(ctx).Errorf("NANNAN: %s, cannot read this unpackpath filepath: %s", path.Join(unpackPath, "NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL/docker/registry/v2/blobs/sha256/", f.Name()), err)
-						return err
+						return false, err
 					}
 					for _, fd := range fds {
 						if err = os.Rename(path.Join(unpackPath, "NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL/docker/registry/v2/blobs/sha256/", f.Name(), fd.Name()),
@@ -572,10 +480,109 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) e
 					}
 				}
 			}
-			return nil
+			return false, nil
 		}
+		return true, nil
+	}
+}
+
+
+func IsEmpty(name string) (bool, error) {
+    f, err := os.Open(name)
+    if err != nil {
+        return false, err
+    }
+    defer f.Close()
+
+    _, err = f.Readdirnames(1) // Or f.Readdir(1)
+    if err == io.EOF {
+        return true, nil
+    }
+    return false, err // Either not empty or error, suits both cases
+}
+
+
+func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) error {
+
+	//context.GetLogger(ctx).Debug("NANNAN: (*blobWriter).Dedup")
+
+	blobPath, err := PathFor(BlobDataPathSpec{
+		Digest: desc.Digest,
+	})
+	//context.GetLogger(ctx).Debugf("NANNAN: blob = %v:%v", blobPath, desc.Digest)
+	_, err = bw.blobStore.registry.fileDescriptorCacheProvider.StatBFRecipe(ctx, desc.Digest)
+	if err == nil {
+		context.GetLogger(ctx).Debug("NANNAN: THIS LAYER TARBALL ALREADY DEDUPED :=>%v", desc.Digest)
+		return nil
 	}
 
+	layerPath := path.Join("/var/lib/registry", blobPath)
+	// get the layer file size
+	lfile, err := os.Open(layerPath)
+	if err != nil {
+		context.GetLogger(ctx).Errorf("NANNAN: cannot open layer file :=>%s", layerPath)
+		return err
+	}
+	defer lfile.Close()
+
+	stat, err := lfile.Stat()
+	if err != nil {
+		context.GetLogger(ctx).Errorf("NANNAN: cannot get size of layer file :=>%s", layerPath)
+		return err
+	}
+
+	comressSize := stat.Size()
+	context.GetLogger(ctx).Debugf("NANNAN: START DEDUPLICATION FROM PATH :=>%s", layerPath)
+
+	parentDir := path.Dir(layerPath)
+	unpackPath := path.Join(parentDir, "diff")
+
+	archiver := archive.NewDefaultArchiver()
+	options := &archive.TarOptions{
+		UIDMaps: archiver.IDMapping.UIDs(),
+		GIDMaps: archiver.IDMapping.GIDs(),
+	}
+	idMapping := idtools.NewIDMappingsFromMaps(options.UIDMaps, options.GIDMaps)
+	rootIDs := idMapping.RootPair()
+	err = idtools.MkdirAllAndChownNew(unpackPath, 0777, rootIDs)
+	if err != nil {
+		context.GetLogger(ctx).Errorf("NANNAN: %v", err)
+		return err
+	}
+	start := time.Now()
+	err = archiver.UntarPath(layerPath, unpackPath)
+	elapsed := time.Since(start)
+	if err != nil {
+		if strings.Contains(err.Error(), "invalid tar header") {
+			context.GetLogger(ctx).Errorf("NANNAN: %v, This may be a manifest file", err)
+			err = os.Remove(unpackPath)
+			if err != nil {
+				context.GetLogger(ctx).Errorf("NANNAN: %v, cannot remove this", err)
+				return err
+			}
+			return err
+		}
+		context.GetLogger(ctx).Warnf("NANNAN: %s, IGNORE MINOR ERRORS", err)
+	}
+	fmt.Printf("NANNAN: gzip decompression time: %.3f, %v", elapsed.Seconds(), blobPath)
+	
+	// check if it's a empty dir
+	isEmpty, _ := IsEmpty(unpackPath)
+	if isEmpty == true {
+		context.GetLogger(ctx).Debugf("NANNAN: This unpackpath is empty: %s", unpackPath)
+		return nil
+	}
+
+	// check if we need to dedup this tarball
+	needdedup, _ := checkNeedDedupOrNot(unpackPath)
+	if needdedup == false {
+		context.GetLogger(ctx).Debugf("NANNAN: This layer doesn't need deduplication, sent from othrs nodes during dedup: %s", layerPath)
+		return nil
+	}
+	
+	gid := GetGID()
+	uniqueFileDistri := true
+	
 	bsfdescriptors := make(map[string][]distribution.BFDescriptor)
 	serverForwardMap := make(map[string][]string)
 	serverStoreCntMap := make(map[string]int)
@@ -583,10 +590,31 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) e
 
 	var dirSize int64 = 0
 	var fcnt int64 = 0
+	
+	// put this layer into cache
+	bytesreader, err := bw.blobStore.registry.blobServer.cache.Dc.Get(desc.Digest.String())
+	if err != nil {
+		context.GetLogger(ctx).Errorf("NANNAN: dedup: diskcache error: %v", err)
+	}
+	if bytesreader == nil {
+		bfss, err := ioutil.ReadFile(layerPath)
+		if err != nil {
+			context.GetLogger(ctx).Errorf("NANNAN: %s, ", err)
+		}
+		context.GetLogger(ctx).Debugf("NANNAN: slice cache put: %v B", len(bfss))
+		err = bw.blobStore.registry.blobServer.cache.Dc.Put(desc.Digest.String(), bfss)
+		if err != nil {
+			context.GetLogger(ctx).Debugf("NANNAN: slice cache cannot write to: digest: %v: %v ", desc.Digest.String(), err)
+		}
+	}else{
+		defer bytesreader.Close()
+	}
+	
 	//	fmt.Printf("NANNAN: =====> servers are: ", bw.blobStore.registry.blobServer.servers)
 	rr, err := roundrobin.New(bw.blobStore.registry.blobServer.servers)
 	if err != nil {
-		panic(err)
+		context.GetLogger(ctx).Errorf("NANNAN: Cannot generage random ring: %v", err)
+		return err
 	}
 
 	start = time.Now()
@@ -606,8 +634,12 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) e
 	if err != nil {
 		context.GetLogger(ctx).Errorf("NANNAN: %s", err)
 	}
+	
+	if fcnt == 0 || dirSize == 0 {
+		context.GetLogger(ctx).Errorf("NANNAN: fcnt == 0 or dirSize == 0: something wrong!!!")
+		return nil
+	}
 
-	//	serverIps = append(serverIps, bw.blobStore.registry.serverIp) //NANNAN add this serverip
 	serverIps := make([]string, len(bsfdescriptors))
 	i := 0
 	for sip := range bsfdescriptors {
@@ -616,7 +648,6 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) e
 	}
 
 	bsresDescriptors := make(map[string]*distribution.BSResDescriptor)
-
 	des := distribution.BFRecipeDescriptor{
 		BlobDigest:       desc.Digest,
 		BSFDescriptors:   bsfdescriptors, //make(map[string][]distribution.BFDescriptor)
@@ -635,10 +666,11 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) e
 	if err != nil {
 		return err
 	}
-
+	
 	if len(serverForwardMap) == 0 {
 		return nil
 	}
+		
 	// let's do forwarding
 	var wg sync.WaitGroup
 	mvtarpaths, err := bw.PrepareForward(ctx, serverForwardMap, gid)
