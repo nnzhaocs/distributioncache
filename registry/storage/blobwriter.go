@@ -601,10 +601,12 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) e
 		if err != nil {
 			context.GetLogger(ctx).Errorf("NANNAN: %s, ", err)
 		}
-		context.GetLogger(ctx).Debugf("NANNAN: slice cache put: %v B", len(bfss))
-		err = bw.blobStore.registry.blobServer.cache.Dc.Put(desc.Digest.String(), bfss)
-		if err != nil {
-			context.GetLogger(ctx).Debugf("NANNAN: slice cache cannot write to: digest: %v: %v ", desc.Digest.String(), err)
+		context.GetLogger(ctx).Debugf("NANNAN: slice cache put: %v B for %s", len(bfss), desc.Digest.String())
+		if len(bfss) > 0 {		
+			err = bw.blobStore.registry.blobServer.cache.Dc.Put(desc.Digest.String(), bfss)
+			if err != nil {
+				context.GetLogger(ctx).Debugf("NANNAN: slice cache cannot write to: digest: %v: %v ", desc.Digest.String(), err)
+			}
 		}
 	}else{
 		defer bytesreader.Close()
