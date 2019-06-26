@@ -2,7 +2,8 @@ package storage
 
 import (
 	//	"bytes"
-	"crypto/sha256"
+
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -277,9 +278,9 @@ func (bs *blobServer) serveManifest(ctx context.Context, _desc distribution.Desc
 	return DurationNTT, nil
 }
 
-func (bs *blobServer) serveBlobCache(ctx context.Context, _desc distribution.Descriptor, w http.ResponseWriter, r *http.Request, bytesreader io.ReadCloser) (float64, int64, error) {
-
-	defer bytesreader.Close()
+func (bs *blobServer) serveBlobCache(ctx context.Context, _desc distribution.Descriptor, w http.ResponseWriter, r *http.Request, bss []byte) (float64, int64, error) {
+	bytesreader := bytes.NewReader(bss)
+	//defer bytesreader.Close()
 	path, err := bs.pathFn(_desc.Digest)
 	if err != nil {
 		return 0.0, 0, err
@@ -301,7 +302,7 @@ func (bs *blobServer) serveBlobCache(ctx context.Context, _desc distribution.Des
 		}
 	}
 
-	storageDir := "/var/lib/registry/docker/registry/v2/pull_tars/diskcache"
+	/*storageDir := "/var/lib/registry/docker/registry/v2/pull_tars/diskcache"
 	layerslicepath := storageDir + string(os.PathSeparator) + fmt.Sprintf("%x", sha256.Sum256([]byte(_desc.Digest.String()))) //(sha256.Sum256([]byte(dgst.String())))
 	lf, err := os.Open(layerslicepath)
 	if err != nil {
@@ -316,8 +317,8 @@ func (bs *blobServer) serveBlobCache(ctx context.Context, _desc distribution.Des
 		return 0.0, 0, err
 
 	}
-
-	size := lfstat.Size()
+	*/
+	size := bytesreader.Size()
 
 	w.Header().Set("ETag", fmt.Sprintf(`"%s"`, _desc.Digest)) // If-None-Match handled by ServeContent
 	w.Header().Set("Cache-Control", fmt.Sprintf("max-age=%.f", blobCacheControlMaxAge.Seconds()))
@@ -337,7 +338,7 @@ func (bs *blobServer) serveBlobCache(ctx context.Context, _desc distribution.Des
 	}
 
 	start := time.Now()
-	http.ServeContent(w, r, _desc.Digest.String(), time.Time{}, lf)
+	http.ServeContent(w, r, _desc.Digest.String(), time.Time{}, bytesreader)
 	DurationNTT := time.Since(start).Seconds()
 
 	return DurationNTT, size, nil
@@ -542,21 +543,20 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 	//check if its in disk cache
 	bss, err := bs.cache.Dc.Get(dgst.String())
 	if err != nil {
-		context.GetLogger(ctx).Errorf("NANNAN: serveblob: disk cache error: %v: %s", err, dgst.String()))
-	}
-		
-	bytesreader := bytes.NewReader(bss)
-	if bytesreader != nil {
-		context.GetLogger(ctx).Debug("NANNAN: slice cache hit")
-		DurationNTT, size, err := bs.serveBlobCache(ctx, _desc, w, r, bytesreader)
-		if err != nil {
-			return err
+		context.GetLogger(ctx).Errorf("NANNAN: serveblob: disk cache error: %v: %s", err, dgst.String())
+	} else {
+		//bytesreader := bytes.NewReader(bss)
+		if bss != nil {
+			context.GetLogger(ctx).Debug("NANNAN: slice cache hit")
+			DurationNTT, size, err := bs.serveBlobCache(ctx, _desc, w, r, bss)
+			if err != nil {
+				return err
+			}
+			context.GetLogger(ctx).Debugf("NANNAN: slice cache hit: metadata lookup time: %v, layer transfer time: %v, layer size: %v",
+				DurationML, DurationNTT, size)
+			return nil
 		}
-		context.GetLogger(ctx).Debugf("NANNAN: slice cache hit: metadata lookup time: %v, layer transfer time: %v, layer size: %v",
-			DurationML, DurationNTT, size)
-		return nil
 	}
-
 	//otherwise restore slice
 	context.GetLogger(ctx).Debug("NANNAN: slice cache miss")
 
@@ -581,7 +581,7 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 	}
 	context.GetLogger(ctx).Debugf("NANNAN: slice cache put: %v B for %s", len(bfss), dgst.String())
 
-	if len(bfss) > 0 {	
+	if len(bfss) > 0 {
 		//err = bs.cache.Dc.Put(dgst.String(), bfss)
 		err = bs.cache.Dc.Set(dgst.String(), bfss)
 		if err != nil {

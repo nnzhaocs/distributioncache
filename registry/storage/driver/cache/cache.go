@@ -5,21 +5,20 @@ import (
 
 	"github.com/allegro/bigcache"
 	//"github.com/juju/errors"
-
-//	diskcache "gopkg.in/stash.v1"
+	//	diskcache "gopkg.in/stash.v1"
 	//lru "github.com/hashicorp/golang-lru"
 )
 
 type MemCache struct {
 	Mc *bigcache.BigCache
 	Dc *bigcache.BigCache
-//	Dc *diskcache.Cache
+	//	Dc *diskcache.Cache
 	//	numElements int64
 	//	readMiss    float32
 	//	readHit     float32
 	arc      bool
 	capacity int
-	disksize int64
+	disksize int
 	diskcnt  int
 	//	entryLimit  int
 }
@@ -38,10 +37,10 @@ func (cache *MemCache) Init() error {
 		return err
 	}
 	cache.Mc = c
-//	dc, err := diskcache.New(
-//		"/var/lib/registry/docker/registry/v2/pull_tars/diskcache/",
-//		cache.disksize,
-//		int64(cache.diskcnt))
+	//	dc, err := diskcache.New(
+	//		"/var/lib/registry/docker/registry/v2/pull_tars/diskcache/",
+	//		cache.disksize,
+	//		int64(cache.diskcnt))
 
 	config2 := bigcache.Config{
 		Shards: 1024,

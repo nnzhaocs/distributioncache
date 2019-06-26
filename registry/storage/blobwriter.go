@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/allegro/bigcache"
 	"github.com/docker/distribution"
 	"github.com/docker/distribution/context"
 	storagedriver "github.com/docker/distribution/registry/storage/driver"
@@ -28,6 +29,7 @@ import (
 	//"regexp"
 	"math/rand"
 	//"strconv"
+	//"github.com/allegro/bigcache"
 	redisgo "github.com/go-redis/redis"
 	roundrobin "github.com/hlts2/round-robin"
 	digest "github.com/opencontainers/go-digest"
@@ -591,11 +593,11 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) e
 	var fcnt int64 = 0
 
 	// put this layer into cache
-	bss, err := bw.blobStore.registry.blobServer.cache.Dc.Get(desc.Digest.String())
+	_, err = bw.blobStore.registry.blobServer.cache.Dc.Get(desc.Digest.String())
 	if err == bigcache.ErrEntryNotFound {
 		context.GetLogger(ctx).Errorf("NANNAN: dedup: diskcache error: %v: %s", err, desc.Digest.String())
-//	}else{
-//		if bss == nil {
+		//	}else{
+		//		if bss == nil {
 		bfss, err := ioutil.ReadFile(layerPath)
 		if err != nil {
 			context.GetLogger(ctx).Errorf("NANNAN: %s ", err)
@@ -607,11 +609,11 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) e
 				context.GetLogger(ctx).Debugf("NANNAN: slice cache cannot write to: digest: %v: %v ", desc.Digest.String(), err)
 			}
 		}
-	} 
-//	}
-//	else {
-//		defer bytesreader.Close()
-//	}
+	}
+	//	}
+	//	else {
+	//		defer bytesreader.Close()
+	//	}
 
 	//	fmt.Printf("NANNAN: =====> servers are: ", bw.blobStore.registry.blobServer.servers)
 	rr, err := roundrobin.New(bw.blobStore.registry.blobServer.servers)
@@ -637,7 +639,7 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) e
 	if err != nil {
 		context.GetLogger(ctx).Errorf("NANNAN: %s", err)
 	}
-	
+
 	if dirSize == 0 {
 		context.GetLogger(ctx).Warnf("NANNAN: dirSize == 0: file size = 0!!!")
 		return nil
@@ -747,10 +749,10 @@ func (bw *blobWriter) CheckDuplicate(ctx context.Context, serverIp string, desc 
 		}
 
 		fsize := stat.Size()
-		if fsize <= 0{
+		if fsize <= 0 {
 			return nil
 		}
-		
+
 		*dirSize += fsize
 
 		defer fp.Close()
