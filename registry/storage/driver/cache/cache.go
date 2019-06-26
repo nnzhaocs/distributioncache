@@ -25,9 +25,9 @@ type MemCache struct {
 
 func (cache *MemCache) Init() error {
 	config := bigcache.Config{
-		Shards: 		1024,
-		LifeWindow:       600 * time.Minute,
-		MaxEntrySize:     500*1024*1024,
+		Shards: 8,
+		//LifeWindow:       600 * time.Minute,
+		//MaxEntrySize:     500 * 1024 * 1024,
 		Verbose:          true,
 		HardMaxCacheSize: cache.disksize,
 		OnRemove:         nil,
@@ -43,9 +43,9 @@ func (cache *MemCache) Init() error {
 	//		int64(cache.diskcnt))
 
 	config2 := bigcache.Config{
-		Shards: 		  8,
-		LifeWindow:       600 * time.Minute,
-		MaxEntrySize:     500*1024*1024,
+		Shards: 2,
+		//LifeWindow:       600 * time.Minute,
+		//MaxEntrySize:     500 * 1024 * 1024,
 		Verbose:          true,
 		HardMaxCacheSize: cache.capacity,
 		OnRemove:         nil,
