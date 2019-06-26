@@ -215,7 +215,7 @@ func mvFile(i interface{}) {
 		DurationFCP := time.Since(start).Seconds()
 		//	reschan <- DurationFCP
 
-		context.GetLogger(ctx).Errorf("NANNAN: wrote %d bytes to file %s duration: %v", size, desc, DurationFCP)
+		context.GetLogger(ctx).Debugf("NANNAN: wrote %d bytes to file %s duration: %v", size, desc, DurationFCP)
 		return
 
 	} else {
