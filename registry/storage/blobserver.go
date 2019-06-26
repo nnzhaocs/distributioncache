@@ -540,7 +540,8 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 	}
 
 	//check if its in disk cache
-	bytesreader, err := bs.cache.Dc.Get(dgst.String())
+	bss, err := bs.cache.Dc.Get(dgst.String())
+	bytesreader := bytes.NewReader(bss)
 	if err != nil {
 		context.GetLogger(ctx).Errorf("NANNAN: serveblob: disk cache error: %v: %s", err, dgst.String()))
 	}
@@ -581,7 +582,8 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 	context.GetLogger(ctx).Debugf("NANNAN: slice cache put: %v B for %s", len(bfss), dgst.String())
 
 	if len(bfss) > 0 {	
-		err = bs.cache.Dc.Put(dgst.String(), bfss)
+		//err = bs.cache.Dc.Put(dgst.String(), bfss)
+		err = bs.cache.Dc.Set(dgst.String(), bfss)
 		if err != nil {
 			context.GetLogger(ctx).Debugf("NANNAN: slice cache cannot write to digest: %v: %v ", dgst.String(), err)
 		}
