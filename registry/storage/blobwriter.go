@@ -592,10 +592,10 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) e
 
 	// put this layer into cache
 	bss, err := bw.blobStore.registry.blobServer.cache.Dc.Get(desc.Digest.String())
-	if err != nil {
+	if err == bigcache.ErrEntryNotFound {
 		context.GetLogger(ctx).Errorf("NANNAN: dedup: diskcache error: %v: %s", err, desc.Digest.String())
-	}
-	if bss == nil {
+//	}else{
+//		if bss == nil {
 		bfss, err := ioutil.ReadFile(layerPath)
 		if err != nil {
 			context.GetLogger(ctx).Errorf("NANNAN: %s ", err)
@@ -607,9 +607,11 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) e
 				context.GetLogger(ctx).Debugf("NANNAN: slice cache cannot write to: digest: %v: %v ", desc.Digest.String(), err)
 			}
 		}
-	} else {
-		defer bytesreader.Close()
-	}
+	} 
+//	}
+//	else {
+//		defer bytesreader.Close()
+//	}
 
 	//	fmt.Printf("NANNAN: =====> servers are: ", bw.blobStore.registry.blobServer.servers)
 	rr, err := roundrobin.New(bw.blobStore.registry.blobServer.servers)

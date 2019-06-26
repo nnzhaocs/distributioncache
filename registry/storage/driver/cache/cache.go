@@ -51,13 +51,13 @@ func (cache *MemCache) Init() error {
 		HardMaxCacheSize: cache.disksize,
 		OnRemove:         nil,
 	}
-	dc, err := bigcache.NewBigCache(config)
+	dc, err := bigcache.NewBigCache(config2)
 	if err != nil {
 		return err
 	}
 
 	cache.Dc = dc
-	fmt.Printf("NANNAN: ====================> cache capacity: %d MB, %d B, and %d =================> \n\n",
+	fmt.Printf("NANNAN: ====================> cache capacity: %d MB, %d MB, and %d =================> \n\n",
 		cache.capacity,
 		cache.disksize,
 		cache.diskcnt)
@@ -87,7 +87,7 @@ func (cache *MemCache) SetSize(size int) error {
 }
 
 func (cache *MemCache) SetDiskCacheSize(size int) error {
-	cache.disksize = int64(size * 1024 * 1024)
+	cache.disksize = size // * 1024 * 1024)
 	fmt.Printf("Disk cache Size: %d\n\n", cache.disksize)
 	return nil
 }

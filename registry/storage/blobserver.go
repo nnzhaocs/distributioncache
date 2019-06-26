@@ -541,11 +541,11 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 
 	//check if its in disk cache
 	bss, err := bs.cache.Dc.Get(dgst.String())
-	bytesreader := bytes.NewReader(bss)
 	if err != nil {
 		context.GetLogger(ctx).Errorf("NANNAN: serveblob: disk cache error: %v: %s", err, dgst.String()))
 	}
-
+		
+	bytesreader := bytes.NewReader(bss)
 	if bytesreader != nil {
 		context.GetLogger(ctx).Debug("NANNAN: slice cache hit")
 		DurationNTT, size, err := bs.serveBlobCache(ctx, _desc, w, r, bytesreader)
