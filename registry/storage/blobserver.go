@@ -158,14 +158,14 @@ func mvFile(i interface{}) {
 	ctx := task.Ctx
 	src := task.Src
 	desc := task.Desc
-	//bs := task.Bs
+	bs := task.Bs
 
-//	 var contents *[]byte
-//			contents = &v
-//		} else {
+	var contents *[]byte
+	//			contents = &v
+	//		} else {
 	//create desc file if not exists
 	start := time.Now()
-	_, err = os.Stat(desc)
+	_, err := os.Stat(desc)
 	if os.IsNotExist(err) {
 		newdir := path.Dir(desc)
 		if os.MkdirAll(newdir, 0666) != nil {
@@ -178,53 +178,57 @@ func mvFile(i interface{}) {
 			return
 		}
 		defer fp.Close()
-		
+
 		newsrc := path.Join("/var/lib/registry/", src)
 		//check if newsrc is in file cache
 		bfss, err := bs.cache.Mc.Get(newsrc)
-		if err != nil {
-			context.GetLogger(ctx).Errorf("NANNAN: mvfile: file cache error: %v: %s", err, dgst.String())
-		} else{
-			if bfss != nil { //read hit
-				fmt.Println("NANNAN: file cache hit\n")
-//				contents = &bss
-			}else{
-				fmt.Printf("NANNAN: file cache miss\n")
-				
-				//check src file exists or not
-				var _, err = os.Stat(newsrc)
-				if os.IsNotExist(err) {
-					context.GetLogger(ctx).Errorf("NANNAN: src file %v: %v", newsrc, err)
-					return
-				}
-				
-				bfss, err := ioutil.ReadFile(newsrc)
-				if err != nil {
-					context.GetLogger(ctx).Errorf("NANNAN: read file %s generated error: %v", desc, err)
-					return
-				} else {
-					//put in cache
-					//bs.cache.Mc.Set(src, data)
-					context.GetLogger(ctx).Debugf("NANNAN: file cache put: %v B for %s", len(bfss), dgst.String())
-					if len(bfss) > 0 {
-						//err = bs.cache.Dc.Put(dgst.String(), bfss)
-						err = bs.cache.Dc.Set(dgst.String(), bfss)
-						if err != nil {
-							context.GetLogger(ctx).Debugf("NANNAN: file cache cannot write to digest: %v: %v ", dgst.String(), err)
-						}
+		if err == nil {
+			fmt.Println("NANNAN: file cache hit\n")
+			// context.GetLogger(ctx).Errorf("NANNAN: mvfile: file cache error: %v: %s", err, newsrc)
+			contents = &bfss
+		} else {
+			context.GetLogger(ctx).Errorf("NANNAN: mvfile: file cache error: %v: %s", err, newsrc)
+			//			if bfss != nil { //read hit
+			//				fmt.Println("NANNAN: file cache hit\n")
+			//				//				contents = &bss
+			//			} else {
+			fmt.Printf("NANNAN: file cache miss\n")
+
+			//check src file exists or not
+			var _, err = os.Stat(newsrc)
+			if os.IsNotExist(err) {
+				context.GetLogger(ctx).Errorf("NANNAN: src file %v: %v", newsrc, err)
+				return
+			}
+
+			bfss, err := ioutil.ReadFile(newsrc)
+			if err != nil {
+				context.GetLogger(ctx).Errorf("NANNAN: read file %s generated error: %v", desc, err)
+				return
+			} else {
+				contents = &bfss
+				//put in cache
+				//bs.cache.Mc.Set(src, data)
+				context.GetLogger(ctx).Debugf("NANNAN: file cache put: %v B for %s", len(bfss), newsrc)
+				if len(bfss) > 0 {
+					//err = bs.cache.Dc.Put(dgst.String(), bfss)
+					err = bs.cache.Mc.Set(newsrc, bfss)
+					if err != nil {
+						context.GetLogger(ctx).Debugf("NANNAN: file cache cannot write to digest: %v: %v ", newsrc, err)
 					}
 				}
-					//contents = &data
 			}
+			//contents = &data
+			//}
 		}
-		
-//		bs.cache.Mc.Set(src, data)
+
+		//		bs.cache.Mc.Set(src, data)
 		/*err = bs.driver.PutContent(ctx, desc, data)
 		if err != nil {
 			context.GetLogger(ctx).Errorf("NANNAN: STILL SEND TAR %v, ", err)
 		}*/
 
-		size, err := fp.Write(bfss)
+		size, err := fp.Write(*contents)
 		if err != nil {
 			context.GetLogger(ctx).Errorf("NANNAN: desc file %s generated error: %v", desc, err)
 		}
