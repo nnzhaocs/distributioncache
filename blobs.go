@@ -119,41 +119,42 @@ func (d Descriptor) Descriptor() Descriptor {
 // NANNAN: Descriptors for blob-file recipe
 type BFRecipeDescriptor struct {
 	BlobDigest     digest.Digest
-	BSFDescriptors map[string][]BFDescriptor //this is slice map
+	BSFDescriptors map[string][]BFDescriptor //this is slice map //clear this map
 
 	ServerIps []string //this is slice digest
 
-	CompressSize   int64
-	UncompressSize int64
+//	CompressSize   int64
+//	UncompressSize int64
 
-	BSResDescriptors map[string]*BSResDescriptor
+//	BSResDescriptors map[string]*BSResDescriptor //clear this map
 	SliceSizeMap     map[string]int64
-	Type			string // bsresponserecipe or bsfdescriptors
+//	Type			string // bsresponserecipe or bsfdescriptors
 	
-	DurationCMP 	float64
-	DurationDCMP    float64
-	DurationNTT 	float64
+//	DurationCMP 	float64
+//	DurationDCMP    float64
+//	DurationNTT 	float64
 }
 
-type BSResDescriptor struct {
+type BSRecipeDescriptor struct {
+	BlobDigest     digest.Digest
 	ServerIp string
-
-	DurationRS  float64
-	DurationNTT float64
-	DurationCMP float64
-	DurationCP  float64
-	DurationML  float64
+	BSFDescriptors	[]BFDescriptor
+//	DurationRS  float64
+//	DurationNTT float64
+//	DurationCMP float64
+//	DurationCP  float64
+//	DurationML  float64
 
 	SliceSize int64
 }
 
-func (m *BSResDescriptor) MarshalBinary() ([]byte, error) {
+func (m *BSRecipeDescriptor) MarshalBinary() ([]byte, error) {
 	// _,  := json.Marshal(m)
 	//fmt.Println("NANNAN: ================> json.Marshal err %v", err)
 	return json.Marshal(m)
 }
 
-func (m *BSResDescriptor) UnmarshalBinary(data []byte) error {
+func (m *BSRecipeDescriptor) UnmarshalBinary(data []byte) error {
 	// convert data to yours, let's assume its json data
 	return json.Unmarshal(data, m)
 }

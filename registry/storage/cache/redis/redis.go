@@ -382,8 +382,8 @@ func (rfds *redisFileDescriptorService) BFRecipeHashKey(dgst digest.Digest) stri
 	return "Blob:File:Recipe::" + dgst.String()
 }
 
-func (rfds *redisFileDescriptorService) BSResRecipeHashKey(dgst digest.Digest, server string) string {
-	return "Blob:File:Recipe::RestoreTime::" + dgst.String() + "::" + server
+func (rfds *redisFileDescriptorService) BSRecipeHashKey(dgst digest.Digest, server string) string {
+	return "Blob:File:Recipe::" + dgst.String() + "::" + server
 }
 
 func (rfds *redisFileDescriptorService) StatBFRecipe(ctx context.Context, dgst digest.Digest) (distribution.BFRecipeDescriptor, error) {
@@ -407,29 +407,52 @@ func (rfds *redisFileDescriptorService) StatBFRecipe(ctx context.Context, dgst d
 	}
 }
 
-func (rfds *redisFileDescriptorService) SetBFRecipe(ctx context.Context, dgst digest.Digest, desc distribution.BFRecipeDescriptor) error {
+func (rfds *redisFileDescriptorService) StatBSRecipe(ctx context.Context, dgst digest.Digest) (distribution.BSRecipeDescriptor, error) {
 
-	if desc.Type == "bsfdescriptors" {
-		err := rfds.cluster.Set(rfds.BFRecipeHashKey(dgst), &desc, 0).Err()
-		if err != nil {
-			context.GetLogger(ctx).Errorf("NANNAN: redis cluster cannot set value for key %s", err)
-			return err
+	reply, err := rfds.cluster.Get(rfds.BSRecipeHashKey(dgst)).Result()
+	if err == redisgo.Nil {
+		//		context.GetLogger(ctx).Debug("NANNAN: key %s doesnot exist", dgst.String())
+		return distribution.BSRecipeDescriptor{}, err
+	} else if err != nil {
+		context.GetLogger(ctx).Errorf("NANNAN: redis cluster error for key %s", err)
+		return distribution.BSRecipeDescriptor{}, err
+	} else {
+		var desc distribution.BSRecipeDescriptor
+		if err = desc.UnmarshalBinary([]byte(reply)); err != nil {
+			context.GetLogger(ctx).Errorf("NANNAN: redis cluster cannot UnmarshalBinary for key %s", err)
+			return distribution.BSRecipeDescriptor{}, err
+		} else {
+			//desc.RequestedServerIps = append(desc.RequestedServerIps, rfds.serverIp)
+			return desc, nil
 		}
 	}
+}
 
-	//NANNAN: set bsresponserecipe
+func (rfds *redisFileDescriptorService) SetBFRecipe(ctx context.Context, dgst digest.Digest, desc distribution.BFRecipeDescriptor) error {
 
-	if desc.Type == "bsresponserecipe" {
-
-		if len(desc.BSResDescriptors) > 0 {
-			for server, bsresDescriptor := range desc.BSResDescriptors {
-				err := rfds.cluster.Set(rfds.BSResRecipeHashKey(dgst, server), bsresDescriptor, 0).Err()
-				if err != nil {
-					return err
-				}
+	//set bsrecpie
+	if len(desc.BSFDescriptors) > 0 {
+		for server, bsDescriptorlst := range desc.BSFDescriptors {
+			bs := distribution.BSRecipeDescriptor{
+					ServerIp: server,
+					BSFDescriptors: bsDescriptorlst,
+					SliceSize: desc.SliceSizeMap[server],
+					BlobDigest:     dgst,
+			}
+			err := rfds.cluster.Set(rfds.BSRecipeHashKey(dgst, server), &bs, 0).Err()
+			if err != nil {
+				context.GetLogger(ctx).Errorf("NANNAN: redis cluster cannot set value for key %s", err)
+				return err
 			}
 		}
-
+	}
+	
+	desc.BSFDescriptors = make(map[string][]distribution.BFDescriptor)
+	
+	err := rfds.cluster.Set(rfds.BFRecipeHashKey(dgst), &desc, 0).Err()
+	if err != nil {
+		context.GetLogger(ctx).Errorf("NANNAN: redis cluster cannot set value for key %s", err)
+		return err
 	}
 	return nil
 }
