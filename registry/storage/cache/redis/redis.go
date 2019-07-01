@@ -432,10 +432,10 @@ func (rfds *redisFileDescriptorService) SetBFRecipe(ctx context.Context, dgst di
 
 	//set bsrecpie
 	if len(desc.BSFDescriptors) > 0 {
-		for server, bsDescriptorlst := range desc.BSFDescriptors {
+		for server, bsDescriptorlst := range desc.BSmap {
 			bs := distribution.BSRecipeDescriptor{
 				ServerIp:       server,
-				BSFDescriptors: bsDescriptorlst,
+				BFs: bsDescriptorlst,
 				SliceSize:      desc.SliceSizeMap[server],
 				BlobDigest:     dgst,
 			}
@@ -447,7 +447,7 @@ func (rfds *redisFileDescriptorService) SetBFRecipe(ctx context.Context, dgst di
 		}
 	}
 
-	desc.BSFDescriptors = make(map[string][]distribution.BFDescriptor)
+	desc.BSmap = make(map[string][]distribution.BFDescriptor)
 
 	err := rfds.cluster.Set(rfds.BFRecipeHashKey(dgst), &desc, 0).Err()
 	if err != nil {

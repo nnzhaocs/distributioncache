@@ -195,25 +195,8 @@ func packFile(i interface{}) {
 	tf := task.Tf
 
 	var contents *[]byte
-	//			contents = &v
-	//		} else {
-	//create desc file if not exists
+	
 	start := time.Now()
-	//	_, err := os.Stat(desc)
-	//	if os.IsNotExist(err) {
-	//		newdir := path.Dir(desc)
-	//		if os.MkdirAll(newdir, 0666) != nil {
-	//			context.GetLogger(ctx).Errorf("NANNAN: %v, ", err)
-	//			return
-	//		}
-	//		var fp, err = os.Create(desc)
-	//		if err != nil {
-	//			context.GetLogger(ctx).Errorf("NANNAN: %v, ", err)
-	//			return
-	//		}
-	//		defer fp.Close()
-
-	newsrc := path.Join("/var/lib/registry/", src)
 	//check if newsrc is in file cache
 	bfss, err := bs.cache.Mc.Get(newsrc)
 	if err == nil {
@@ -239,40 +222,23 @@ func packFile(i interface{}) {
 			//put in cache
 			context.GetLogger(ctx).Debugf("NANNAN: file cache put: %v B for %s", len(bfss), newsrc)
 			if len(bfss) > 0 {
-				//err = bs.cache.Dc.Put(dgst.String(), bfss)
 				err = bs.cache.Mc.Set(newsrc, bfss)
 				if err != nil {
 					context.GetLogger(ctx).Debugf("NANNAN: file cache cannot write to digest: %v: %v ", newsrc, err)
 				}
 			}
 		}
-		//contents = &data
-		//}
 	}
 
-	//		bs.cache.Mc.Set(src, data)
-	/*err = bs.driver.PutContent(ctx, desc, data)
-	if err != nil {
-		context.GetLogger(ctx).Errorf("NANNAN: STILL SEND TAR %v, ", err)
-	}*/
-
-	//		size, err := fp.Write(*contents)
 	size, err := addToTarFile(tf, desc, *contents)
 	if err != nil {
 		context.GetLogger(ctx).Errorf("NANNAN: desc file %s generated error: %v", desc, err)
+		return
 	}
 
-	//		fp.Sync()
 	DurationFCP := time.Since(start).Seconds()
-	//	reschan <- DurationFCP
-
 	context.GetLogger(ctx).Debugf("NANNAN: wrote %d bytes to file %s duration: %v", size, desc, DurationFCP)
 	return
-
-	//	} else {
-	//		context.GetLogger(ctx).Errorf("NANNAN: desc file (%s) already exists", desc)
-	//		return
-	//	}
 }
 
 func (bs *blobServer) serveManifest(ctx context.Context, _desc distribution.Descriptor, w http.ResponseWriter, r *http.Request) (float64, error) {
@@ -352,22 +318,6 @@ func (bs *blobServer) serveBlobCache(ctx context.Context, _desc distribution.Des
 		}
 	}
 
-	/*storageDir := "/var/lib/registry/docker/registry/v2/pull_tars/diskcache"
-	layerslicepath := storageDir + string(os.PathSeparator) + fmt.Sprintf("%x", sha256.Sum256([]byte(_desc.Digest.String()))) //(sha256.Sum256([]byte(dgst.String())))
-	lf, err := os.Open(layerslicepath)
-	if err != nil {
-		context.GetLogger(ctx).Errorf("NANNAN: cannot open disk cache file %v", err)
-		return 0.0, 0, err
-	}
-	defer lf.Close()
-
-	lfstat, err := lf.Stat()
-	if err != nil {
-		context.GetLogger(ctx).Errorf("NANNAN: %s", err)
-		return 0.0, 0, err
-
-	}
-	*/
 	size := bytesreader.Size()
 
 	w.Header().Set("ETag", fmt.Sprintf(`"%s"`, _desc.Digest)) // If-None-Match handled by ServeContent
@@ -394,11 +344,11 @@ func (bs *blobServer) serveBlobCache(ctx context.Context, _desc distribution.Des
 	return DurationNTT, size, nil
 }
 
-func (bs *blobServer) packAllFiles(ctx context.Context, desc distribution.BSRecipeDescriptor, packPath string) (*bytes.Buffer, float64, error) {
+func (bs *blobServer) packAllFiles(ctx context.Context, desc distribution.BSRecipeDescriptor, bufp *bytes.Buffer) (float64, error) {
 
 	fcntno := 0.0
 	fcnt := 0
-	for _, bfdescriptor := range desc.BSFDescriptors {
+	for _, bfdescriptor := range desc.BFs {
 		if bfdescriptor.ServerIp != bs.serverIp {
 			context.GetLogger(ctx).Debugf("NANNAN: this is not a locally available file, %v", bfdescriptor.ServerIp) // not locally available
 			continue
@@ -406,7 +356,6 @@ func (bs *blobServer) packAllFiles(ctx context.Context, desc distribution.BSReci
 		fcnt += 1
 	}
 
-	//reschan := make(chan float64, fcnt)
 	if fcnt > 1000 {
 		fcnt = 1000
 	}
@@ -417,21 +366,22 @@ func (bs *blobServer) packAllFiles(ctx context.Context, desc distribution.BSReci
 		wg.Done()
 	})
 	defer antp.Release()
+	
 	reg, err := regexp.Compile("[^a-zA-Z0-9/.-]+")
 	if err != nil {
 		context.GetLogger(ctx).Errorf("NANNAN: %s, ", err)
 		return nil, 0.0, err
 	}
 
-	var buf bytes.Buffer
-	tw := tar.NewWriter(&buf)
+	
+	tw := tar.NewWriter(bufp)
 
 	tf := &TarFile{
 		Tw: tw,
 	}
 
 	start := time.Now()
-	for _, bfdescriptor := range desc.BSFDescriptors {
+	for _, bfdescriptor := range desc.BFs {
 
 		if bfdescriptor.ServerIp != bs.serverIp {
 			context.GetLogger(ctx).Debugf("NANNAN: this is not a locally available file, %v", bfdescriptor.ServerIp) // not locally available
@@ -442,31 +392,19 @@ func (bs *blobServer) packAllFiles(ctx context.Context, desc distribution.BSReci
 		random_dir := fmt.Sprintf("%f", fcntno)
 
 		tarfpath := reg.ReplaceAllString(strings.SplitN(bfdescriptor.BlobFilePath, "diff", 2)[1], "") // replace alphanumeric
-		destfpath := path.Join(packPath, tarfpath+"-"+random_dir)
+		destfpath := path.Join(tarfpath+"-"+random_dir)
 		//context.GetLogger(ctx).Debugf("NANNAN: dest path: %v", destfpath) // not locally available
 		wg.Add(1)
 		antp.Invoke(&Task{
 			Ctx:  ctx,
-			Src:  strings.TrimPrefix(bfdescriptor.BlobFilePath, "/var/lib/registry"),
+			Src:  bfdescriptor.BlobFilePath, //strings.TrimPrefix(bfdescriptor.BlobFilePath, "/var/lib/registry"),
 			Desc: destfpath,
 			Bs:   bs,
 			Tf:   tf,
-			//			Reschan: reschan,
 		})
 	}
 	wg.Wait()
-	//	resdurations := []float64{}
-	//	for {
-	//		select {
-	//		case res := <-reschan:
-	//			res = append(resdurations, res)
-	//		case <-time.After(time.Second * 2):
-	//	        context.GetLogger(ctx).Debugf("NANNAN: this is not a locally available file, %v", bfdescriptor.ServerIp) // not locally available
-	//
-	////		if len(serverForwardMap) == len(mvtarpaths) {
-	////			break
-	////		}
-	//	}
+
 	if err := tw.Close(); err != nil {
 		context.GetLogger(ctx).Debugf("NANNAN: cannot close tar file for %v", desc.BlobDigest.String())
 		return nil, 0.0, err
@@ -475,62 +413,25 @@ func (bs *blobServer) packAllFiles(ctx context.Context, desc distribution.BSReci
 	return &buf, DurationCP, nil
 }
 
-func pgzipTarFile(buf *bytes.Buffer, compr_level int) (*bytes.Reader, error) {
-	var comprssbuf bytes.Buffer
-	w, _ := pgzip.NewWriterLevel(&comprssbuf, compr_level)
-	io.Copy(w, buf)
-	defer w.Close()
-	rder := bytes.NewReader(buf.Bytes())
-	//	if err != nil {
-	//		fmt.Printf("NANNAN: cannot read content of compressed tar\n")
-	//		return nil, err
-	//	}
-	return rder, nil
+func pgzipTarFile(bufp *bytes.Buffer, compressbufp *bytes.Buffer, compr_level int) (*bytes.Reader, error) {
+	
+	w, _ := pgzip.NewWriterLevel(&compressbufp, compr_level)
+	io.Copy(w, bufp)
+	w.Close()
+	cprssrder := bytes.NewReader(compressbufp.Bytes())
+
+	return cprssrder, nil
 }
 
-func (bs *blobServer) compressAndServe(ctx context.Context, w http.ResponseWriter, r *http.Request, _desc distribution.Descriptor, buf *bytes.Buffer, compr_level int) (float64, float64, int64, error) {
-
-	//packpath := path.Join("/var/lib/registry", packPath)
+func (bs *blobServer) compressAndServe(ctx context.Context, w http.ResponseWriter, r *http.Request, _desc distribution.Descriptor, bufp *bytes.Buffer, compressbufp *bytes.Buffer, compr_level int) (float64, float64, int64, error) {
 
 	start := time.Now()
-	//	data, err := archive.Tar(packpath, archive.Gzip)
-	//	if err != nil {
-	//		context.GetLogger(ctx).Warnf("NANNAN: %s, ", err)
-	//		return 0.0, 0.0, "", 0, err
-	//	}
-	//	defer data.Close()
 
-	rder, err := pgzipTarFile(buf, compr_level)
+	cprssrder, err := pgzipTarFile(bufp, compressbufp, compr_level)
 	if err != nil {
 		return 0.0, 0.0, 0, err
 	}
-	size := rder.Size()
-
-	//fmt.Println("NANNAN: slice compression time: %.3f, %v\n", DurationCMP, dgst)
-	//	newtardir := path.Join("/var/lib/registry", "/docker/registry/v2/pull_tars/pull_tmp_tarfile")
-	//	if os.MkdirAll(newtardir, 0666) != nil {
-	//		context.GetLogger(ctx).Errorf("NANNAN: ServeBlob <compressAndServe> %s, ", err)
-	//		return 0.0, 0.0, "", 0, err
-	//	}
-	//
-	//	packFile, err := os.Create(path.Join("/var/lib/registry", "/docker/registry/v2/pull_tars/pull_tmp_tarfile", tmp_dir)) //path.Join(parentDir, "tmp_tar.tar.gz")))
-	//	if err != nil {
-	//		context.GetLogger(ctx).Errorf("NANNAN: %s, ", err)
-	//		return 0.0, 0.0, "", 0, err
-	//	}
-	//	defer packFile.Close()
-	//
-	//	size, err := io.Copy(packFile, data)
-	//	if err != nil {
-	//		context.GetLogger(ctx).Errorf("NANNAN: %s, ", err)
-	//		return 0.0, 0.0, "", 0, err
-	//	}
-	//
-	//	err = packFile.Sync()
-	//	if err != nil {
-	//		context.GetLogger(ctx).Errorf("NANNAN: %s, ", err)
-	//		return 0.0, 0.0, "", 0, err
-	//	}
+	size := cprssrder.Size()
 
 	DurationCMP := time.Since(start).Seconds()
 
@@ -573,15 +474,10 @@ func (bs *blobServer) compressAndServe(ctx context.Context, w http.ResponseWrite
 	}
 
 	start = time.Now()
-	http.ServeContent(w, r, _desc.Digest.String(), time.Time{}, rder) //packFile)
+	http.ServeContent(w, r, _desc.Digest.String(), time.Time{}, cprssrder) //packFile)
 	DurationNTT := time.Since(start).Seconds()
 
-	//	fmt.Println("NANNAN: slice network transfer time: %.3f, %v\n", DurationNTT, dgst)
-	//	DurationRS := DurationNTT + DurationCMP + DurationCP + DurationML
-	//	fmt.Println("NANNAN: slice restore time: %.3f, %v\n", DurationRS, dgst)
 	return DurationCMP, DurationNTT, size, nil
-	//	 put into the disk cache
-	//
 }
 
 //NANNAN: TODO: process manfiests
@@ -613,13 +509,7 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 	desc, err := bs.fileDescriptorCacheProvider.StatBSRecipe(ctx, dgst)
 	DurationML := time.Since(start).Seconds()
 
-	//	fmt.Println("NANNAN: metadata lookup time: %.3f, %v\n", DurationML, dgst)
-	//	if len(desc.BSFDescriptors[bs.serverIp]) == 0 {
-	//		context.GetLogger(ctx).Debugf("NANNAN: this server doesn't have any files for this layer, %v ", len(desc.BSFDescriptors[bs.serverIp]))
-	//		return nil
-	//	}
-
-	if err != nil || (err == nil && len(desc.BSFDescriptors) == 0) {
+	if err != nil || (err == nil && len(desc.BFs) == 0) {
 		context.GetLogger(ctx).Warnf("NANNAN: THIS IS A MANIFEST OR COMPRESSED TAR %v", err)
 		DurationNTT, err := bs.serveManifest(ctx, _desc, w, r)
 		if err != nil {
@@ -650,48 +540,31 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 	//otherwise restore slice
 	context.GetLogger(ctx).Debug("NANNAN: slice cache miss")
 
-	gid := getGID()
-	tmp_dir := fmt.Sprintf("%f", gid)
-	context.GetLogger(ctx).Debugf("NANNAN: serveblob: the gid for this goroutine: =>%v \n", tmp_dir)
-
-	packPath := path.Join("/docker/registry/v2/pull_tars/pull_tarfiles", tmp_dir)
-
 	//WRITE ERROR CHANNEL AND CATCH ERRORS
-	buf, DurationCP, _ := bs.packAllFiles(ctx, desc, packPath)
-	//fmt.Println("NANNAN: slice IO cp time: %.3f, %v\n", DurationCP, dgst)
-
-	DurationCMP, DurationNTT, size, err := bs.compressAndServe(ctx, w, r, _desc, buf, compre_level)
+	var buf bytes.Buffer
+	var comprssbuf bytes.Buffer
+	
+	DurationCP, _ := bs.packAllFiles(ctx, desc, &buf)
+	DurationCMP, DurationNTT, size, err := bs.compressAndServe(ctx, w, r, _desc, &buf, &comprssbuf, compre_level)
 	if err != nil {
 		return err
 	}
 
-	bfss, err := ioutil.ReadAll(buf)
+	bfss, err := ioutil.ReadAll(comprssbuf)
 	if err != nil {
 		context.GetLogger(ctx).Errorf("NANNAN: %s ", err)
 	}
 	context.GetLogger(ctx).Debugf("NANNAN: slice cache put: %v B for %s", len(bfss), dgst.String())
 
 	if len(bfss) > 0 {
-		//err = bs.cache.Dc.Put(dgst.String(), bfss)
 		err = bs.cache.Dc.Set(dgst.String(), bfss)
 		if err != nil {
 			context.GetLogger(ctx).Debugf("NANNAN: slice cache cannot write to digest: %v: %v ", dgst.String(), err)
 		}
 	}
+	
 	buf.Reset()
-	//	//delete tmp_dir and packFile here
-	//	if err = os.RemoveAll(path.Join("/var/lib/registry", "/docker/registry/v2/pull_tars/pull_tmp_tarfile", tmp_dir)); err != nil {
-	//		context.GetLogger(ctx).Errorf("NANNAN: cannot remove all file in: %s: %s",
-	//			path.Join("/var/lib/registry", "/docker/registry/v2/pull_tmp_tarfile", tmp_dir), err)
-	//		return err
-	//	}
-	//	packpath := path.Join("/var/lib/registry", packPath)
-	//	//packpath
-	//	if err = os.RemoveAll(packpath); err != nil {
-	//		context.GetLogger(ctx).Errorf("NANNAN: cannot remove all file in packpath: %s: %s",
-	//			packpath, err)
-	//		return err
-	//	}
+	comprssbuf.Reset()
 
 	context.GetLogger(ctx).Debugf("NANNAN: slice cache miss: metadata lookup time: %v, slice cp time: %v, slice compression time: %v, slice transfer time: %v, slice size: %v",
 		DurationML, DurationCP, DurationCMP, DurationNTT, size)

@@ -119,7 +119,7 @@ func (d Descriptor) Descriptor() Descriptor {
 // NANNAN: Descriptors for blob-file recipe
 type BFRecipeDescriptor struct {
 	BlobDigest     digest.Digest
-	BSFDescriptors map[string][]BFDescriptor //this is slice map //clear this map
+	BSmap map[string][]BFDescriptor //this is slice map //clear this map
 
 	ServerIps []string //this is slice digest
 
@@ -138,7 +138,7 @@ type BFRecipeDescriptor struct {
 type BSRecipeDescriptor struct {
 	BlobDigest     digest.Digest
 	ServerIp       string
-	BSFDescriptors []BFDescriptor
+	BFs []BFDescriptor
 	//	DurationRS  float64
 	//	DurationNTT float64
 	//	DurationCMP float64

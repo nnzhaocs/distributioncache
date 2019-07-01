@@ -655,7 +655,7 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) e
 	//	bsresDescriptors := make(map[string]*distribution.BSResDescriptor)
 	des := distribution.BFRecipeDescriptor{
 		BlobDigest:     desc.Digest,
-		BSFDescriptors: bsfdescriptors, //make(map[string][]distribution.BFDescriptor)
+		BSmap: bsfdescriptors, //make(map[string][]distribution.BFDescriptor)
 		ServerIps:      serverIps,      //RemoveDuplicateIpsFromIps(serverIps),
 		//		CompressSize:     comressSize,
 		//		UncompressSize:   dirSize,
