@@ -383,7 +383,7 @@ func (rfds *redisFileDescriptorService) BFRecipeHashKey(dgst digest.Digest) stri
 }
 
 func (rfds *redisFileDescriptorService) BSRecipeHashKey(dgst digest.Digest, server string) string {
-	return "Blob:File:Recipe::" + dgst.String() + "::" + server
+	return "Blob:Slice:Recipe::" + dgst.String() + "::" + server
 }
 
 func (rfds *redisFileDescriptorService) StatBFRecipe(ctx context.Context, dgst digest.Digest) (distribution.BFRecipeDescriptor, error) {
