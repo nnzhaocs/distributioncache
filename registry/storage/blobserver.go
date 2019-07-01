@@ -189,7 +189,7 @@ func packFile(i interface{}) {
 		return
 	}
 	ctx := task.Ctx
-	src := task.Src
+	newsrc := task.Src
 	desc := task.Desc
 	bs := task.Bs
 	tf := task.Tf
@@ -370,7 +370,7 @@ func (bs *blobServer) packAllFiles(ctx context.Context, desc distribution.BSReci
 	reg, err := regexp.Compile("[^a-zA-Z0-9/.-]+")
 	if err != nil {
 		context.GetLogger(ctx).Errorf("NANNAN: %s, ", err)
-		return nil, 0.0, err
+		return 0.0, err
 	}
 
 	
@@ -407,7 +407,7 @@ func (bs *blobServer) packAllFiles(ctx context.Context, desc distribution.BSReci
 
 	if err := tw.Close(); err != nil {
 		context.GetLogger(ctx).Debugf("NANNAN: cannot close tar file for %v", desc.BlobDigest.String())
-		return nil, 0.0, err
+		return 0.0, err
 	}
 	DurationCP := time.Since(start).Seconds()
 	return &buf, DurationCP, nil

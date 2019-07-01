@@ -431,7 +431,7 @@ func (rfds *redisFileDescriptorService) StatBSRecipe(ctx context.Context, dgst d
 func (rfds *redisFileDescriptorService) SetBFRecipe(ctx context.Context, dgst digest.Digest, desc distribution.BFRecipeDescriptor) error {
 
 	//set bsrecpie
-	if len(desc.BSFDescriptors) > 0 {
+	if len(desc.BSmap) > 0 {
 		for server, bsDescriptorlst := range desc.BSmap {
 			bs := distribution.BSRecipeDescriptor{
 				ServerIp:       server,
