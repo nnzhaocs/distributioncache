@@ -8,7 +8,7 @@ import (
 	"github.com/docker/distribution/reference"
 	"github.com/docker/distribution/registry/storage/cache"
 	//	redis "github.com/garyburd/redigo/redis"
-	"github.com/opencontainers/go-digest"
+	digest "github.com/opencontainers/go-digest"
 	//NANNAN
 	//"encoding/json"
 	// "net"
@@ -409,7 +409,7 @@ func (rfds *redisFileDescriptorService) StatBFRecipe(ctx context.Context, dgst d
 
 func (rfds *redisFileDescriptorService) StatBSRecipe(ctx context.Context, dgst digest.Digest) (distribution.BSRecipeDescriptor, error) {
 
-	reply, err := rfds.cluster.Get(rfds.BSRecipeHashKey(dgst)).Result()
+	reply, err := rfds.cluster.Get(rfds.BSRecipeHashKey(dgst, rfds.serverIp)).Result()
 	if err == redisgo.Nil {
 		//		context.GetLogger(ctx).Debug("NANNAN: key %s doesnot exist", dgst.String())
 		return distribution.BSRecipeDescriptor{}, err
@@ -434,10 +434,10 @@ func (rfds *redisFileDescriptorService) SetBFRecipe(ctx context.Context, dgst di
 	if len(desc.BSFDescriptors) > 0 {
 		for server, bsDescriptorlst := range desc.BSFDescriptors {
 			bs := distribution.BSRecipeDescriptor{
-					ServerIp: server,
-					BSFDescriptors: bsDescriptorlst,
-					SliceSize: desc.SliceSizeMap[server],
-					BlobDigest:     dgst,
+				ServerIp:       server,
+				BSFDescriptors: bsDescriptorlst,
+				SliceSize:      desc.SliceSizeMap[server],
+				BlobDigest:     dgst,
 			}
 			err := rfds.cluster.Set(rfds.BSRecipeHashKey(dgst, server), &bs, 0).Err()
 			if err != nil {
@@ -446,9 +446,9 @@ func (rfds *redisFileDescriptorService) SetBFRecipe(ctx context.Context, dgst di
 			}
 		}
 	}
-	
+
 	desc.BSFDescriptors = make(map[string][]distribution.BFDescriptor)
-	
+
 	err := rfds.cluster.Set(rfds.BFRecipeHashKey(dgst), &desc, 0).Err()
 	if err != nil {
 		context.GetLogger(ctx).Errorf("NANNAN: redis cluster cannot set value for key %s", err)
@@ -456,6 +456,7 @@ func (rfds *redisFileDescriptorService) SetBFRecipe(ctx context.Context, dgst di
 	}
 	return nil
 }
+
 /*
 ////// repo ---> layers
 

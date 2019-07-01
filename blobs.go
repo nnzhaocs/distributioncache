@@ -10,7 +10,7 @@ import (
 
 	"github.com/docker/distribution/context"
 	"github.com/docker/distribution/reference"
-	"github.com/opencontainers/go-digest"
+	digest "github.com/opencontainers/go-digest"
 )
 
 var (
@@ -123,27 +123,27 @@ type BFRecipeDescriptor struct {
 
 	ServerIps []string //this is slice digest
 
-//	CompressSize   int64
-//	UncompressSize int64
+	//	CompressSize   int64
+	//	UncompressSize int64
 
-//	BSResDescriptors map[string]*BSResDescriptor //clear this map
-	SliceSizeMap     map[string]int64
-//	Type			string // bsresponserecipe or bsfdescriptors
-	
-//	DurationCMP 	float64
-//	DurationDCMP    float64
-//	DurationNTT 	float64
+	//	BSResDescriptors map[string]*BSResDescriptor //clear this map
+	SliceSizeMap map[string]int64
+	//	Type			string // bsresponserecipe or bsfdescriptors
+
+	//	DurationCMP 	float64
+	//	DurationDCMP    float64
+	//	DurationNTT 	float64
 }
 
 type BSRecipeDescriptor struct {
 	BlobDigest     digest.Digest
-	ServerIp string
-	BSFDescriptors	[]BFDescriptor
-//	DurationRS  float64
-//	DurationNTT float64
-//	DurationCMP float64
-//	DurationCP  float64
-//	DurationML  float64
+	ServerIp       string
+	BSFDescriptors []BFDescriptor
+	//	DurationRS  float64
+	//	DurationNTT float64
+	//	DurationCMP float64
+	//	DurationCP  float64
+	//	DurationML  float64
 
 	SliceSize int64
 }
@@ -237,6 +237,7 @@ type FileDescriptorService interface {
 
 	StatBFRecipe(ctx context.Context, dgst digest.Digest) (BFRecipeDescriptor, error)
 	SetBFRecipe(ctx context.Context, dgst digest.Digest, desc BFRecipeDescriptor) error
+	StatBSRecipe(ctx context.Context, dgst digest.Digest) (BSRecipeDescriptor, error)
 }
 
 // BlobDescriptorServiceFactory creates middleware for BlobDescriptorService.

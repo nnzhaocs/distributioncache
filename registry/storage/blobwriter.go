@@ -565,7 +565,7 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) e
 		}
 		context.GetLogger(ctx).Warnf("NANNAN: %s, IGNORE MINOR ERRORS", err)
 	}
-	fmt.Printf("NANNAN: gzip decompression time: %.3f, %v", elapsed.Seconds(), blobPath)
+	fmt.Printf("NANNAN: gzip decompression time: %.3f, %v, size: %v", elapsed.Seconds(), blobPath, comressSize)
 
 	// check if it's a empty dir
 	isEmpty, _ := IsEmpty(unpackPath)
@@ -652,16 +652,16 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) e
 		i += 1
 	}
 
-//	bsresDescriptors := make(map[string]*distribution.BSResDescriptor)
+	//	bsresDescriptors := make(map[string]*distribution.BSResDescriptor)
 	des := distribution.BFRecipeDescriptor{
-		BlobDigest:       desc.Digest,
-		BSFDescriptors:   bsfdescriptors, //make(map[string][]distribution.BFDescriptor)
-		ServerIps:        serverIps,      //RemoveDuplicateIpsFromIps(serverIps),
-//		CompressSize:     comressSize,
-//		UncompressSize:   dirSize,
-		SliceSizeMap:     sliceSizeMap,
-//		BSResDescriptors: bsresDescriptors,
-//		Type:             "bsfdescriptors",
+		BlobDigest:     desc.Digest,
+		BSFDescriptors: bsfdescriptors, //make(map[string][]distribution.BFDescriptor)
+		ServerIps:      serverIps,      //RemoveDuplicateIpsFromIps(serverIps),
+		//		CompressSize:     comressSize,
+		//		UncompressSize:   dirSize,
+		SliceSizeMap: sliceSizeMap,
+		//		BSResDescriptors: bsresDescriptors,
+		//		Type:             "bsfdescriptors",
 	}
 	//	context.GetLogger(ctx).Debug("NANNAN: set distribution.BFRecipeDescriptor: %v", des)
 	start = time.Now()

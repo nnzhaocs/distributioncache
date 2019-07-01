@@ -1,10 +1,9 @@
 package cache
 
 import (
-	"github.com/docker/distribution/context"
-	"github.com/opencontainers/go-digest"
-
 	"github.com/docker/distribution"
+	"github.com/docker/distribution/context"
+	digest "github.com/opencontainers/go-digest"
 )
 
 // Metrics is used to hold metric counters
@@ -25,18 +24,18 @@ type MetricsTracker interface {
 }
 
 type cachedBlobStatter struct {
-	cache   distribution.BlobDescriptorService
+	cache     distribution.BlobDescriptorService
 	filecache distribution.FileDescriptorService
-	backend distribution.BlobDescriptorService
-	tracker MetricsTracker
+	backend   distribution.BlobDescriptorService
+	tracker   MetricsTracker
 }
 
 // NewCachedBlobStatter creates a new statter which prefers a cache and
 // falls back to a backend.
 func NewCachedBlobStatter(cache distribution.BlobDescriptorService, backend distribution.BlobDescriptorService) distribution.BlobDescriptorService {
 	return &cachedBlobStatter{
-		cache:   cache,
-//		filecache: filecache,
+		cache: cache,
+		//		filecache: filecache,
 		backend: backend,
 	}
 }
@@ -45,9 +44,9 @@ func NewCachedBlobStatter(cache distribution.BlobDescriptorService, backend dist
 // falls back to a backend.
 func NewCachedBlobStatterWithFileCache(cache distribution.BlobDescriptorService, filecache distribution.FileDescriptorService, backend distribution.BlobDescriptorService) distribution.BlobDescriptorService {
 	return &cachedBlobStatter{
-		cache:   cache,
+		cache:     cache,
 		filecache: filecache,
-		backend: backend,
+		backend:   backend,
 	}
 }
 
@@ -55,8 +54,8 @@ func NewCachedBlobStatterWithFileCache(cache distribution.BlobDescriptorService,
 // falls back to a backend. Hits and misses will send to the tracker.
 func NewCachedBlobStatterWithMetrics(cache distribution.BlobDescriptorService, backend distribution.BlobDescriptorService, tracker MetricsTracker) distribution.BlobStatter {
 	return &cachedBlobStatter{
-		cache:   cache,
-//		filecache: filecache,
+		cache: cache,
+		//		filecache: filecache,
 		backend: backend,
 		tracker: tracker,
 	}
@@ -66,10 +65,10 @@ func NewCachedBlobStatterWithMetrics(cache distribution.BlobDescriptorService, b
 // falls back to a backend. Hits and misses will send to the tracker.
 func NewCachedBlobStatterWithMetricsWithFileCache(cache distribution.BlobDescriptorService, filecache distribution.FileDescriptorService, backend distribution.BlobDescriptorService, tracker MetricsTracker) distribution.BlobStatter {
 	return &cachedBlobStatter{
-		cache:   cache,
+		cache:     cache,
 		filecache: filecache,
-		backend: backend,
-		tracker: tracker,
+		backend:   backend,
+		tracker:   tracker,
 	}
 }
 
@@ -83,7 +82,6 @@ func NewCachedBlobStatterWithMetricsWithFileCache(cache distribution.BlobDescrip
 //		tracker: tracker,
 //	}
 //}
-
 
 func (cbds *cachedBlobStatter) Stat(ctx context.Context, dgst digest.Digest) (distribution.Descriptor, error) {
 	desc, err := cbds.cache.Stat(ctx, dgst)
@@ -168,14 +166,14 @@ fallback:
 		cbds.tracker.Miss()
 	}
 	//filecache no backend
-//	desc, err = cbds.backend.Stat(ctx, dgst)
-//	if err != nil {
-//		return desc, err
-//	}
-//
-//	if err := cbds.filecache.SetFileDescriptor(ctx, dgst, desc); err != nil {
-//		context.GetLogger(ctx).Errorf("error adding descriptor %v to cache: %v", desc.Digest, err)
-//	}
+	//	desc, err = cbds.backend.Stat(ctx, dgst)
+	//	if err != nil {
+	//		return desc, err
+	//	}
+	//
+	//	if err := cbds.filecache.SetFileDescriptor(ctx, dgst, desc); err != nil {
+	//		context.GetLogger(ctx).Errorf("error adding descriptor %v to cache: %v", desc.Digest, err)
+	//	}
 
 	return desc, err
 }
@@ -206,20 +204,58 @@ fallback:
 		cbds.tracker.Miss()
 	}
 	//filecache no backend
-//	desc, err = cbds.backend.Stat(ctx, dgst)
-//	if err != nil {
-//		return desc, err
-//	}
-//
-//	if err := cbds.filecache.SetFileDescriptor(ctx, dgst, desc); err != nil {
-//		context.GetLogger(ctx).Errorf("error adding descriptor %v to cache: %v", desc.Digest, err)
-//	}
+	//	desc, err = cbds.backend.Stat(ctx, dgst)
+	//	if err != nil {
+	//		return desc, err
+	//	}
+	//
+	//	if err := cbds.filecache.SetFileDescriptor(ctx, dgst, desc); err != nil {
+	//		context.GetLogger(ctx).Errorf("error adding descriptor %v to cache: %v", desc.Digest, err)
+	//	}
 
 	return desc, err
 }
 
+func (cbds *cachedBlobStatter) StatBSRecipe(ctx context.Context, dgst digest.Digest) (distribution.BSRecipeDescriptor, error) {
+	desc, err := cbds.filecache.StatBSRecipe(ctx, dgst)
+	if err != nil {
+		if err != distribution.ErrBlobUnknown {
+			context.GetLogger(ctx).Errorf("StatBSRecipe: error retrieving descriptor from cache: %v", err)
+
+		}
+
+		goto fallback
+
+	}
+
+	if cbds.tracker != nil {
+		cbds.tracker.Hit()
+
+	}
+	return desc, nil
+fallback:
+	if cbds.tracker != nil {
+		cbds.tracker.Miss()
+
+	}
+	//filecache no backend
+	//  desc, err = cbds.backend.Stat(ctx, dgst)
+	//  if err != nil {
+	//      return desc, err
+	//
+	// }
+	//
+	//  if err := cbds.filecache.SetFileDescriptor(ctx, dgst, desc); err != nil {
+	//      context.GetLogger(ctx).Errorf("error adding descriptor %v to cache: %v", desc.Digest, err)
+	//
+	//}
+
+	return desc, err
+
+}
+
 func (cbds *cachedBlobStatter) SetBFRecipe(ctx context.Context, dgst digest.Digest, desc distribution.BFRecipeDescriptor) error {
-		if err := cbds.filecache.SetBFRecipe(ctx, dgst, desc); err != nil {
+	if err := cbds.filecache.SetBFRecipe(ctx, dgst, desc); err != nil {
 		context.GetLogger(ctx).Errorf("error adding blob file recipe descriptor %v to cache: %v", desc.BlobDigest, err)
 	}
 	return nil
