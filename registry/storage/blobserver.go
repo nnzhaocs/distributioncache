@@ -497,7 +497,7 @@ delete and send to disk cache
 
 func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *http.Request, dgst digest.Digest) error {
 
-	compre_level := 2
+	compre_level := 6
 
 	start := time.Now()
 	_desc, err := bs.statter.Stat(ctx, dgst)
