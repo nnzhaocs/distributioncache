@@ -195,7 +195,7 @@ func packFile(i interface{}) {
 	tf := task.Tf
 
 	var contents *[]byte
-	
+
 	start := time.Now()
 	//check if newsrc is in file cache
 	bfss, err := bs.cache.Mc.Get(newsrc)
@@ -366,14 +366,13 @@ func (bs *blobServer) packAllFiles(ctx context.Context, desc distribution.BSReci
 		wg.Done()
 	})
 	defer antp.Release()
-	
+
 	reg, err := regexp.Compile("[^a-zA-Z0-9/.-]+")
 	if err != nil {
 		context.GetLogger(ctx).Errorf("NANNAN: %s, ", err)
 		return 0.0, err
 	}
 
-	
 	tw := tar.NewWriter(bufp)
 
 	tf := &TarFile{
@@ -392,7 +391,7 @@ func (bs *blobServer) packAllFiles(ctx context.Context, desc distribution.BSReci
 		random_dir := fmt.Sprintf("%f", fcntno)
 
 		tarfpath := reg.ReplaceAllString(strings.SplitN(bfdescriptor.BlobFilePath, "diff", 2)[1], "") // replace alphanumeric
-		destfpath := path.Join(tarfpath+"-"+random_dir)
+		destfpath := path.Join(tarfpath + "-" + random_dir)
 		//context.GetLogger(ctx).Debugf("NANNAN: dest path: %v", destfpath) // not locally available
 		wg.Add(1)
 		antp.Invoke(&Task{
@@ -410,12 +409,12 @@ func (bs *blobServer) packAllFiles(ctx context.Context, desc distribution.BSReci
 		return 0.0, err
 	}
 	DurationCP := time.Since(start).Seconds()
-	return &buf, DurationCP, nil
+	return DurationCP, nil
 }
 
 func pgzipTarFile(bufp *bytes.Buffer, compressbufp *bytes.Buffer, compr_level int) (*bytes.Reader, error) {
-	
-	w, _ := pgzip.NewWriterLevel(&compressbufp, compr_level)
+
+	w, _ := pgzip.NewWriterLevel(compressbufp, compr_level)
 	io.Copy(w, bufp)
 	w.Close()
 	cprssrder := bytes.NewReader(compressbufp.Bytes())
@@ -544,14 +543,16 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 	//WRITE ERROR CHANNEL AND CATCH ERRORS
 	var buf bytes.Buffer
 	var comprssbuf bytes.Buffer
-	
+
 	DurationCP, _ := bs.packAllFiles(ctx, desc, &buf)
 	DurationCMP, DurationNTT, size, err := bs.compressAndServe(ctx, w, r, _desc, &buf, &comprssbuf, compre_level)
 	if err != nil {
 		return err
 	}
+	buf.Reset()
 
-	bfss, err := ioutil.ReadAll(comprssbuf)
+	//bfss, err := ioutil.ReadAll(comprssbuf.Bytes())
+	bfss := comprssbuf.Bytes()
 	if err != nil {
 		context.GetLogger(ctx).Errorf("NANNAN: %s ", err)
 	}
@@ -563,12 +564,10 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 			context.GetLogger(ctx).Debugf("NANNAN: slice cache cannot write to digest: %v: %v ", dgst.String(), err)
 		}
 	}
-	
-	buf.Reset()
 	comprssbuf.Reset()
-
+	
 	context.GetLogger(ctx).Debugf("NANNAN: slice cache miss: metadata lookup time: %v, slice cp time: %v, slice compression time: %v, slice transfer time: %v, slice compressed size: %v, slice uncompressed size",
 		DurationML, DurationCP, DurationCMP, DurationNTT, size, desc.SliceSize)
-
+	
 	return nil
 }
