@@ -423,7 +423,8 @@ func pgzipTarFile(bufp *bytes.Buffer, compressbufp *bytes.Buffer, compr_level in
 	return cprssrder, nil
 }
 
-func (bs *blobServer) compressAndServe(ctx context.Context, w http.ResponseWriter, r *http.Request, _desc distribution.Descriptor, bufp *bytes.Buffer, compressbufp *bytes.Buffer, compr_level int) (float64, float64, int64, error) {
+func (bs *blobServer) compressAndServe(ctx context.Context, w http.ResponseWriter, r *http.Request, _desc distribution.Descriptor, 
+	bufp *bytes.Buffer, compressbufp *bytes.Buffer, compr_level int) (float64, float64, int64, error) {
 
 	start := time.Now()
 
@@ -498,7 +499,7 @@ delete and send to disk cache
 
 func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *http.Request, dgst digest.Digest) error {
 
-	compre_level := 6
+	compre_level := 4
 
 	start := time.Now()
 	_desc, err := bs.statter.Stat(ctx, dgst)
@@ -515,7 +516,7 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 		if err != nil {
 			return err
 		}
-		context.GetLogger(ctx).Debugf("NANNAN: manifest: metadata lookup time: %v, layer transfer time: %v, layer size: %v",
+		context.GetLogger(ctx).Debugf("NANNAN: manifest: metadata lookup time: %v, layer transfer time: %v, layer compressed size: %v",
 			DurationML, DurationNTT, _desc.Size)
 		return nil
 	}
@@ -532,7 +533,7 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 			if err != nil {
 				return err
 			}
-			context.GetLogger(ctx).Debugf("NANNAN: slice cache hit: metadata lookup time: %v, layer transfer time: %v, layer size: %v",
+			context.GetLogger(ctx).Debugf("NANNAN: slice cache hit: metadata lookup time: %v, layer transfer time: %v, layer compressed size: %v",
 				DurationML, DurationNTT, size)
 			return nil
 		}
@@ -566,8 +567,8 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 	buf.Reset()
 	comprssbuf.Reset()
 
-	context.GetLogger(ctx).Debugf("NANNAN: slice cache miss: metadata lookup time: %v, slice cp time: %v, slice compression time: %v, slice transfer time: %v, slice size: %v",
-		DurationML, DurationCP, DurationCMP, DurationNTT, size)
+	context.GetLogger(ctx).Debugf("NANNAN: slice cache miss: metadata lookup time: %v, slice cp time: %v, slice compression time: %v, slice transfer time: %v, slice compressed size: %v, slice uncompressed size",
+		DurationML, DurationCP, DurationCMP, DurationNTT, size, desc.SliceSize)
 
 	return nil
 }
