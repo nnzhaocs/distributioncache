@@ -3,7 +3,7 @@ package handlers
 import (
 	"fmt"
 	"net/http"
-
+	"strings"
 	"github.com/docker/distribution"
 	ctxu "github.com/docker/distribution/context"
 	"github.com/docker/distribution/registry/api/errcode"
@@ -45,6 +45,19 @@ func (ctx *Context) Value(key interface{}) interface{} {
 
 func getName(ctx context.Context) (name string) {
 	return ctxu.GetStringValue(ctx, "vars.name")
+}
+
+func getUsrAddr(ctx context.Context) (name string) {
+	varsname := ctxu.GetStringValue(ctx, "vars.name")
+	tmps := strings.Split(varsname, "REPONAME")[0]
+	usraddr := strings.Split(tmps, "USRADDR")[1]
+	return usraddr
+}
+
+func getRepoName(ctx context.Context) (name string) {
+	varsname := ctxu.GetStringValue(ctx, "vars.name")
+	reponame := strings.Split(varsname, "REPONAME")[1]
+	return reponame
 }
 
 func getReference(ctx context.Context) (reference string) {

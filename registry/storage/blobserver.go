@@ -505,6 +505,12 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 	if err != nil {
 		return err
 	}
+	//check if this is manifest
+	
+	//if it is, serve manifest and get repolayer map - usrmap, then do prefetching put in cache or other area
+	// else serve layer.
+	// make a global list for cache + disk cache
+	// make a global list for now-restoring layer list
 
 	desc, err := bs.fileDescriptorCacheProvider.StatBSRecipe(ctx, dgst)
 	DurationML := time.Since(start).Seconds()
@@ -566,7 +572,7 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 	}
 	comprssbuf.Reset()
 	
-	context.GetLogger(ctx).Debugf("NANNAN: slice cache miss: metadata lookup time: %v, slice cp time: %v, slice compression time: %v, slice transfer time: %v, slice compressed size: %v, slice uncompressed size",
+	context.GetLogger(ctx).Debugf("NANNAN: slice cache miss: metadata lookup time: %v, slice cp time: %v, slice compression time: %v, slice transfer time: %v, slice compressed size: %v, slice uncompressed size: %v",
 		DurationML, DurationCP, DurationCMP, DurationNTT, size, desc.SliceSize)
 	
 	return nil

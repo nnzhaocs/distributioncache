@@ -854,6 +854,11 @@ func (bw *blobWriter) CheckDuplicate(ctx context.Context, serverIp string, desc 
 		}
 		err = db.SetFileDescriptor(ctx, dgst, des)
 		if err != nil {
+			err := os.Remove(fpath)
+			if err != nil {
+				context.GetLogger(ctx).Errorf("NANNAN: %s", err)
+				return err
+			}
 			return err
 		}
 		// change it to slice recipe

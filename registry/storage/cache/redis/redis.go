@@ -337,7 +337,7 @@ func NewRedisFileDescriptorCacheProvider(pool *redis.Pool, cluster *redisgo.Clus
 
 //"files::sha256:7173b809ca12ec5dee4506cd86be934c4596dd234ee82c0662eac04a8c2c71dc"
 func (rfds *redisFileDescriptorService) fileDescriptorHashKey(dgst digest.Digest) string {
-	return "files::" + dgst.String()
+	return "file::" + dgst.String()
 }
 
 var _ distribution.FileDescriptorService = &redisFileDescriptorService{}
@@ -361,20 +361,24 @@ func (rfds *redisFileDescriptorService) StatFile(ctx context.Context, dgst diges
 		}
 	}
 }
-
+//use redis as global lock service
 func (rfds *redisFileDescriptorService) SetFileDescriptor(ctx context.Context, dgst digest.Digest, desc distribution.FileDescriptor) error {
 
 	//var requestedServerIps []string
 	//desc.RequestedServerIps = requestedServerIps
 	//        desc.ServerIp = rfds.serverIp
 	//        context.GetLogger(ctx).Debug("NANNAN: redis cluster set value for file %v", rfds.fileDescriptorHashKey(dgst))
-	err := rfds.cluster.Set(rfds.fileDescriptorHashKey(dgst), &desc, 0).Err()
+	set, err := rfds.cluster.SetNX(rfds.fileDescriptorHashKey(dgst), &desc, 0).Result()//.Err()
 	if err != nil {
 		context.GetLogger(ctx).Errorf("NANNAN: redis cluster cannot set value for key %s", err)
 		return err
 	}
-
-	return nil
+	if set == true{
+		return nil
+	}else{
+		context.GetLogger(ctx).Errorf("NANNAN: key %s already exsist!", dgst.String())
+		return errors.New("key already exsits")
+	}
 }
 
 //"files::sha256:7173b809ca12ec5dee4506cd86be934c4596dd234ee82c0662eac04a8c2c71dc"

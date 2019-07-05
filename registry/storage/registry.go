@@ -15,8 +15,8 @@ import (
 	"github.com/docker/libtrust"
 	//roundrobin "github.com/hlts2/round-robin"
 	//nannan
-	//	"github.com/serialx/hashring"
-
+	//"github.com/serialx/hashring"
+	lru "github.com/docker/distribution/lru"
 	"fmt"
 	"net/url"
 )
@@ -43,7 +43,8 @@ type registry struct {
 	blobDescriptorServiceFactory distribution.BlobDescriptorServiceFactory
 	manifestURLs                 manifestURLs
 
-	smalltarfcnt int
+	smalltarfcnt 				int
+	
 
 	//ring					     hashring.HashRing
 }
