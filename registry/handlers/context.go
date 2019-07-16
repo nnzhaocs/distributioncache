@@ -47,13 +47,22 @@ func getName(ctx context.Context) (name string) {
 	return ctxu.GetStringValue(ctx, "vars.name")
 }
 
+//TYPE XXX USRADDR XXX REPONAME XXX
+//manifest or layer?
+func getType(ctx context.Context) (name string) {
+	varsname := ctxu.GetStringValue(ctx, "vars.name")
+	tmps := strings.Split(varsname, "USRADDR")[0]
+	rtype := strings.Split(tmps, "TYPE")[1]
+	return rtype
+}
+//usraddr
 func getUsrAddr(ctx context.Context) (name string) {
 	varsname := ctxu.GetStringValue(ctx, "vars.name")
 	tmps := strings.Split(varsname, "REPONAME")[0]
 	usraddr := strings.Split(tmps, "USRADDR")[1]
 	return usraddr
 }
-
+//reponame
 func getRepoName(ctx context.Context) (name string) {
 	varsname := ctxu.GetStringValue(ctx, "vars.name")
 	reponame := strings.Split(varsname, "REPONAME")[1]

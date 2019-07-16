@@ -38,10 +38,10 @@ import (
 // we store dbNoFile on a redis cluster
 var (
 	dbNoBlob        = 0
-	dbNoFile        = 1
-	dbNoBFRecipe    = 2
-	dbNoSFRecipe    = 3
-	dbNoSResProfile = 4
+//	dbNoFile        = 1
+//	dbNoBFRecipe    = 2
+//	dbNoSFRecipe    = 3
+//	dbNoSResProfile = 4
 )
 
 type redisBlobDescriptorService struct {
@@ -313,37 +313,32 @@ func (rsrbds *repositoryScopedRedisBlobDescriptorService) repositoryBlobSetKey(r
 }
 
 //NANNAN: for deduplication
-type redisFileDescriptorService struct {
-	pool     *redis.Pool
-	serverIp string
-	cluster  *redisgo.ClusterClient
+type redisDedupMetadataService struct {
+	pool          	*redis.Pool
+	hostserverIp 	string
+	cluster  		*redisgo.ClusterClient
 }
 
 // NewRedisBlobDescriptorCacheProvider returns a new redis-based
-// BlobDescriptorCacheProvider using the provided redis connection pool.
-func NewRedisFileDescriptorCacheProvider(pool *redis.Pool, cluster *redisgo.ClusterClient, host_ip string) cache.FileDescriptorCacheProvider {
-
-	//NANNAN address
-	var serverIp string
-	serverIp = host_ip
-	os.Stdout.WriteString("NANNAN: hostip: " + serverIp + "\n")
-
-	return &redisFileDescriptorService{
+// DedupMetadataServiceCacheProvider using the provided redis connection pool.
+func NewRedisDedupMetadataServiceCacheProvider(pool *redis.Pool, cluster *redisgo.ClusterClient, host_ip string) cache.DedupMetadataServiceCacheProvider {
+	fmt.Printf("NANNAN: hostip: " + host_ip + "\n")
+	return &redisDedupMetadataService{
 		pool:     pool,
 		cluster:  cluster,
-		serverIp: serverIp,
+		hostserverIp: host_ip,
 	}
 }
 
 //"files::sha256:7173b809ca12ec5dee4506cd86be934c4596dd234ee82c0662eac04a8c2c71dc"
-func (rfds *redisFileDescriptorService) fileDescriptorHashKey(dgst digest.Digest) string {
-	return "file::" + dgst.String()
+func (rdms *redisDedupMetadataService) fileDescriptorHashKey(dgst digest.Digest) string {
+	return "File::" + dgst.String()
 }
 
-var _ distribution.FileDescriptorService = &redisFileDescriptorService{}
+var _ distribution.DedupMetadataService = &redisDedupMetadataService{}
 
-func (rfds *redisFileDescriptorService) StatFile(ctx context.Context, dgst digest.Digest) (distribution.FileDescriptor, error) {
-	reply, err := rfds.cluster.Get(rfds.fileDescriptorHashKey(dgst)).Result()
+func (rdms *redisDedupMetadataService) StatFile(ctx context.Context, dgst digest.Digest) (distribution.FileDescriptor, error) {
+	reply, err := rdms.cluster.Get(rdms.fileDescriptorHashKey(dgst)).Result()
 	if err == redisgo.Nil {
 		//		context.GetLogger(ctx).Debug("NANNAN: key %s doesnot exist", dgst.String())
 		return distribution.FileDescriptor{}, err
@@ -356,19 +351,14 @@ func (rfds *redisFileDescriptorService) StatFile(ctx context.Context, dgst diges
 			context.GetLogger(ctx).Errorf("NANNAN: redis cluster cannot UnmarshalBinary for key %s", err)
 			return distribution.FileDescriptor{}, err
 		} else {
-			//desc.RequestedServerIps = append(desc.RequestedServerIps, rfds.serverIp)
 			return desc, nil
 		}
 	}
 }
-//use redis as global lock service
-func (rfds *redisFileDescriptorService) SetFileDescriptor(ctx context.Context, dgst digest.Digest, desc distribution.FileDescriptor) error {
 
-	//var requestedServerIps []string
-	//desc.RequestedServerIps = requestedServerIps
-	//        desc.ServerIp = rfds.serverIp
-	//        context.GetLogger(ctx).Debug("NANNAN: redis cluster set value for file %v", rfds.fileDescriptorHashKey(dgst))
-	set, err := rfds.cluster.SetNX(rfds.fileDescriptorHashKey(dgst), &desc, 0).Result()//.Err()
+//use redis as global lock service
+func (rdms *redisDedupMetadataService) SetFileDescriptor(ctx context.Context, dgst digest.Digest, desc distribution.FileDescriptor) error {
+	set, err := rdms.cluster.SetNX(rdms.fileDescriptorHashKey(dgst), &desc, 0).Result()
 	if err != nil {
 		context.GetLogger(ctx).Errorf("NANNAN: redis cluster cannot set value for key %s", err)
 		return err
@@ -381,79 +371,37 @@ func (rfds *redisFileDescriptorService) SetFileDescriptor(ctx context.Context, d
 	}
 }
 
-//"files::sha256:7173b809ca12ec5dee4506cd86be934c4596dd234ee82c0662eac04a8c2c71dc"
-func (rfds *redisFileDescriptorService) BFRecipeHashKey(dgst digest.Digest) string {
-	return "Blob:File:Recipe::" + dgst.String()
+func (rdms *redisDedupMetadataService) LayerRecipeHashKey(dgst digest.Digest) string {
+	return "Layer:Recipe::" + dgst.String()
 }
 
-func (rfds *redisFileDescriptorService) BSRecipeHashKey(dgst digest.Digest, server string) string {
-	return "Blob:Slice:Recipe::" + dgst.String() + "::" + server
+func (rdms *redisDedupMetadataService) SliceRecipeHashKey(dgst digest.Digest) string {
+	return "Slice:Recipe::" + dgst.String() + "::" + rdms.hostserverIp
 }
 
-func (rfds *redisFileDescriptorService) StatBFRecipe(ctx context.Context, dgst digest.Digest) (distribution.BFRecipeDescriptor, error) {
+func (rdms *redisDedupMetadataService) StatLayerRecipe(ctx context.Context, dgst digest.Digest) (distribution.LayerRecipeDescriptor, error) {
 
-	reply, err := rfds.cluster.Get(rfds.BFRecipeHashKey(dgst)).Result()
+	reply, err := rdms.cluster.Get(rdms.LayerRecipeHashKey(dgst)).Result()
 	if err == redisgo.Nil {
 		//		context.GetLogger(ctx).Debug("NANNAN: key %s doesnot exist", dgst.String())
-		return distribution.BFRecipeDescriptor{}, err
+		return distribution.LayerRecipeDescriptor{}, err
 	} else if err != nil {
 		context.GetLogger(ctx).Errorf("NANNAN: redis cluster error for key %s", err)
-		return distribution.BFRecipeDescriptor{}, err
+		return distribution.LayerRecipeDescriptor{}, err
 	} else {
-		var desc distribution.BFRecipeDescriptor
+		var desc distribution.LayerRecipeDescriptor
 		if err = desc.UnmarshalBinary([]byte(reply)); err != nil {
 			context.GetLogger(ctx).Errorf("NANNAN: redis cluster cannot UnmarshalBinary for key %s", err)
-			return distribution.BFRecipeDescriptor{}, err
+			return distribution.LayerRecipeDescriptor{}, err
 		} else {
-			//desc.RequestedServerIps = append(desc.RequestedServerIps, rfds.serverIp)
 			return desc, nil
 		}
 	}
 }
 
-func (rfds *redisFileDescriptorService) StatBSRecipe(ctx context.Context, dgst digest.Digest) (distribution.BSRecipeDescriptor, error) {
+func (rdms *redisDedupMetadataService) SetLayerRecipe(ctx context.Context, dgst digest.Digest, desc distribution.LayerRecipeDescriptor) error {
 
-	reply, err := rfds.cluster.Get(rfds.BSRecipeHashKey(dgst, rfds.serverIp)).Result()
-	if err == redisgo.Nil {
-		//		context.GetLogger(ctx).Debug("NANNAN: key %s doesnot exist", dgst.String())
-		return distribution.BSRecipeDescriptor{}, err
-	} else if err != nil {
-		context.GetLogger(ctx).Errorf("NANNAN: redis cluster error for key %s", err)
-		return distribution.BSRecipeDescriptor{}, err
-	} else {
-		var desc distribution.BSRecipeDescriptor
-		if err = desc.UnmarshalBinary([]byte(reply)); err != nil {
-			context.GetLogger(ctx).Errorf("NANNAN: redis cluster cannot UnmarshalBinary for key %s", err)
-			return distribution.BSRecipeDescriptor{}, err
-		} else {
-			//desc.RequestedServerIps = append(desc.RequestedServerIps, rfds.serverIp)
-			return desc, nil
-		}
-	}
-}
-
-func (rfds *redisFileDescriptorService) SetBFRecipe(ctx context.Context, dgst digest.Digest, desc distribution.BFRecipeDescriptor) error {
-
-	//set bsrecpie
-	if len(desc.BSmap) > 0 {
-		for server, bsDescriptorlst := range desc.BSmap {
-			bs := distribution.BSRecipeDescriptor{
-				ServerIp:       server,
-				BFs: bsDescriptorlst,
-				SliceSize:      desc.SliceSizeMap[server],
-				BlobDigest:     dgst,
-			}
-			err := rfds.cluster.Set(rfds.BSRecipeHashKey(dgst, server), &bs, 0).Err()
-			if err != nil {
-				context.GetLogger(ctx).Errorf("NANNAN: redis cluster cannot set value for key %s", err)
-				return err
-			}
-		}
-	}
-
-	desc.BSmap = make(map[string][]distribution.BFDescriptor)
-
-	err := rfds.cluster.Set(rfds.BFRecipeHashKey(dgst), &desc, 0).Err()
+	err := rdms.cluster.SetNX(rdms.LayerRecipeHashKey(dgst), &desc, 0).Err()
 	if err != nil {
 		context.GetLogger(ctx).Errorf("NANNAN: redis cluster cannot set value for key %s", err)
 		return err
@@ -461,68 +409,106 @@ func (rfds *redisFileDescriptorService) SetBFRecipe(ctx context.Context, dgst di
 	return nil
 }
 
-/*
-////// repo ---> layers
+func (rdms *redisDedupMetadataService) StatSliceRecipe(ctx context.Context, dgst digest.Digest) (distribution.SliceRecipeDescriptor, error) {
 
-type RLmap struct{
-	id string
-	layers []digest.Digest
-}
-
-type URLmap struct{
-	id string
-	repoRepullRatio []float32
-	layers []digest.Digest
-	layerRepullRatio []float32
-}
-
-func (rfds *redisFileDescriptorService) RLmapHashKey(repoid string) string {
-	return "RLmap::" + repoid // repo name
-}
-
-func (rfds *redisFileDescriptorService) URLmapHashKey(uid string) string {
-	return "URLmap::" + uid
-}
-
-func (rfds *redisFileDescriptorService) StatRLmap(ctx context.Context, id string) (distribution.RLmap, error) {
-
-	reply, err := rfds.cluster.Get(rfds.RLmapHashKey(id)).Result()
+	reply, err := rdms.cluster.Get(rdms.SliceRecipeHashKey(dgst)).Result()
 	if err == redisgo.Nil {
 		//		context.GetLogger(ctx).Debug("NANNAN: key %s doesnot exist", dgst.String())
-		return distribution.RLmap{}, err
+		return distribution.SliceRecipeDescriptor{}, err
 	} else if err != nil {
 		context.GetLogger(ctx).Errorf("NANNAN: redis cluster error for key %s", err)
-		return distribution.RLmap{}, err
+		return distribution.SliceRecipeDescriptor{}, err
 	} else {
-		var desc distribution.RLmap
+		var desc distribution.SliceRecipeDescriptor
 		if err = desc.UnmarshalBinary([]byte(reply)); err != nil {
 			context.GetLogger(ctx).Errorf("NANNAN: redis cluster cannot UnmarshalBinary for key %s", err)
-			return distribution.RLmap{}, err
+			return distribution.SliceRecipeDescriptor{}, err
 		} else {
-			//desc.RequestedServerIps = append(desc.RequestedServerIps, rfds.serverIp)
 			return desc, nil
 		}
 	}
 }
 
-func (rfds *redisFileDescriptorService) StatURLmap(ctx context.Context, id string) (desc distribution.URLmap, error) {
 
-	reply, err := rfds.cluster.Get(rfds.URLmapHashKey(id)).Result()
+func (rdms *redisDedupMetadataService) SetSliceRecipe(ctx context.Context, dgst digest.Digest, desc distribution.SliceRecipeDescriptor) error {
+
+	err := rdms.cluster.SetNX(rdms.SliceRecipeHashKey(dgst), &desc, 0).Err()
+	if err != nil {
+		context.GetLogger(ctx).Errorf("NANNAN: redis cluster cannot set value for key %s", err)
+		return err
+	}
+	return nil
+}
+
+//metadataservice for rlmap and ulmap
+
+func (rdms *redisDedupMetadataService) RLMapHashKey(ctx context.Context, reponame string) string {
+	return "RLMap::" + reponame
+}
+
+func (rdms *redisDedupMetadataService) ULMapHashKey(ctx context.Context, usrname string) string {
+	return "ULMap::" + usrname
+}
+
+
+func (rdms *redisDedupMetadataService) StatRLMapEntry(ctx context.Context, reponame string) (distribution.RLmapEntry, error) {
+
+	reply, err := rdms.cluster.Get(rdms.RLMapHashKey(reponame)).Result()
 	if err == redisgo.Nil {
 		//		context.GetLogger(ctx).Debug("NANNAN: key %s doesnot exist", dgst.String())
-		return distribution.URLmap{}, err
+		return distribution.RLmapEntry{}, err
 	} else if err != nil {
 		context.GetLogger(ctx).Errorf("NANNAN: redis cluster error for key %s", err)
-		return distribution.URLmap{}, err
+		return distribution.RLmapEntry{}, err
 	} else {
-		var desc distribution.URLmap
+		var desc distribution.RLmapEntry
 		if err = desc.UnmarshalBinary([]byte(reply)); err != nil {
 			context.GetLogger(ctx).Errorf("NANNAN: redis cluster cannot UnmarshalBinary for key %s", err)
-			return distribution.URLmap{}, err
+			return distribution.RLmapEntry{}, err
 		} else {
-			//desc.RequestedServerIps = append(desc.RequestedServerIps, rfds.serverIp)
 			return desc, nil
 		}
 	}
 }
-*/
+
+func (rdms *redisDedupMetadataService) SetRLMapEntry(ctx context.Context, reponame string, desc distribution.RLmapEntry) error {
+
+	//set slicerecipe
+	err := rdms.cluster.Set(rdms.RLMapHashKey(reponame), &desc, 0).Err()
+	if err != nil {
+		context.GetLogger(ctx).Errorf("NANNAN: redis cluster cannot set value for key %s", err)
+		return err
+	}
+	return nil
+}
+
+func (rdms *redisDedupMetadataService) StatULMapEntry(ctx context.Context, usrname string) (distribution.ULmapEntry, error) {
+
+	reply, err := rdms.cluster.Get(rdms.ULMapHashKey(usrname)).Result()
+	if err == redisgo.Nil {
+		//		context.GetLogger(ctx).Debug("NANNAN: key %s doesnot exist", dgst.String())
+		return distribution.ULmapEntry{}, err
+	} else if err != nil {
+		context.GetLogger(ctx).Errorf("NANNAN: redis cluster error for key %s", err)
+		return distribution.ULmapEntry{}, err
+	} else {
+		var desc distribution.ULmapEntry
+		if err = desc.UnmarshalBinary([]byte(reply)); err != nil {
+			context.GetLogger(ctx).Errorf("NANNAN: redis cluster cannot UnmarshalBinary for key %s", err)
+			return distribution.ULmapEntry{}, err
+		} else {
+			return desc, nil
+		}
+	}
+}
+
+func (rdms *redisDedupMetadataService) SetULMapEntry(ctx context.Context, usrname string, desc distribution.ULmapEntry) error {
+
+	//set slicerecipe
+	err := rdms.cluster.Set(rdms.ULMapHashKey(usrname), &desc, 0).Err()
+	if err != nil {
+		context.GetLogger(ctx).Errorf("NANNAN: redis cluster cannot set value for key %s", err)
+		return err
+	}
+	return nil
+}

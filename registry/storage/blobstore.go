@@ -186,7 +186,7 @@ type blobStatter struct {
 
 var _ distribution.BlobDescriptorService = &blobStatter{}
 
-//var _ distribution.FileDescriptorService = &fileStatter{}
+//var _ distribution.DedupMetadataService = &fileStatter{}
 
 // Stat implements BlobStatter.Stat by returning the descriptor for the blob
 // in the main blob store. If this method returns successfully, there is

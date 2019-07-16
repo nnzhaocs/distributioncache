@@ -36,7 +36,6 @@ VOLUME ["/var/lib/registry"]
 EXPOSE 5000
 ENTRYPOINT ["registry"]
 CMD ["serve", "/etc/docker/registry/config.yml"]
-RUN mkdir -p /var/lib/registry/docker/registry/v2/pull_tars/
 RUN mkdir -p /var/lib/registry/docker/registry/v2/pull_tars/diskcache/
 
 

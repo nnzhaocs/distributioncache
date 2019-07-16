@@ -81,7 +81,7 @@ func (lbs *linkedBlobStore) ServeBlob(ctx context.Context, w http.ResponseWriter
 		w.Header().Set("Content-Type", canonical.MediaType)
 	}
 
-	return lbs.blobServer.ServeBlob(ctx, w, r, canonical.Digest)
+	return lbs.blobServer.ServeBlob(ctx, w, r, canonical.Digest, registry)
 }
 
 func (lbs *linkedBlobStore)ServeHeadBlob(ctx context.Context, w http.ResponseWriter, r *http.Request, dgst digest.Digest) error {

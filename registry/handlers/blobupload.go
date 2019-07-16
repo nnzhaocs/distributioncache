@@ -126,10 +126,10 @@ func (buh *blobUploadHandler) StartBlobUpload(w http.ResponseWriter, r *http.Req
 		}
 	}
 	//context.GetLogger(ctx).Infof("NANNAN: StartBlobUpload: blob object")
-	log.Warnf("NANNAN: StartBlobUpload: blob object")
+//	log.Warnf("NANNAN: StartBlobUpload: blob object")
 	blobs := buh.Repository.Blobs(buh)
 	//context.GetLogger(ctx).Infof("NANNAN: StartBlobUpload: create blob object")
-	log.Warnf("NANNAN: StartBlobUpload: create blob object")
+//	log.Warnf("NANNAN: StartBlobUpload: create blob object")
 	upload, err := blobs.Create(buh, options...)
 
 	if err != nil {
@@ -191,13 +191,13 @@ func (buh *blobUploadHandler) PatchBlobData(w http.ResponseWriter, r *http.Reque
 	}
 
 	// TODO(dmcgowan): support Content-Range header to seek and write range
-	log.Warnf("NANNAN: PatchBlobData: copyFullPayload")
+//	log.Warnf("NANNAN: PatchBlobData: copyFullPayload")
 	//copyFullPayload(responseWriter http.ResponseWriter, r *http.Request, destWriter io.Writer, context ctxu.Context, action string, errSlice *errcode.Errors)
 	if err := copyFullPayload(w, r, buh.Upload, buh, "blob PATCH", &buh.Errors); err != nil {
 		// copyFullPayload reports the error if necessary
 		return
 	}
-	log.Warnf("NANNAN: PatchBlobData: blobUploadResponse")
+//	log.Warnf("NANNAN: PatchBlobData: blobUploadResponse")
 	if err := buh.blobUploadResponse(w, r, false); err != nil {
 		buh.Errors = append(buh.Errors, errcode.ErrorCodeUnknown.WithDetail(err))
 		return

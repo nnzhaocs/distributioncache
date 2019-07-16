@@ -360,7 +360,7 @@ func NewApp(ctx context.Context, config *configuration.Configuration) *App {
 			cacheProvider := rediscache.NewRedisBlobDescriptorCacheProvider(app.redis)
 
 			//NANNAN
-			filecacheProvider := rediscache.NewRedisFileDescriptorCacheProvider(app.redis, app.cluster, hostip)
+			filecacheProvider := rediscache.NewRedisDedupMetadataServiceCacheProvider(app.redis, app.cluster, hostip)
 
 			localOptions := append(options, storage.BlobDescriptorCacheProviderWithFileCache(cacheProvider, filecacheProvider))
 			app.registry, err = storage.NewRegistry(app, hostip, servers, app.driver, localOptions...)

@@ -11,12 +11,12 @@ import (
 	"github.com/docker/distribution/reference"
 	"github.com/docker/distribution/registry/storage/cache"
 	storagedriver "github.com/docker/distribution/registry/storage/driver"
-	blobcache "github.com/docker/distribution/registry/storage/driver/cache"
+	regCache "github.com/docker/distribution/registry/storage/driver/cache"
 	"github.com/docker/libtrust"
 	//roundrobin "github.com/hlts2/round-robin"
 	//nannan
 	//"github.com/serialx/hashring"
-	lru "github.com/docker/distribution/lru"
+	
 	"fmt"
 	"net/url"
 )
@@ -24,29 +24,30 @@ import (
 // registry is the top-level implementation of Registry for use in the storage
 // package. All instances should descend from this object.
 type registry struct {
-	blobStore  *blobStore
-	blobServer *blobServer
-	statter    *blobStatter // global statter service.
+	blobStore  						*blobStore
+	blobServer 						*blobServer
+	statter    						*blobStatter // global statter service.
 
-	//NANNAN: add a filestatter
-	//	filestatter					 *FileStatter
+	blobDescriptorCacheProvider 	cache.BlobDescriptorCacheProvider	
+	metdataService 					cache.DedupMetadataServiceCacheProvider //NANNAN: add a metdataService for dedup	
 
-	blobDescriptorCacheProvider cache.BlobDescriptorCacheProvider
+	deleteEnabled                	bool
+	resumableDigestEnabled      	bool
+	schema1SigningKey            	libtrust.PrivateKey
+	blobDescriptorServiceFactory 	distribution.BlobDescriptorServiceFactory
+	manifestURLs                 	manifestURLs
 
-	//NANNAN: add a fileDescriptorCacheProvider for dedup
-	serverIp                    string
-	fileDescriptorCacheProvider cache.FileDescriptorCacheProvider
-
-	deleteEnabled                bool
-	resumableDigestEnabled       bool
-	schema1SigningKey            libtrust.PrivateKey
-	blobDescriptorServiceFactory distribution.BlobDescriptorServiceFactory
-	manifestURLs                 manifestURLs
-
-	smalltarfcnt 				int
+	restoringlayermap				sync.Map /* only one uniq layer will be restored, currently restoring layers */
+	restoringslicermap				sync.Map /* only one uniq slice will be restored, currently restoring layers */
 	
-
-	//ring					     hashring.HashRing
+	repullratiothres				float32
+	compr_level 					int
+	hostserverIp                    string
+	
+	layerslicingfnctthres			int
+	
+	servers 						[]*url.URL
+	blobcache                       *regCache.RegCache
 }
 
 // manifestURLs holds regular expressions for controlling manifest URL whitelisting
@@ -159,22 +160,21 @@ func BlobDescriptorServiceFactory(factory distribution.BlobDescriptorServiceFact
 // BlobDescriptorCacheProvider returns a functional option for
 // NewRegistry. It creates a cached blob statter for use by the
 // registry.
-func BlobDescriptorCacheProviderWithFileCache(blobDescriptorCacheProvider cache.BlobDescriptorCacheProvider, fileDescriptorCacheProvider cache.FileDescriptorCacheProvider) RegistryOption {
+func BlobDescriptorCacheProviderWithFileCache(blobDescriptorCacheProvider cache.BlobDescriptorCacheProvider, metdataService cache.DedupMetadataServiceCacheProvider) RegistryOption {
 	// TODO(aaronl): The duplication of statter across several objects is
 	// ugly, and prevents us from using interface types in the registry
 	// struct. Ideally, blobStore and blobServer should be lazily
 	// initialized, and use the current value of
 	// blobDescriptorCacheProvider.
-	//NANNAN: statter == inmemory or redis
+
 	return func(registry *registry) error {
 		if blobDescriptorCacheProvider != nil {
-			statter := cache.NewCachedBlobStatterWithFileCache(blobDescriptorCacheProvider, fileDescriptorCacheProvider, registry.statter)
+			statter := cache.NewCachedBlobStatterWithMetadataCache(blobDescriptorCacheProvider, metdataService, registry.statter)
 			registry.blobStore.statter = statter
 			registry.blobServer.statter = statter
 			registry.blobDescriptorCacheProvider = blobDescriptorCacheProvider
-			registry.fileDescriptorCacheProvider = fileDescriptorCacheProvider
-			registry.blobServer.fileDescriptorCacheProvider = fileDescriptorCacheProvider
-			//			registry.blobServer.filestatter = statter
+			registry.metdataService = metdataService
+			registry.blobServer.metdataService = metdataService
 		}
 		return nil
 	}
@@ -189,7 +189,7 @@ func BlobDescriptorCacheProvider(blobDescriptorCacheProvider cache.BlobDescripto
 	// struct. Ideally, blobStore and blobServer should be lazily
 	// initialized, and use the current value of
 	// blobDescriptorCacheProvider.
-	//NANNAN: statter == inmemory or redis
+
 	return func(registry *registry) error {
 		if blobDescriptorCacheProvider != nil {
 			statter := cache.NewCachedBlobStatter(blobDescriptorCacheProvider, registry.statter)
@@ -223,7 +223,7 @@ func NewRegistry(ctx context.Context, serverIp string, servers []*url.URL, drive
 			driver:   driver,
 			statter:  statter,
 			pathFn:   bs.path,
-			cache:    new(blobcache.MemCache),
+			cache:    new(regCache.RegCache),
 			serverIp: serverIp,
 			servers:  servers,
 		},

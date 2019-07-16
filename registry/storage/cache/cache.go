@@ -17,10 +17,8 @@ type BlobDescriptorCacheProvider interface {
 }
 
 //NANNAN
-type FileDescriptorCacheProvider interface {
-	distribution.FileDescriptorService
-
-//	RepositoryScoped(repo string) (distribution.FileDescriptorService, error)
+type DedupMetadataServiceCacheProvider interface {
+	distribution.redisDedupMetadataService
 }
 
 // ValidateDescriptor provides a helper function to ensure that caches have

@@ -2,161 +2,296 @@ package cache
 
 import (
 	"fmt"
-
+	"time"
 	"github.com/allegro/bigcache"
-	//"github.com/juju/errors"
-	//	diskcache "gopkg.in/stash.v1"
-	//lru "github.com/hashicorp/golang-lru"
+	"github.com/peterbourgon/diskv"
+	"github.com/distribution/registry/storage/driver/cache/gcache"
 )
-
-type MemCache struct {
-	Mc *bigcache.BigCache
-	Dc *bigcache.BigCache
-	//	Dc *diskcache.Cache
-	//	numElements int64
-	//	readMiss    float32
-	//	readHit     float32
-	arc      bool
-	capacity int
-	disksize int
-	diskcnt  int
-	//	entryLimit  int
+// preconstruction cache
+type BlobCache struct {
+	MemCache 				*bigcache.BigCache  
+	DiskCache 				*diskv.Diskv   
+	
+	FileLST					*gcache.ARC  
+	LayerLST				*gcache.ARC  
+	SliceLST				*gcache.ARC  
 }
 
-func (cache *MemCache) Init() error {
+const (
+	TYPE_EXPIARTION_REPO = "expirationrepo"
+	TYPE_EXPIARTION_USR  = "expirationusr"
+)
+
+var TYPE_EXPIARTION string 
+var DefaultTTL		int
+
+func (cache *BlobCache) SetTTL(usrttl int, repottl int, tp string) error {
+	
+	if tp == "expirationrepo"{
+		DefaultTTL = repottl 
+		TYPE_EXPIARTION = TYPE_EXPIARTION_REPO 
+	}else{
+		DefaultTTL = usrttl 
+		TYPE_EXPIARTION = TYPE_EXPIARTION_USR
+	}
+	fmt.Printf("NANNAN: DefaultTTL: %d\n\n", cache.DefaultTTL)
+	return nil
+}
+
+func (cache *BlobCache) NewARClsts(FileCacheCap int, LayerCacheCap int64, SliceCacheCap int64) error {
+	cache.FileLST = gcache.New(FileCacheCap * 1024 * 1024).ARC().EvictedFunc(func(key, value interface{})){
+			cache.MemCache.Delete(key)
+			fmt.Println("NANNAN: evicted key:", key)
+	}).
+	Expiration(DefaultTTL).
+	Build()
+	cache.LayerLST = gcache.New(LayerCacheCap * 1024 * 1024).ARC().EvictedFunc(func(key, value interface{})){
+			cache.DiskCache.Erase(key)
+			fmt.Println("NANNAN: evicted key:", key)
+	}).
+	Expiration(DefaultTTL).
+	Build()
+	cache.SliceLST = gcache.New(SliceCacheCap * 1024 * 1024).ARC().EvictedFunc(func(key, value interface{})){
+			cache.DiskCache.Erase(key)
+			fmt.Println("NANNAN: evicted key:", key)
+	}).
+	Expiration(DefaultTTL).
+	Build()
+
+	fmt.Printf("NANNAN: FileCacheCap: %d B, LayerCacheCap: %d B, SliceCacheCap: %d B\n\n", 
+		FileCacheCap, LayerCacheCap, SliceCacheCap)
+	return  
+}
+
+func (cache *BlobCache) Init() error {
 	config := bigcache.Config{
-		Shards: 8,
-		//LifeWindow:       600 * time.Minute,
-		//MaxEntrySize:     500 * 1024 * 1024,
-		Verbose:          true,
-		HardMaxCacheSize: cache.disksize,
-		OnRemove:         nil,
+		Shards: 				2,
+		LifeWindow: 			3600 * time.Minute,
+		Verbose:          		true,
+		HardMaxCacheSize: 		int(cache.FileCacheCap * 1.2),
+		OnRemove:         		nil,
 	}
-	c, err := bigcache.NewBigCache(config)
+	MemCache, err := bigcache.NewBigCache(config)
 	if err != nil {
+		fmt.Printf("NANNAN: cannot create BlobCache \n")
 		return err
 	}
-	cache.Mc = c
-	//	dc, err := diskcache.New(
-	//		"/var/lib/registry/docker/registry/v2/pull_tars/diskcache/",
-	//		cache.disksize,
-	//		int64(cache.diskcnt))
-
-	config2 := bigcache.Config{
-		Shards: 2,
-		//LifeWindow:       600 * time.Minute,
-		//MaxEntrySize:     500 * 1024 * 1024,
-		Verbose:          true,
-		HardMaxCacheSize: cache.capacity,
-		OnRemove:         nil,
+	cache.MemCache = MemCache
+	
+	pth := "/var/lib/registry/docker/registry/v2/pull_tars/diskcache/"
+	err := os.MkdirAll(pth, 0777)
+	if err != nil{
+		fmt.Printf("NANNAN: cannot create DiskCache \n")
 	}
-	dc, err := bigcache.NewBigCache(config2)
-	if err != nil {
-		return err
-	}
+	
+	flatTransform := func(s string) []string { return []string{} }
+	DiskCache := diskv.New(diskv.Options{
+		BasePath:     			pth,
+		Transform:    			flatTransform,
+		CacheSizeMax: 			1024 * 1024 * 64,
+	})
+	
+	cache.DiskCache = DiskCache
 
-	cache.Dc = dc
-	fmt.Printf("NANNAN: ====================> cache capacity: %d MB, %d MB, and %d =================> \n\n",
-		cache.capacity,
-		cache.disksize,
-		cache.diskcnt)
-
+	fmt.Printf("NANNAN: init cache: mem cache capacity: %d MB \n\n",
+		int(cache.FileCacheCap * 1.2))
 	return err
 }
 
-//func (cache *MemCache) GetEntryLimit() int {
-//	return cache.entryLimit
-//}
+func LayerHashKey(dgst string) string {
+	return "Layer::" + dgst
+}
 
-func (cache *MemCache) SetType(t string) error {
-	switch t {
-	case "arc":
-		cache.arc = true
-	default:
-		cache.arc = false
+func SliceHashKey(dgst string) string {
+	return "Slice::" + dgst
+}
+func FileHashKey(dgst string) string {
+	return "File::" + dgst
+}
+
+type Value struct{
+	Size 	 		int
+	KeyExpire		string
+}
+
+func (cache *BlobCache) SetLayer(usrname string, reponame string, layerdgst string, bss []byte) bool {	
+	key := LayerHashKey(layerdgst)
+	size := len(bss)
+	var val Value
+	
+	if TYPE_EXPIARTION == TYPE_EXPIARTION_REPO{
+		val = Value{
+			Size:			size,
+			KeyExpire:		reponame,		
+		}
+	}else{
+		val = Value{
+			Size:			size,
+			KeyExpire:		usrname,		
+		}
+		
 	}
-	fmt.Printf("cache type: %s\n\n", t)
-	return nil
+	
+	if err := cache.LayerLST.SetWithExpire(key, val, DefaultTTL); err != nil{
+		fmt.Printf("NANNAN: BlobCache cannot set dgst %s: %v\n", dgst, err)
+		return err	
+	}
+	
+	if ok := cache.DiskCache.Has(key); ok{
+		return true
+	}
+	
+	if err := cache.DiskCache.Write(key, bss); err != nil{
+		fmt.Printf("NANNAN: BlobCache cannot set dgst %s: %v\n", dgst, err)
+		return false
+	}
+	return true
 }
 
-func (cache *MemCache) SetSize(size int) error {
-	cache.capacity = size //* 1024 * 1024
-	fmt.Printf("Cache Size: %d MB\n\n", cache.capacity)
-	return nil
+func (cache *BlobCache) GetLayer(usrname string, reponame string, dgst string) ([]byte, bool) {
+	key := LayerHashKey(dgst)
+	var val Value
+	
+	if TYPE_EXPIARTION == TYPE_EXPIARTION_REPO{
+		val = Value{
+			Size:			0,
+			KeyExpire:		reponame,		
+		}
+	}else{
+		val = Value{
+			Size:			0,
+			KeyExpire:		usrname,		
+		}
+		
+	}
+	if _, err := cache.LayerLST.Get(key, val); err != nil{
+		fmt.Printf("NANNAN: BlobCache cannot get dgst %s: %v\n", dgst, err)
+	}
+	
+	bss, err != cache.DiskCache.Read(key)
+	if err != nil{
+		fmt.Printf("NANNAN: BlobCache cannot get dgst %s: %v\n", dgst, err)
+		return nil, false
+	}
+	return bss, true
 }
 
-func (cache *MemCache) SetDiskCacheSize(size int) error {
-	cache.disksize = size // * 1024 * 1024)
-	fmt.Printf("Disk cache Size: %d\n\n", cache.disksize)
-	return nil
+func (cache *BlobCache) SetSlice(usrname string, reponame string, dgst string, bss []byte) bool {
+	key := SliceHashKey(layerdgst)
+	size := len(bss)
+	var val Value
+	
+	if TYPE_EXPIARTION == TYPE_EXPIARTION_REPO{
+		val = Value{
+			Size:			size,
+			KeyExpire:		reponame,		
+		}
+	}else{
+		val = Value{
+			Size:			size,
+			KeyExpire:		usrname,		
+		}
+		
+	}
+	
+	if err := cache.SliceLST.SetWithExpire(key, val, DefaultTTL); err != nil{
+		fmt.Printf("NANNAN: BlobCache cannot set dgst %s: %v\n", dgst, err)
+		return err	
+	}
+	
+	if ok := cache.DiskCache.Has(key); ok{
+		return true
+	}
+	
+	if err := cache.DiskCache.Write(key, bss); err != nil{
+		fmt.Printf("NANNAN: BlobCache cannot set dgst %s: %v\n", dgst, err)
+		return false
+	}
+	return true
 }
 
-func (cache *MemCache) SetDiskCacheCnt(cnt int) error {
-	cache.diskcnt = cnt
-	fmt.Printf("Disk cnt: %d\n\n", cache.diskcnt)
-	return nil
+func (cache *BlobCache) GetSlice(usrname string, reponame string, dgst string) ([]byte, bool) {
+	key := SliceHashKey(dgst)
+	var val Value
+	
+	if TYPE_EXPIARTION == TYPE_EXPIARTION_REPO{
+		val = Value{
+			Size:			0,
+			KeyExpire:		reponame,		
+		}
+	}else{
+		val = Value{
+			Size:			0,
+			KeyExpire:		usrname,		
+		}
+		
+	}
+	if _, err := cache.SliceLST.Get(key, val); err != nil{
+		fmt.Printf("NANNAN: BlobCache cannot get dgst %s: %v\n", dgst, err)
+	}
+	
+	bss, err != cache.DiskCache.Read(key)
+	if err != nil{
+		fmt.Printf("NANNAN: BlobCache cannot get dgst %s: %v\n", dgst, err)
+		return nil, false
+	}
+	return bss, true
 }
 
-//func (cache *MemCache) SetEntrylimit(entryLimit int) error {
-//	cache.entryLimit = entryLimit * 1024 * 1024
-//	fmt.Printf("CacheSize: %d\n\n", cache.entryLimit)
-//	return nil
-//}
+func (cache *BlobCache) SetFile(usrname string, reponame string, dgst string, bss []byte) bool {
+	key := FileHashKey(dgst)
+	size := len(bss)
+	var val Value
+	
+	if TYPE_EXPIARTION == TYPE_EXPIARTION_REPO{
+		val = Value{
+			Size:			size,
+			KeyExpire:		reponame,		
+		}
+	}else{
+		val = Value{
+			Size:			size,
+			KeyExpire:		usrname,		
+		}
+		
+	}
+	
+	if err := cache.FileLST.SetWithExpire(key, val, DefaultTTL); err != nil{
+		fmt.Printf("NANNAN: BlobCache cannot set dgst %s: %v\n", dgst, err)
+		return err	
+	}
+	
+	if err := cache.MemCache.Set(key, bss); err != nil{
+		fmt.Printf("NANNAN: BlobCache cannot set dgst %s: %v\n", dgst, err)
+		return false
+	}
+	return true
+}
 
-//func (cache *MemCache) Set(k string, v []byte) {
-//	err := cache.mc.Set(k, v)
-//	if err != nil {
-//		log.Debugf("ali:cache set failed on %s", k)
-//	}
-//	cache.numElements++
-//}
-//
-//func (cache *MemCache) Get(k string) ([]byte, error) {
-//	v, err := cache.mc.Get(k)
-//	if err != nil {
-//		//return nil, errors.Trace(err)
-//		cache.readMiss++
-//	} else {
-//		//		log.Debugf("ali:cache get v=%s", v)
-//		cache.readHit++
-//	}
-//	return v, nil
-//}
-
-//func (cache *MemCache) GetRHR() float32 {
-//	if cache.readHit == 0 && cache.readMiss == 0 {
-//		return 0
-//	}
-//	return cache.readHit / (cache.readHit + cache.readMiss)
-//}
-//
-//func (cache *MemCache) GetNumElem() int64 {
-//	return cache.numElements
-//}
-
-// ali: cache size in MB
-//func Init(maxSize int) *MemCache {
-//	config := bigcache.Config{
-//		Shards:           1024,
-//		LifeWindow:       600 * time.Minute,
-//		MaxEntrySize:     1024 * 1024,
-//		Verbose:          true,
-//		HardMaxCacheSize: maxSize,
-//		OnRemove:         nil,
-//	}
-//	cache, err := bigcache.NewBigCache(config)
-//	if err != nil {
-//		return nil
-//	}
-//
-//	log.Debugf("ali:initialized mem cache with %v MB memory", maxSize)
-//	return &MemCache{
-//		mc:          cache,
-//		numElements: 0,
-//		readMiss:    0.0,
-//		readHit:     0.0,
-//		arc:         true,
-//		capacity:    0,
-//		entryLimit:  0,
-//	}
-//}
+func (cache *BlobCache) GetFile(usrname string, reponame string, dgst string) ([]byte, bool) {
+	key := FileHashKey(dgst)
+	var val Value
+	
+	if TYPE_EXPIARTION == TYPE_EXPIARTION_REPO{
+		val = Value{
+			Size:			0,
+			KeyExpire:		reponame,		
+		}
+	}else{
+		val = Value{
+			Size:			0,
+			KeyExpire:		usrname,		
+		}
+		
+	}
+	if _, err := cache.FileLST.Get(key, val); err != nil{
+		fmt.Printf("NANNAN: BlobCache cannot get dgst %s: %v\n", dgst, err)
+	}
+	
+	bss, err != cache.MemCache.Get(key)
+	if err != nil{
+		fmt.Printf("NANNAN: BlobCache cannot get dgst %s: %v\n", dgst, err)
+		return nil, false
+	}
+	return bss, true
+}
