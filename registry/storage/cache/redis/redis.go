@@ -1,6 +1,7 @@
 package redis
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/docker/distribution"
@@ -12,7 +13,7 @@ import (
 	//NANNAN
 	//"encoding/json"
 	// "net"
-	"os"
+
 	//	"flag"
 	//rejson "github.com/secondspass/go-rejson"
 	//	"log"
@@ -37,7 +38,8 @@ import (
 // HERE, we store dbNoBlobl and dbNoBFRecipe on a redis standalone
 // we store dbNoFile on a redis cluster
 var (
-	dbNoBlob        = 0
+	dbNoBlob = 0
+
 //	dbNoFile        = 1
 //	dbNoBFRecipe    = 2
 //	dbNoSFRecipe    = 3
@@ -314,9 +316,9 @@ func (rsrbds *repositoryScopedRedisBlobDescriptorService) repositoryBlobSetKey(r
 
 //NANNAN: for deduplication
 type redisDedupMetadataService struct {
-	pool          	*redis.Pool
-	hostserverIp 	string
-	cluster  		*redisgo.ClusterClient
+	pool         *redis.Pool
+	hostserverIp string
+	cluster      *redisgo.ClusterClient
 }
 
 // NewRedisBlobDescriptorCacheProvider returns a new redis-based
@@ -324,8 +326,8 @@ type redisDedupMetadataService struct {
 func NewRedisDedupMetadataServiceCacheProvider(pool *redis.Pool, cluster *redisgo.ClusterClient, host_ip string) cache.DedupMetadataServiceCacheProvider {
 	fmt.Printf("NANNAN: hostip: " + host_ip + "\n")
 	return &redisDedupMetadataService{
-		pool:     pool,
-		cluster:  cluster,
+		pool:         pool,
+		cluster:      cluster,
 		hostserverIp: host_ip,
 	}
 }
@@ -363,9 +365,9 @@ func (rdms *redisDedupMetadataService) SetFileDescriptor(ctx context.Context, dg
 		context.GetLogger(ctx).Errorf("NANNAN: redis cluster cannot set value for key %s", err)
 		return err
 	}
-	if set == true{
+	if set == true {
 		return nil
-	}else{
+	} else {
 		context.GetLogger(ctx).Errorf("NANNAN: key %s already exsist!", dgst.String())
 		return errors.New("key already exsits")
 	}
@@ -429,7 +431,6 @@ func (rdms *redisDedupMetadataService) StatSliceRecipe(ctx context.Context, dgst
 	}
 }
 
-
 func (rdms *redisDedupMetadataService) SetSliceRecipe(ctx context.Context, dgst digest.Digest, desc distribution.SliceRecipeDescriptor) error {
 
 	err := rdms.cluster.SetNX(rdms.SliceRecipeHashKey(dgst), &desc, 0).Err()
@@ -449,7 +450,6 @@ func (rdms *redisDedupMetadataService) RLMapHashKey(ctx context.Context, reponam
 func (rdms *redisDedupMetadataService) ULMapHashKey(ctx context.Context, usrname string) string {
 	return "ULMap::" + usrname
 }
-
 
 func (rdms *redisDedupMetadataService) StatRLMapEntry(ctx context.Context, reponame string) (distribution.RLmapEntry, error) {
 
