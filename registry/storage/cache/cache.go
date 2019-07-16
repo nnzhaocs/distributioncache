@@ -18,7 +18,7 @@ type BlobDescriptorCacheProvider interface {
 
 //NANNAN
 type DedupMetadataServiceCacheProvider interface {
-	distribution.redisDedupMetadataService
+	distribution.RedisDedupMetadataService
 }
 
 // ValidateDescriptor provides a helper function to ensure that caches have

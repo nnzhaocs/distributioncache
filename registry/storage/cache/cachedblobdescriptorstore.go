@@ -24,17 +24,17 @@ type MetricsTracker interface {
 }
 
 type cachedBlobStatter struct {
-	cache     		distribution.BlobDescriptorService
-	metadatacache 	distribution.DedupMetadataService
-	backend   		distribution.BlobDescriptorService
-	tracker   		MetricsTracker
+	cache         distribution.BlobDescriptorService
+	metadatacache distribution.DedupMetadataService
+	backend       distribution.BlobDescriptorService
+	tracker       MetricsTracker
 }
 
 // NewCachedBlobStatter creates a new statter which prefers a cache and
 // falls back to a backend.
 func NewCachedBlobStatter(cache distribution.BlobDescriptorService, backend distribution.BlobDescriptorService) distribution.BlobDescriptorService {
 	return &cachedBlobStatter{
-		cache: cache,
+		cache:   cache,
 		backend: backend,
 	}
 }
@@ -43,9 +43,9 @@ func NewCachedBlobStatter(cache distribution.BlobDescriptorService, backend dist
 // falls back to a backend.
 func NewCachedBlobStatterWithMetadataCache(cache distribution.BlobDescriptorService, metadatacache distribution.DedupMetadataService, backend distribution.BlobDescriptorService) distribution.BlobDescriptorService {
 	return &cachedBlobStatter{
-		cache:     cache,
+		cache:         cache,
 		metadatacache: metadatacache,
-		backend:   backend,
+		backend:       backend,
 	}
 }
 
@@ -53,7 +53,7 @@ func NewCachedBlobStatterWithMetadataCache(cache distribution.BlobDescriptorServ
 // falls back to a backend. Hits and misses will send to the tracker.
 func NewCachedBlobStatterWithMetrics(cache distribution.BlobDescriptorService, backend distribution.BlobDescriptorService, tracker MetricsTracker) distribution.BlobStatter {
 	return &cachedBlobStatter{
-		cache: cache,
+		cache:   cache,
 		backend: backend,
 		tracker: tracker,
 	}
@@ -63,10 +63,10 @@ func NewCachedBlobStatterWithMetrics(cache distribution.BlobDescriptorService, b
 // falls back to a backend. Hits and misses will send to the tracker.
 func NewCachedBlobStatterWithMetricsWithFileCache(cache distribution.BlobDescriptorService, metadatacache distribution.DedupMetadataService, backend distribution.BlobDescriptorService, tracker MetricsTracker) distribution.BlobStatter {
 	return &cachedBlobStatter{
-		cache:     cache,
+		cache:         cache,
 		metadatacache: metadatacache,
-		backend:   backend,
-		tracker:   tracker,
+		backend:       backend,
+		tracker:       tracker,
 	}
 }
 
@@ -151,11 +151,11 @@ func (cbds *cachedBlobStatter) SetFileDescriptor(ctx context.Context, dgst diges
 	return nil
 }
 
-func (cbds *cachedBlobStatter) StatBFRecipe(ctx context.Context, dgst digest.Digest) (distribution.BFRecipeDescriptor, error) {
-	desc, err := cbds.metadatacache.StatBFRecipe(ctx, dgst)
+func (cbds *cachedBlobStatter) StatLayerRecipe(ctx context.Context, dgst digest.Digest) (distribution.LayerRecipeDescriptor, error) {
+	desc, err := cbds.metadatacache.StatLayerRecipe(ctx, dgst)
 	if err != nil {
 		if err != distribution.ErrBlobUnknown {
-			context.GetLogger(ctx).Errorf("StatBFRecipe: error retrieving descriptor from cache: %v", err)
+			context.GetLogger(ctx).Errorf("StatLayerRecipe: error retrieving descriptor from cache: %v", err)
 		}
 
 		goto fallback
@@ -182,8 +182,8 @@ fallback:
 	return desc, err
 }
 
-func (cbds *cachedBlobStatter) StatBSRecipe(ctx context.Context, dgst digest.Digest) (distribution.BSRecipeDescriptor, error) {
-	desc, err := cbds.metadatacache.StatBSRecipe(ctx, dgst)
+func (cbds *cachedBlobStatter) StatSliceRecipe(ctx context.Context, dgst digest.Digest) (distribution.SliceRecipeDescriptor, error) {
+	desc, err := cbds.metadatacache.StatSliceRecipe(ctx, dgst)
 	if err != nil {
 		if err != distribution.ErrBlobUnknown {
 			context.GetLogger(ctx).Errorf("StatBSRecipe: error retrieving descriptor from cache: %v", err)
@@ -220,9 +220,9 @@ fallback:
 
 }
 
-func (cbds *cachedBlobStatter) SetBFRecipe(ctx context.Context, dgst digest.Digest, desc distribution.BFRecipeDescriptor) error {
-	if err := cbds.metadatacache.SetBFRecipe(ctx, dgst, desc); err != nil {
-		context.GetLogger(ctx).Errorf("error adding blob file recipe descriptor %v to cache: %v", desc.BlobDigest, err)
+func (cbds *cachedBlobStatter) SetFileRecipe(ctx context.Context, dgst digest.Digest, desc distribution.FileRecipeDescriptor) error {
+	if err := cbds.metadatacache.SetFileRecipe(ctx, dgst, desc); err != nil {
+		context.GetLogger(ctx).Errorf("error adding blob file recipe descriptor %v to cache: %v", desc.Digest, err)
 	}
 	return nil
 }

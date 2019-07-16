@@ -33,13 +33,13 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 
-	"github.com/docker/distribution/registry/storage/driver/cache"
 	"github.com/mitchellh/mapstructure"
 	"github.com/ncw/swift"
 
 	"github.com/docker/distribution/context"
 	storagedriver "github.com/docker/distribution/registry/storage/driver"
 	"github.com/docker/distribution/registry/storage/driver/base"
+
 	"github.com/docker/distribution/registry/storage/driver/factory"
 	"github.com/docker/distribution/version"
 )
@@ -62,7 +62,7 @@ var readAfterWriteTimeout = 15 * time.Second
 var readAfterWriteWait = 200 * time.Millisecond
 
 // cache for blobs
-var memCache *cache.MemCache
+//var memCache *cache.MemCache
 
 // Parameters A struct that encapsulates all of the driver parameters after all values have been set
 type Parameters struct {

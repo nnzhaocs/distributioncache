@@ -89,10 +89,10 @@ func (d Descriptor) Descriptor() Descriptor {
 
 // NANNAN: if it's a layer, then, we add it's containning files'descriptor
 type FileDescriptor struct {
-	Digest 			digest.Digest  
-	FilePath 		string
-	HostServerIp 	string
-	Size 			int64
+	Digest       digest.Digest
+	FilePath     string
+	HostServerIp string
+	Size         int64
 }
 
 func (m *FileDescriptor) MarshalBinary() ([]byte, error) {
@@ -105,18 +105,19 @@ func (m *FileDescriptor) UnmarshalBinary(data []byte) error {
 
 // NANNAN: Descriptors for layer recipe
 type LayerRecipeDescriptor struct {
-	Digest 				digest.Digest 
-	MasterIp			string 
-	HostServerIps 		[]string //slice hosts
-	SliceSizeMap 		map[string]int64 // layer digest.string+"::"+server
-	UncompressionSize	int64
+	Digest            digest.Digest
+	MasterIp          string
+	HostServerIps     []string         //slice hosts
+	SliceSizeMap      map[string]int64 // layer digest.string+"::"+server
+	UncompressionSize int64
 }
+
 // NANNAN: Descriptors for slice recipe
 type SliceRecipeDescriptor struct {
-	Digest 				digest.Digest 
-	HostServerIp       	string
-	Files 				[]FileDescriptor
-	SliceSize 			int64
+	Digest       digest.Digest
+	HostServerIp string
+	Files        []FileDescriptor
+	SliceSize    int64
 }
 
 func (m *SliceRecipeDescriptor) MarshalBinary() ([]byte, error) {
@@ -135,12 +136,12 @@ func (m *LayerRecipeDescriptor) UnmarshalBinary(data []byte) error {
 	return json.Unmarshal(data, m)
 }
 
-type RLmapEntry struct{
-	Dgstmap 		map[digest.Digest]int64
+type RLmapEntry struct {
+	Dgstmap map[digest.Digest]int64
 }
 
-type ULmapEntry struct{
-	Dgstmap  		map[digest.Digest]int64 // dgst ->> pullcnt
+type ULmapEntry struct {
+	Dgstmap map[digest.Digest]int64 // dgst ->> pullcnt
 }
 
 // BlobStatter makes blob descriptors available by digest. The service may
@@ -191,15 +192,15 @@ type DedupMetadataService interface {
 	StatFile(ctx context.Context, dgst digest.Digest) (FileDescriptor, error)
 	SetFileDescriptor(ctx context.Context, dgst digest.Digest, desc FileDescriptor) error
 
-	StatLayerRecipe(ctx context.Context, dgst digest.Digest) (distribution.LayerRecipeDescriptor, error)
-	SetLayerRecipe(ctx context.Context, dgst digest.Digest, desc distribution.LayerRecipeDescriptor) error
-	StatSliceRecipe(ctx context.Context, dgst digest.Digest) (distribution.SliceRecipeDescriptor, error) 
-	SetSliceRecipe(ctx context.Context, dgst digest.Digest, desc distribution.SliceRecipeDescriptor) error
-	
-	StatRLMapEntry(ctx context.Context, reponame string) (distribution.RLmapEntry, error)
-	SetRLMapEntry(ctx context.Context, reponame string, desc distribution.RLmapEntry) error
-	StatULMapEntry(ctx context.Context, usrname string) (distribution.ULmapEntry, error)
-	SetULMapEntry(ctx context.Context, usrname string, desc distribution.ULmapEntry) error
+	StatLayerRecipe(ctx context.Context, dgst digest.Digest) (LayerRecipeDescriptor, error)
+	SetLayerRecipe(ctx context.Context, dgst digest.Digest, desc LayerRecipeDescriptor) error
+	StatSliceRecipe(ctx context.Context, dgst digest.Digest) (SliceRecipeDescriptor, error)
+	SetSliceRecipe(ctx context.Context, dgst digest.Digest, desc SliceRecipeDescriptor) error
+
+	StatRLMapEntry(ctx context.Context, reponame string) (RLmapEntry, error)
+	SetRLMapEntry(ctx context.Context, reponame string, desc RLmapEntry) error
+	StatULMapEntry(ctx context.Context, usrname string) (ULmapEntry, error)
+	SetULMapEntry(ctx context.Context, usrname string, desc ULmapEntry) error
 }
 
 // BlobDescriptorServiceFactory creates middleware for BlobDescriptorService.
@@ -319,7 +320,7 @@ type BlobWriter interface {
 	// result in a no-op. This allows use of Cancel in a defer statement,
 	// increasing the assurance that it is correctly called.
 	Cancel(ctx context.Context) error
-	Dedup(ctx context.Context, desc Descriptor) error	
+	Dedup(ctx context.Context, desc Descriptor) error
 }
 
 // BlobService combines the operations to access, read and write blobs. This

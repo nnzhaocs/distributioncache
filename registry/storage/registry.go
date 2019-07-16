@@ -1,53 +1,48 @@
 package storage
 
 import (
-	"regexp"
-
+	"fmt"
 	"net/http"
+	"net/url"
+	"regexp"
+	"sync"
 
-	//log "github.com/Sirupsen/logrus"
 	"github.com/docker/distribution"
 	"github.com/docker/distribution/context"
 	"github.com/docker/distribution/reference"
 	"github.com/docker/distribution/registry/storage/cache"
 	storagedriver "github.com/docker/distribution/registry/storage/driver"
-	regCache "github.com/docker/distribution/registry/storage/driver/cache"
+	regCache "github.com/docker/distribution/registry/storage/driver/gcache"
 	"github.com/docker/libtrust"
-	//roundrobin "github.com/hlts2/round-robin"
-	//nannan
-	//"github.com/serialx/hashring"
-	
-	"fmt"
-	"net/url"
 )
 
 // registry is the top-level implementation of Registry for use in the storage
 // package. All instances should descend from this object.
 type registry struct {
-	blobStore  						*blobStore
-	blobServer 						*blobServer
-	statter    						*blobStatter // global statter service.
+	blobStore  *blobStore
+	blobServer *blobServer
+	statter    *blobStatter // global statter service.
 
-	blobDescriptorCacheProvider 	cache.BlobDescriptorCacheProvider	
-	metdataService 					cache.DedupMetadataServiceCacheProvider //NANNAN: add a metdataService for dedup	
+	blobDescriptorCacheProvider cache.BlobDescriptorCacheProvider
+	metdataService              cache.DedupMetadataServiceCacheProvider //NANNAN: add a metdataService for dedup
 
-	deleteEnabled                	bool
-	resumableDigestEnabled      	bool
-	schema1SigningKey            	libtrust.PrivateKey
-	blobDescriptorServiceFactory 	distribution.BlobDescriptorServiceFactory
-	manifestURLs                 	manifestURLs
+	deleteEnabled                bool
+	resumableDigestEnabled       bool
+	schema1SigningKey            libtrust.PrivateKey
+	blobDescriptorServiceFactory distribution.BlobDescriptorServiceFactory
+	manifestURLs                 manifestURLs
 
-	restoringlayermap				sync.Map /* only one uniq layer will be restored, currently restoring layers */
-	restoringslicermap				sync.Map /* only one uniq slice will be restored, currently restoring layers */
-	
-	repullratiothres				float32
-	compr_level 					int
-	hostserverIp                    string
-	
-	layerslicingfnctthres			int
-	
-	servers 						[]*url.URL
-	blobcache                       *regCache.RegCache
+	restoringlayermap  sync.Map /* only one uniq layer will be restored, currently restoring layers */
+	restoringslicermap sync.Map /* only one uniq slice will be restored, currently restoring layers */
+
+	repullratiothres float32
+	compr_level      int
+	hostserverIp     string
+
+	layerslicingfnctthres int
+
+	servers   []*url.URL
+	blobcache *regCache.RegCache
 }
 
 // manifestURLs holds regular expressions for controlling manifest URL whitelisting
