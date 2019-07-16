@@ -169,29 +169,24 @@ fallback:
 	if cbds.tracker != nil {
 		cbds.tracker.Miss()
 	}
-	//metadatacache no backend
-	//	desc, err = cbds.backend.Stat(ctx, dgst)
-	//	if err != nil {
-	//		return desc, err
-	//	}
-	//
-	//	if err := cbds.metadatacache.SetFileDescriptor(ctx, dgst, desc); err != nil {
-	//		context.GetLogger(ctx).Errorf("error adding descriptor %v to cache: %v", desc.Digest, err)
-	//	}
-
 	return desc, err
+}
+
+func (rdms *redisDedupMetadataService) SetLayerRecipe(ctx context.Context, dgst digest.Digest, desc distribution.LayerRecipeDescriptor) error {
+	if err := cbds.metadatacache.SetLayerRecipe(ctx, dgst, desc); err != nil {
+		context.GetLogger(ctx).Errorf("SetLayerRecipe: error adding recipe descriptor %v to cache: %v", desc.Digest, err)
+	}
+	return nil
 }
 
 func (cbds *cachedBlobStatter) StatSliceRecipe(ctx context.Context, dgst digest.Digest) (distribution.SliceRecipeDescriptor, error) {
 	desc, err := cbds.metadatacache.StatSliceRecipe(ctx, dgst)
 	if err != nil {
 		if err != distribution.ErrBlobUnknown {
-			context.GetLogger(ctx).Errorf("StatBSRecipe: error retrieving descriptor from cache: %v", err)
+			context.GetLogger(ctx).Errorf("StatSliceRecipe: error retrieving descriptor from cache: %v", err)
 
 		}
-
 		goto fallback
-
 	}
 
 	if cbds.tracker != nil {
@@ -204,25 +199,70 @@ fallback:
 		cbds.tracker.Miss()
 
 	}
-	//metadatacache no backend
-	//  desc, err = cbds.backend.Stat(ctx, dgst)
-	//  if err != nil {
-	//      return desc, err
-	//
-	// }
-	//
-	//  if err := cbds.metadatacache.SetFileDescriptor(ctx, dgst, desc); err != nil {
-	//      context.GetLogger(ctx).Errorf("error adding descriptor %v to cache: %v", desc.Digest, err)
-	//
-	//}
-
 	return desc, err
-
 }
 
-func (cbds *cachedBlobStatter) SetFileRecipe(ctx context.Context, dgst digest.Digest, desc distribution.FileRecipeDescriptor) error {
-	if err := cbds.metadatacache.SetFileRecipe(ctx, dgst, desc); err != nil {
-		context.GetLogger(ctx).Errorf("error adding blob file recipe descriptor %v to cache: %v", desc.Digest, err)
+func (cbds *cachedBlobStatter) SetSliceRecipe(ctx context.Context, dgst digest.Digest, desc distribution.SliceRecipeDescriptor) error {
+	if err := cbds.metadatacache.SetSliceRecipe(ctx, dgst, desc); err != nil {
+		context.GetLogger(ctx).Errorf("SetSliceRecipe: error adding recipe descriptor %v to cache: %v", desc.Digest, err)
+	}
+	return nil
+}
+
+func (rdms *redisDedupMetadataService) StatRLMapEntry(ctx context.Context, reponame string) (distribution.RLmapEntry, error) {
+	desc, err := cbds.metadatacache.StatRLMapEntry(ctx, reponame)
+	if err != nil {
+		if err != distribution.ErrBlobUnknown {
+			context.GetLogger(ctx).Errorf("StatRLMapEntry: error retrieving descriptor from cache: %v", err)
+
+		}
+		goto fallback
+	}
+
+	if cbds.tracker != nil {
+		cbds.tracker.Hit()
+	}
+	return desc, nil
+fallback:
+	if cbds.tracker != nil {
+		cbds.tracker.Miss()
+
+	}
+	return desc, err	
+}
+
+func (rdms *redisDedupMetadataService) SetRLMapEntry(ctx context.Context, reponame string, desc distribution.RLmapEntry) error {
+	if err := cbds.metadatacache.SetRLMapEntry(ctx, reponame, desc); err != nil {
+		context.GetLogger(ctx).Errorf("SetRLMapEntry: error adding recipe descriptor %v to cache: %v", desc.Digest, err)
+	}
+	return nil	
+	
+}
+
+func (rdms *redisDedupMetadataService) StatULMapEntry(ctx context.Context, usrname string) (distribution.ULmapEntry, error) {
+	desc, err := cbds.metadatacache.StatULMapEntry(ctx, usrname)
+	if err != nil {
+		if err != distribution.ErrBlobUnknown {
+			context.GetLogger(ctx).Errorf("StatULMapEntry: error retrieving descriptor from cache: %v", err)
+		}
+		goto fallback
+	}
+
+	if cbds.tracker != nil {
+		cbds.tracker.Hit()
+
+	}
+	return desc, nil
+fallback:
+	if cbds.tracker != nil {
+		cbds.tracker.Miss()
+
+	}
+	return desc, err	
+}
+func (rdms *redisDedupMetadataService) SetULMapEntry(ctx context.Context, usrname string, desc distribution.ULmapEntry) error {
+	if err := cbds.metadatacache.SetULMapEntry(ctx, usrname, desc); err != nil {
+		context.GetLogger(ctx).Errorf("SetULMapEntry: error adding recipe descriptor %v to cache: %v", desc.Digest, err)
 	}
 	return nil
 }
