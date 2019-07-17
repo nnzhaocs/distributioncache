@@ -52,8 +52,10 @@ func (c *ARC) replace(key interface{}) {
 	item, ok := c.items[old]
 	if ok {
 		//NANNAN
-		c.size -= item.value
-
+		value := item.value
+		if size, ok := value.(int); ok {
+			c.size -= size
+		}
 		delete(c.items, old)
 		if c.evictedFunc != nil {
 			c.evictedFunc(item.key, item.value)
@@ -96,7 +98,9 @@ func (c *ARC) set(key interface{}, value interface{}) (interface{}, error) {
 		item.value = value
 	} else {
 		//NANNAN
-		c.size += value
+		if size, ok := value.(int); ok {
+			c.size += size
+		}
 
 		item = &arcItem{
 			clock: c.clock,
@@ -165,7 +169,7 @@ func (c *ARC) set(key interface{}, value interface{}) (interface{}, error) {
 			c.replace(key)
 		}
 	}
-	c.t1.PushFront(key)
+	c.t1.PushFront(key, value)
 	return item, nil
 }
 
@@ -302,7 +306,7 @@ func (c *ARC) Remove(key interface{}) bool {
 	defer c.mu.Unlock()
 	//NANNAN
 	value := c.items[key].value
-	if size, ok := value.(int); ok{
+	if size, ok := value.(int); ok {
 		c.size -= size
 	}
 	return c.remove(key)
@@ -461,7 +465,7 @@ func (al *arcList) PushFront(key interface{}, val interface{}) {
 		return
 	}
 	//NANNAN
-	if size, ok := val.(int); ok{
+	if size, ok := val.(int); ok {
 		al.size += size
 		al.sizes[key] = size
 	}

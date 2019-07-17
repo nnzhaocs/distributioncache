@@ -144,6 +144,26 @@ type ULmapEntry struct {
 	Dgstmap map[digest.Digest]int64 // dgst ->> pullcnt
 }
 
+func (m *RLmapEntry) MarshalBinary() ([]byte, error) {
+	return json.Marshal(m)
+
+}
+
+func (m *RLmapEntry) UnmarshalBinary(data []byte) error {
+	return json.Unmarshal(data, m)
+
+}
+
+func (m *ULmapEntry) MarshalBinary() ([]byte, error) {
+	return json.Marshal(m)
+
+}
+
+func (m *ULmapEntry) UnmarshalBinary(data []byte) error {
+	return json.Unmarshal(data, m)
+
+}
+
 // BlobStatter makes blob descriptors available by digest. The service may
 // provide a descriptor of a different digest if the provided digest is not
 // canonical.

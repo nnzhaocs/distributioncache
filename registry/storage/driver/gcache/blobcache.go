@@ -15,35 +15,42 @@ type BlobCache struct {
 	MemCache  *bigcache.BigCache
 	DiskCache *diskv.Diskv
 
-	FileLST  *ARC
-	LayerLST *ARC
-	SliceLST *ARC
+	FileLST  Cache
+	LayerLST Cache
+	SliceLST Cache
 }
 
 var DefaultTTL time.Duration
 
-func (cache *BlobCache) SetTTL(ttl int) error {
+func SetTTL(ttl int) error {
 
-	DefaultTTL = ttl * time.Millisecond
+	DefaultTTL = time.Duration(ttl) * time.Millisecond
 	fmt.Printf("NANNAN: DefaultTTL: %d\n\n", DefaultTTL)
 	return nil
 }
 
-func (cache *BlobCache) NewARClsts(FileCacheCap int, LayerCacheCap int64, SliceCacheCap int64) error {
+func Init(FileCacheCap int, LayerCacheCap int, SliceCacheCap int) (*BlobCache, error) {
+	cache := &BlobCache{}
 	cache.FileLST = New(FileCacheCap * 1024 * 1024).ARC().EvictedFunc(func(key, value interface{}) {
-		cache.MemCache.Delete(key)
+		if k, ok := key.(string); ok {
+			cache.MemCache.Delete(k)
+		}
 		fmt.Println("NANNAN: evicted key:", key)
 	}).
 		Expiration(DefaultTTL * 3).
 		Build()
 	cache.LayerLST = New(LayerCacheCap * 1024 * 1024).ARC().EvictedFunc(func(key, value interface{}) {
-		cache.DiskCache.Erase(key)
+		if k, ok := key.(string); ok {
+			cache.DiskCache.Erase(k)
+		}
 		fmt.Println("NANNAN: evicted key:", key)
 	}).
 		Expiration(DefaultTTL * 2).
 		Build()
 	cache.SliceLST = New(SliceCacheCap * 1024 * 1024).ARC().EvictedFunc(func(key, value interface{}) {
-		cache.DiskCache.Erase(key)
+		if k, ok := key.(string); ok {
+			cache.DiskCache.Erase(k)
+		}
 		fmt.Println("NANNAN: evicted key:", key)
 	}).
 		Expiration(DefaultTTL * 1).
@@ -51,28 +58,30 @@ func (cache *BlobCache) NewARClsts(FileCacheCap int, LayerCacheCap int64, SliceC
 
 	fmt.Printf("NANNAN: FileCacheCap: %d B, LayerCacheCap: %d B, SliceCacheCap: %d B\n\n",
 		FileCacheCap, LayerCacheCap, SliceCacheCap)
-	return
-}
+	//return
+	//}
 
-func (cache *BlobCache) Init() error {
+	//func (cache *BlobCache) Init() error {
+	var memcap float32 = float32(FileCacheCap) * 1.2
 	config := bigcache.Config{
 		Shards:           2,
 		LifeWindow:       3600 * time.Minute,
 		Verbose:          true,
-		HardMaxCacheSize: int(cache.FileCacheCap * 1.2),
+		HardMaxCacheSize: int(memcap),
 		OnRemove:         nil,
 	}
 	MemCache, err := bigcache.NewBigCache(config)
 	if err != nil {
-		fmt.Printf("NANNAN: cannot create BlobCache \n")
-		return err
+		fmt.Printf("NANNAN: cannot create BlobCache: %s \n", err)
+		return nil, err
 	}
 	cache.MemCache = MemCache
 
 	pth := "/var/lib/registry/docker/registry/v2/pull_tars/diskcache/"
 	err = os.MkdirAll(pth, 0777)
 	if err != nil {
-		fmt.Printf("NANNAN: cannot create DiskCache \n")
+		fmt.Printf("NANNAN: cannot create DiskCache: %s \n", err)
+		return nil, err
 	}
 
 	flatTransform := func(s string) []string { return []string{} }
@@ -85,8 +94,8 @@ func (cache *BlobCache) Init() error {
 	cache.DiskCache = DiskCache
 
 	fmt.Printf("NANNAN: init cache: mem cache capacity: %d MB \n\n",
-		int(cache.FileCacheCap*1.2))
-	return err
+		int(memcap))
+	return cache, err
 }
 
 func LayerHashKey(dgst string) string {
@@ -100,13 +109,13 @@ func FileHashKey(dgst string) string {
 	return "File::" + dgst
 }
 
-func (cache *BlobCache) SetLayer(layerdgst string, bss []byte) bool {
-	key := LayerHashKey(layerdgst)
+func (cache *BlobCache) SetLayer(dgst string, bss []byte) bool {
+	key := LayerHashKey(dgst)
 	size := len(bss)
 
 	if err := cache.LayerLST.Set(key, size); err != nil {
 		fmt.Printf("NANNAN: BlobCache cannot set dgst %s: %v\n", dgst, err)
-		return err
+		return false
 	}
 
 	if ok := cache.DiskCache.Has(key); ok {
@@ -125,6 +134,7 @@ func (cache *BlobCache) GetLayer(dgst string) ([]byte, bool) {
 
 	if _, err := cache.LayerLST.Get(key); err != nil {
 		fmt.Printf("NANNAN: BlobCache cannot get dgst %s: %v\n", dgst, err)
+		return nil, false
 	}
 
 	bss, err := cache.DiskCache.Read(key)
@@ -136,12 +146,12 @@ func (cache *BlobCache) GetLayer(dgst string) ([]byte, bool) {
 }
 
 func (cache *BlobCache) SetSlice(dgst string, bss []byte) bool {
-	key := SliceHashKey(layerdgst)
+	key := SliceHashKey(dgst)
 	size := len(bss)
 
 	if err := cache.SliceLST.Set(key, size); err != nil {
 		fmt.Printf("NANNAN: BlobCache cannot set dgst %s: %v\n", dgst, err)
-		return err
+		return false
 	}
 
 	if ok := cache.DiskCache.Has(key); ok {
@@ -159,6 +169,7 @@ func (cache *BlobCache) GetSlice(dgst string) ([]byte, bool) {
 	key := SliceHashKey(dgst)
 	if _, err := cache.SliceLST.Get(key); err != nil {
 		fmt.Printf("NANNAN: BlobCache cannot get dgst %s: %v\n", dgst, err)
+		return nil, false
 	}
 
 	bss, err := cache.DiskCache.Read(key)
@@ -175,7 +186,7 @@ func (cache *BlobCache) SetFile(dgst string, bss []byte) bool {
 
 	if err := cache.FileLST.Set(key, size); err != nil {
 		fmt.Printf("NANNAN: BlobCache cannot set dgst %s: %v\n", dgst, err)
-		return err
+		return false
 	}
 
 	if err := cache.MemCache.Set(key, bss); err != nil {
@@ -189,6 +200,7 @@ func (cache *BlobCache) GetFile(dgst string) ([]byte, bool) {
 	key := FileHashKey(dgst)
 	if _, err := cache.FileLST.Get(key); err != nil {
 		fmt.Printf("NANNAN: BlobCache cannot get dgst %s: %v\n", dgst, err)
+		return nil, false
 	}
 
 	bss, err := cache.MemCache.Get(key)

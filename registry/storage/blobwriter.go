@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"io"
 	"path"
+	"sort"
 	"strings"
 	"time"
 
 	"github.com/Sirupsen/logrus"
-	"github.com/allegro/bigcache"
 	"github.com/docker/distribution"
 	"github.com/docker/distribution/context"
 	storagedriver "github.com/docker/distribution/registry/storage/driver"
@@ -31,7 +31,6 @@ import (
 	//"strconv"
 	//"github.com/allegro/bigcache"
 	redisgo "github.com/go-redis/redis"
-	roundrobin "github.com/hlts2/round-robin"
 	digest "github.com/opencontainers/go-digest"
 )
 
@@ -504,21 +503,21 @@ func IsEmpty(name string) (bool, error) {
 }
 
 func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) error {
-	
+
 	reqtype := handlers.getType(ctx)
 	context.GetLogger(ctx).Debugf("NANNAN: Dedup: request type: %s\n", reqtype)
-	
+
 	reponame := handlers.getRepoName(ctx)
 	usrname := handlers.getUsrAddr(ctx)
 	context.GetLogger(ctx).Debugf("NANNAN: Preconstructlayers: for repo (%s) and usr (%s) for dgst (%s)", reponame, usrname, dgst.String())
-	
-	if reqtype == "MANIFEST"{
+
+	if reqtype == "MANIFEST" {
 		context.GetLogger(ctx).Debugf("NANNAN: THIS IS A MANIFEST REQUEST, no need to deduplication\n")
 		//put manifest
 		//skip update
 		return nil
 	}
-	
+
 	blobPath, err := PathFor(BlobDataPathSpec{
 		Digest: desc.Digest,
 	})
@@ -536,14 +535,14 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) e
 		return err
 	}
 	defer lfile.Close()
-	
+
 	// put this layer into cache ******
 	bss, err := ioutil.ReadFile(layerPath)
-	if err != nil{
+	if err != nil {
 		fmt.Printf("NANNAN: cannot read layer file: err: %v\n", err)
 		return err
 	}
-	
+
 	stat, err := lfile.Stat()
 	if err != nil {
 		context.GetLogger(ctx).Errorf("NANNAN: cannot get size of layer file :=>%s", layerPath)
@@ -568,15 +567,15 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) e
 		context.GetLogger(ctx).Errorf("NANNAN: %v", err)
 		return err
 	}
-	
+
 	start := time.Now()
 	err = archiver.UntarPath(layerPath, unpackPath)
 	DurationDCM := time.Since(start)
 	if err != nil {
 		context.GetLogger(ctx).Warnf("NANNAN: %s, IGNORE MINOR ERRORS", err)
 	}
-	
-	// check if it's a empty dir	
+
+	// check if it's a empty dir
 	isEmpty, _ := IsEmpty(unpackPath)
 	if isEmpty == true {
 		context.GetLogger(ctx).Debugf("NANNAN: This unpackpath is empty: %s", unpackPath)
@@ -589,23 +588,23 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) e
 		context.GetLogger(ctx).Debugf("NANNAN: This layer doesn't need deduplication, sent from othrs nodes during dedup: %s", layerPath)
 		return nil
 	}
-	
+
 	//start deduplication, first store in cache
 	reg.blobcache.SetLayer(desc.Digest.String(), bss, "PUTLAYER")
 	//update RLMap
-	rlmapentry, err := bw.blobStore.registry.metdataService.StatRLMapEntry(ctx, reponame) 
-	if err == nil{
+	rlmapentry, err := bw.blobStore.registry.metdataService.StatRLMapEntry(ctx, reponame)
+	if err == nil {
 		// exsist
 		if val, ok := rlmapentry.Dgstmap[desc.Digest]; ok {
-		    //do something here
-		}else{
+			//do something here
+		} else {
 			rlmapentry.Dgstmap[desc.Digest] = 1
 			err1 := bw.blobStore.registry.metdataService.SetRLMapEntry(ctx, reponame, rlmapentry)
-			if err1 != nil{
+			if err1 != nil {
 				return err1
 			}
 		}
-	}else{
+	} else {
 		//not exisit
 		dgstmap := make(map[digest.Digest]int)
 		dgstmap[desc.Digest] = 1
@@ -613,19 +612,19 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) e
 			Dgstmap: dgstmap,
 		}
 		err1 := bw.blobStore.registry.metdataService.SetRLMapEntry(ctx, reponame, rlmapentry)
-		if err1 != nil{
+		if err1 != nil {
 			return err1
 		}
 	}
 
 	DurationRDF, DurationSRM, DurationSFT, dirSize, err, isdedup, isforward := bw.Dodedup(ctx, unpackPath, blobPath)
-	if err != nil{
+	if err != nil {
 		return err
 	}
-	if isdedup && isforward{
-		fmt.Printf("NANNAN: Dodedup: decompression time: %.3f, dedup remove dup file time: %.3f, dedup set recipe time: %.3f, slice forward time: %.3f, compressed size: %d, uncompression size: %d\n", 
+	if isdedup && isforward {
+		fmt.Printf("NANNAN: Dodedup: decompression time: %.3f, dedup remove dup file time: %.3f, dedup set recipe time: %.3f, slice forward time: %.3f, compressed size: %d, uncompression size: %d\n",
 			DurationDCM, DurationRDF, DurationSRM, DurationSFT, comressSize, dirSize)
-	}else if isdedup{
+	} else if isdedup {
 		fmt.Printf("NANNAN: Dodedup: decompression time: %.3f, dedup remove dup file time: %.3f, dedup set recipe time: %.3f, compressed size: %d, uncompression size: %d\n",
 			DurationDCM, DurationRDF, DurationSRM, comressSize, dirSize)
 	}
@@ -641,31 +640,31 @@ func (bw *blobWriter) DoDedup(ctx context.Context, unpackPath string, blobPath s
 
 	var dirSize int64 = 0
 	var fcnt int64 = 0
-	
-	for _, sip := range bw.blobStore.registry.servers{
+
+	for _, sip := range bw.blobStore.registry.servers {
 		sliceSizeMap[sip] = 0
 	}
 
 	start = time.Now()
 	err = filepath.Walk(unpackPath, bw.CheckDuplicate(ctx, bw.blobStore.registry.hostserverIp, desc, bw.blobStore.registry.metdataService,
-							nodistributedfiles,
-							slices,
-							sliceSizeMap,
-							&dirSize,
-							&fcnt))
+		nodistributedfiles,
+		slices,
+		sliceSizeMap,
+		&dirSize,
+		&fcnt))
 
 	DurationRDF = time.Since(start)
 	if err != nil {
 		context.GetLogger(ctx).Errorf("NANNAN: %s", err)
 	}
-	
-	if fcnt == 0{
+
+	if fcnt == 0 {
 		context.GetLogger(ctx).Warnf("NANNAN: fcnt == 0 !!!")
-		return 0.0, 0.0, 0.0, 0, nil, false, false	
+		return 0.0, 0.0, 0.0, 0, nil, false, false
 	}
-	
+
 	bw.Uniqdistribution(ctx, dirSize, fcnt, nodistributedfiles, &sliceSizeMap, slices, serverForwardMap)
-	
+
 	hostserverIps := make([]string, len(slices))
 	i := 0
 	for sip := range slices {
@@ -674,34 +673,34 @@ func (bw *blobWriter) DoDedup(ctx context.Context, unpackPath string, blobPath s
 	}
 
 	des := distribution.LayerRecipeDescriptor{
-		Digest:     			desc.Digest,
-		MasterIp:				bw.blobStore.registry.hostserverIp,
-		HostServerIps:      	hostserverIps,      //RemoveDuplicateIpsFromIps(serverIps),
-		SliceSizeMap: 			sliceSizeMap,
-		UncompressionSize:		dirSize,
+		Digest:            desc.Digest,
+		MasterIp:          bw.blobStore.registry.hostserverIp,
+		HostServerIps:     hostserverIps, //RemoveDuplicateIpsFromIps(serverIps),
+		SliceSizeMap:      sliceSizeMap,
+		UncompressionSize: dirSize,
 	}
 	start = time.Now()
 	err = bw.blobStore.registry.metdataService.SetLayerRecipe(ctx, desc.Digest, des)
 	if err != nil {
 		//cleanup everything; omitted
-		return 0.0, 0.0, 0.0, 0, err, false, false	
+		return 0.0, 0.0, 0.0, 0, err, false, false
 	}
-	
-	for sip, files := range slices{
+
+	for sip, files := range slices {
 		des := distribution.SliceRecipeDescriptor{
-			Digest: 			desc.Digest,
-			HostServerIp: 		sip,
-			Files: 				files,
-			SliceSize: 			SliceSizeMap[sip],
+			Digest:       desc.Digest,
+			HostServerIp: sip,
+			Files:        files,
+			SliceSize:    SliceSizeMap[sip],
 		}
 		err = bw.blobStore.registry.metdataService.SetSliceRecipe(ctx, desc.Digest, des)
 		if err != nil {
 			//cleanup slice // omitted
-			return 0.0, 0.0, 0.0, 0, err, false, false	
+			return 0.0, 0.0, 0.0, 0, err, false, false
 		}
 	}
 	DurationSRM := time.Since(start)
-	
+
 	if len(serverForwardMap) == 0 {
 		return DurationRDF, DurationSRM, 0.0, dirSize, nil, true, false
 	}
@@ -715,10 +714,10 @@ func (bw *blobWriter) DoDedup(ctx context.Context, unpackPath string, blobPath s
 	}
 
 	if len(mvtarpaths) == 0 {
-		return 0.0, 0.0, 0.0, 0, errors.New("couldn't find mv tarpaths"), false, false	
+		return 0.0, 0.0, 0.0, 0, errors.New("couldn't find mv tarpaths"), false, false
 	}
 
-//	context.GetLogger(ctx).Debugf("NANNAN: mvtarpaths are %v", mvtarpaths)
+	//	context.GetLogger(ctx).Debugf("NANNAN: mvtarpaths are %v", mvtarpaths)
 	var wg sync.WaitGroup
 	for _, path := range mvtarpaths {
 		wg.Add(1)
@@ -726,7 +725,7 @@ func (bw *blobWriter) DoDedup(ctx context.Context, unpackPath string, blobPath s
 	}
 	wg.Wait()
 	DurationSFT := time.Since(start)
-	
+
 	return DurationRDF, DurationSRM, DurationSFT, dirSize, nil, true, true
 }
 
@@ -735,13 +734,13 @@ NANNAN check dedup
 no lock
 and skip empty file
 */
-func (bw *blobWriter) CheckDuplicate(ctx context.Context, serverIp string, desc distribution.Descriptor, db cache.FileDescriptorCacheProvider,
-					nodistributedfiles  				[]*distribution.FileDescriptor,
-					slices 								map[string][]distribution.FileDescriptor,
-					serverStoreCntMap 					map[string]int,
-					sliceSizeMap 						map[string]int64,
-					dirSize 							*int64,
-					fcnt 								*int64) filepath.WalkFunc {
+func (bw *blobWriter) CheckDuplicate(ctx context.Context, serverIp string, desc distribution.Descriptor, db cache.DedupMetadataServiceCacheProvider,
+	nodistributedfiles []*distribution.FileDescriptor,
+	slices map[string][]distribution.FileDescriptor,
+	serverStoreCntMap map[string]int,
+	sliceSizeMap map[string]int64,
+	dirSize *int64,
+	fcnt *int64) filepath.WalkFunc {
 
 	return func(fpath string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -759,7 +758,7 @@ func (bw *blobWriter) CheckDuplicate(ctx context.Context, serverIp string, desc 
 			return nil
 		}
 		defer fp.Close()
-		
+
 		stat, err := fp.Stat()
 		if err != nil {
 			context.GetLogger(ctx).Errorf("NANNAN: %s", err)
@@ -804,7 +803,7 @@ func (bw *blobWriter) CheckDuplicate(ctx context.Context, serverIp string, desc 
 		}
 
 		//to avoid invalid filepath, rename the original file to .../diff/uniquefiles/randomid/digest //tarfpath := strings.SplitN(dgst.String(), ":", 2)[1]
-		diffpath := strings.SplitN(fpath, "diff", 2)[0] 
+		diffpath := strings.SplitN(fpath, "diff", 2)[0]
 		gid := getGID()
 		tmp_dir := fmt.Sprintf("%f", gid)
 		reFPath := path.Join(diffpath, "/diff/uniquefiles", tmp_dir, strings.SplitN(dgst.String(), ":", 2)[1]) //path.Join(path.Dir(fpath), strings.SplitN(dgst.String(), ":", 2)[1])
@@ -822,42 +821,41 @@ func (bw *blobWriter) CheckDuplicate(ctx context.Context, serverIp string, desc 
 		}
 
 		fpath = reFPath
-		
-		des := distribution.FileDescriptor{
+
+		des = distribution.FileDescriptor{
 			Digest:   dgst,
 			FilePath: fpath,
-			Size: fsize,
+			Size:     fsize,
 		}
 		*nodistributedfiles = append(*nodistributedfiles, desc)
 		return nil
 	}
-}			
-					
+}
+
 func (bw *blobWriter) Uniqdistribution(
-					ctx									context.Context,
-					dirSize								int64,
-					fcnt								int64,
-					nodistributedfiles  				[]*distribution.FileDescriptor,
-					sliceSizeMap 						map[string]int64,
-					slices 								map[string][]distribution.FileDescriptor,
-					serverForwardMap					map[string][]string) bool {
-						
+	ctx context.Context,
+	dirSize int64,
+	fcnt int64,
+	nodistributedfiles []*distribution.FileDescriptor,
+	sliceSizeMap map[string]int64,
+	slices map[string][]distribution.FileDescriptor,
+	serverForwardMap map[string][]string) bool {
+
 	nodistributedSize := 0
 	nodistributedfcnt := 0
-	
-	for _, f := range nodistributedfiles{
+
+	for _, f := range nodistributedfiles {
 		nodistributedSize += f.Size
 		nodistributedfcnt += 1
-	}	
-					
-	if dirSize <= bw.blobStore.registry.layerslicingdirsizethres || nodistributedSize <= bw.blobStore.registry.layerslicingdirsizethres 
-			|| nodistributedfcnt <= bw.blobStore.registry.layerslicingfcntthres || fcnt <= bw.blobStore.registry.layerslicingfcntthres{
+	}
+
+	if dirSize <= bw.blobStore.registry.layerslicingdirsizethres || nodistributedSize <= bw.blobStore.registry.layerslicingdirsizethres || nodistributedfcnt <= bw.blobStore.registry.layerslicingfcntthres || fcnt <= bw.blobStore.registry.layerslicingfcntthres {
 		//no need to distribute
-		for _, f := range nodistributedfiles{
+		for _, f := range nodistributedfiles {
 			f.HostServerIp = bw.blobStore.registry.hostserverIp
 			err := bw.blobStore.registry.blobcache.SetFileDescriptor(ctx, f.Digest, f)
-			if err != nil{
-				if err1 := os.Remove(f.FilePath); err1 != nil{
+			if err != nil {
+				if err1 := os.Remove(f.FilePath); err1 != nil {
 					context.GetLogger(ctx).Errorf("NANNAN: Uniqdistribution: %v", err1)
 				}
 				//remove f from nodistributedfiles
@@ -866,47 +864,46 @@ func (bw *blobWriter) Uniqdistribution(
 			}
 			slices[bw.blobStore.registry.hostserverIp] = append(slices[bw.blobStore.registry.hostserverIp], f)
 		}
-		return true	
-	}					
-						
-	sort.Slice(nodistributedfiles, func(i, j int64) bool {return nodistributedfiles[i].Size > nodistributedfiles[j].Size})
-	
+		return true
+	}
+
+	sort.Slice(nodistributedfiles, func(i, j int64) bool { return nodistributedfiles[i].Size > nodistributedfiles[j].Size })
+
 	sss := make([]Pair, len(sliceSizeMap))
 	i := 0
-	
-	for sip, size := range sliceSizeMap{
+
+	for sip, size := range sliceSizeMap {
 		sss[i] = Pair{sip, size}
 		i += 1
 	}
-	
-	for _, f := range nodistributedfiles{
-		sort.Slice(sss, func(i, j int64) bool {return sss[i].second < sss[j].second})
+
+	for _, f := range nodistributedfiles {
+		sort.Slice(sss, func(i, j int64) bool { return sss[i].second < sss[j].second })
 		f.HostServerIp = sss[0].first
 		err := bw.blobStore.registry.blobcache.SetFileDescriptor(ctx, f.Digest, f)
-		if err != nil{
-			if err1 := os.Remove(f.FilePath); err1 != nil{
+		if err != nil {
+			if err1 := os.Remove(f.FilePath); err1 != nil {
 				context.GetLogger(ctx).Errorf("NANNAN: Uniqdistribution: %v", err1)
 			}
 			//remove f from nodistributedfiles
 			//skip
 			continue
 		}
-		
+
 		sss[0].second += f.Size // smallest file to smallest bucket
 		slices[sss[0].first] = append(slices[sss[0].first], f)
-		
-		
-		if sss[0].first != bw.blobStore.registry.hostserverIp{
+
+		if sss[0].first != bw.blobStore.registry.hostserverIp {
 			serverForwardMap[sss[0].first] = append(serverForwardMap[sss[0].first], f.FilePath)
 		}
 	}
-	
-	for _, pelem := range sss{
+
+	for _, pelem := range sss {
 		sliceSizeMap[pelem.first] = sliceSizeMap[pelem.second]
 	}
-	
-	return true					
-}					
+
+	return true
+}
 
 // Cancel the blob upload process, releasing any resources associated with
 // the writer and canceling the operation.

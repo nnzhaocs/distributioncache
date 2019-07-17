@@ -132,11 +132,11 @@ type PgzipFile struct {
 }
 
 type Task struct {
-	Src   string
-	Desc  string
-	Reg   *Registry
-	Tf    *TarFile
-	Ctype string
+	Src  string
+	Desc string
+	Reg  *registry
+	Tf   *TarFile
+	//Ctype string
 }
 
 func addToTarFile(tf *TarFile, path string, contents []byte) (int, error) {
@@ -202,18 +202,18 @@ func packFile(i interface{}) {
 	desc := task.Desc
 	reg := task.Reg
 	tf := task.Tf
-	ctype := task.Ctype
+	//ctype := task.Ctype
 
 	var contents *[]byte
 
 	start := time.Now()
 	//check if newsrc is in file cache
-	bfss, err := reg.blobcache.GetFile(newsrc)
-	if err == nil {
+	bfss, ok := reg.blobcache.GetFile(newsrc)
+	if ok {
 		fmt.Printf("NANNAN: file cache hit\n")
 		contents = &bfss
 	} else {
-		fmt.Printf("NANNAN: mvfile: file cache error: %v: %s", err, newsrc)
+		fmt.Printf("NANNAN: mvfile: file cache error: %v: %s", ok, newsrc)
 		fmt.Printf("NANNAN: file cache miss\n")
 
 		//check src file exists or not
@@ -232,8 +232,8 @@ func packFile(i interface{}) {
 			//put in cache
 			fmt.Printf("NANNAN: file cache put: %v B for %s", len(bfss), newsrc)
 			if len(bfss) > 0 {
-				err = reg.blobcache.SetFile(newsrc, bfss, ctype)
-				if err != nil {
+				ok = reg.blobcache.SetFile(newsrc, bfss)
+				if ok {
 					fmt.Printf("NANNAN: file cache cannot write to digest: %v: %v ", newsrc, err)
 				}
 			}
@@ -339,14 +339,14 @@ func (bs *blobServer) packAllFiles(ctx context.Context, desc distribution.SliceR
 		Tw: tw,
 	}
 
-	if constructtype == "PRECONSTRUCTSLICE" {
-		constructtype == "PREFETCHFILE"
-	}
+	//	if constructtype == "PRECONSTRUCTSLICE" {
+	//		constructtype == "PREFETCHFILE"
+	//	}
 
 	start := time.Now()
 	for _, sfdescriptor := range desc.Files {
 
-		if sfdescriptor.ServerIp != reg.hostserverIp {
+		if sfdescriptor.HostServerIp != reg.hostserverIp {
 			context.GetLogger(ctx).Debugf("NANNAN: this is not a locally available file, %v", sfdescriptor.HostServerIp) // not locally available
 			continue
 		}
@@ -358,17 +358,17 @@ func (bs *blobServer) packAllFiles(ctx context.Context, desc distribution.SliceR
 		destfpath := path.Join(tarfpath + "-" + random_dir)
 		wg.Add(1)
 		antp.Invoke(&Task{
-			Src:   sfdescriptor.FilePath, //strings.TrimPrefix(bfdescriptor.BlobFilePath, "/var/lib/registry"),
-			Desc:  destfpath,
-			Reg:   reg,
-			Tf:    tf,
-			Ctype: constructtype,
+			Src:  sfdescriptor.FilePath, //strings.TrimPrefix(bfdescriptor.BlobFilePath, "/var/lib/registry"),
+			Desc: destfpath,
+			Reg:  reg,
+			Tf:   tf,
+			//Ctype: constructtype,
 		})
 	}
 	wg.Wait()
 
 	if err := tw.Close(); err != nil {
-		context.GetLogger(ctx).Debugf("NANNAN: cannot close tar file for %v", desc.BlobDigest.String())
+		context.GetLogger(ctx).Debugf("NANNAN: cannot close tar file for %v", desc.Digest.String())
 		return 0.0
 	}
 	DurationCP := time.Since(start).Seconds()
@@ -379,6 +379,8 @@ func (bs *blobServer) TransferBlob(ctx context.Context, w http.ResponseWriter, r
 	cprssrder *bytes.Reader) (float64, error) {
 
 	path_old, err := bs.pathFn(_desc.Digest)
+	size := cprssrder.Size()
+
 	if err != nil {
 		return 0.0, err
 	}
@@ -416,7 +418,7 @@ func (bs *blobServer) TransferBlob(ctx context.Context, w http.ResponseWriter, r
 		w.Header().Set("Content-Length", fmt.Sprint(size))
 	}
 
-	start = time.Now()
+	start := time.Now()
 	http.ServeContent(w, r, _desc.Digest.String(), time.Time{}, cprssrder) //packFile)
 	DurationNTT := time.Since(start).Seconds()
 
@@ -425,7 +427,7 @@ func (bs *blobServer) TransferBlob(ctx context.Context, w http.ResponseWriter, r
 }
 
 type Restoringbuffer struct {
-	cnd  sync.Cond
+	cnd  *sync.Cond
 	bufp *bytes.Buffer
 }
 
@@ -444,13 +446,13 @@ func (bs *blobServer) NotifyPeerPreconstructLayer(ctx context.Context, dgst dige
 
 	dgststring := dgst.String()
 	var regipbuffer bytes.Buffer
-	reponame := handlers.getRepoName(ctx)
-	usrname := handlers.getUsrAddr(ctx)
+	reponame := context.getRepoName(ctx)
+	usrname := context.getUsrAddr(ctx)
 
 	desc, err := bs.metdataService.StatLayerRecipe(ctx, dgst)
 	if err != nil {
 		context.GetLogger(ctx).Warnf("NANNAN: COULDN'T FIND LAYER RECIPE: %v or Empty layer \n", err)
-		return nil
+		return false
 	}
 	regip := desc.MasterIp
 
@@ -475,21 +477,21 @@ func (bs *blobServer) NotifyPeerPreconstructLayer(ctx context.Context, dgst dige
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		context.GetLogger(ctx).Errorf("NANNAN: NotifyPeerPreconstructLayer GET URL %s, err %s", url, err)
-		return err
+		return false
 	}
 
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
 		context.GetLogger(ctx).Errorf("NANNAN: NotifyPeerPreconstructLayer Do GET URL %s, err %s", url, err)
-		return err
+		return false
 	}
 
 	if resp.StatusCode < 200 || resp.StatusCode > 299 {
 		context.GetLogger(ctx).Errorf("%s returned status code %d", regname, resp.StatusCode)
-		return errors.New("NotifyPeerPreconstructLayer to other servers, failed")
+		return false //errors.New("NotifyPeerPreconstructLayer to other servers, failed")
 	}
-	return nil
+	return true
 }
 
 /*
@@ -504,8 +506,8 @@ func (bs *blobServer) GetSliceFromRegistry(ctx context.Context, dgst digest.Dige
 
 	dgststring := dgst.String()
 	var regipbuffer bytes.Buffer
-	reponame := handlers.getRepoName(ctx)
-	usrname := handlers.getUsrAddr(ctx)
+	reponame := context.getRepoName(ctx)
+	usrname := context.getUsrAddr(ctx)
 
 	regipbuffer.WriteString(regip)
 	regipbuffer.WriteString(":5000")
@@ -543,7 +545,7 @@ func (bs *blobServer) GetSliceFromRegistry(ctx context.Context, dgst digest.Dige
 	defer resp.Body.Close()
 
 	if resp.StatusCode < 200 || resp.StatusCode > 299 {
-		context.GetLogger(ctx).Errorf("%s returned status code %d", regname, resp.StatusCode)
+		context.GetLogger(ctx).Errorf("%s returned status code %d", regip, resp.StatusCode)
 		return errors.New("get slices from other servers, failed")
 	}
 	body, err := ioutil.ReadAll(resp.Body)
@@ -564,6 +566,7 @@ func (bs *blobServer) ConstructSlice(ctx context.Context, desc distribution.Slic
 
 	rbuf := &Restoringbuffer{
 		bufp: &comprssbuf,
+		cnd:  sync.NewCond(),
 	}
 	start := time.Now()
 	rsbuf, ok := reg.restoringslicermap.LoadOrStore(dgst.String(), rbuf)
@@ -582,7 +585,7 @@ func (bs *blobServer) ConstructSlice(ctx context.Context, desc distribution.Slic
 		start := time.Now()
 		DurationCP := bs.packAllFiles(ctx, desc, &buf, constructtype)
 
-		start := time.Now()
+		start = time.Now()
 		bss := pgzipTarFile(bufp, &compressbufp, reg.compr_level)
 		DurationCMP := time.Since(start).Seconds()
 
@@ -590,7 +593,7 @@ func (bs *blobServer) ConstructSlice(ctx context.Context, desc distribution.Slic
 		rbuf.cnd.L.Unlock()
 		DurationSCT := time.Since(start).Seconds()
 
-		bss := compressbufp.Bytes()
+		bss = compressbufp.Bytes()
 
 		return bss, DurationSCT, tp
 	}
@@ -643,8 +646,8 @@ func (bs *blobServer) ConstructLayer(ctx context.Context, desc distribution.Laye
 
 func (bs *blobServer) Preconstructlayers(ctx context.Context, reg *registry) error {
 	//image preconstruction master,
-	reponame := handlers.getRepoName(ctx)
-	usrname := handlers.getUsrAddr(ctx)
+	reponame := context.getRepoName(ctx)
+	usrname := context.getUsrAddr(ctx)
 	context.GetLogger(ctx).Debugf("NANNAN: Preconstructlayers: for repo (%s) and usr (%s) for dgst (%s)", reponame, usrname, dgst.String())
 
 	rlmapentry, err := bs.metdataService.StatRLMapEntry(ctx, reponame)
@@ -700,11 +703,11 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 	}
 	DurationML := time.Since(start).Seconds()
 
-	reqtype := handlers.getType(ctx)
+	reqtype := context.getType(ctx)
 	context.GetLogger(ctx).Debugf("NANNAN: ServeBlob: type: %s\n", reqtype)
 
-	reponame := handlers.getRepoName(ctx)
-	usrname := handlers.getUsrAddr(ctx)
+	reponame := context.getRepoName(ctx)
+	usrname := context.getUsrAddr(ctx)
 	context.GetLogger(ctx).Debugf("NANNAN: Preconstructlayers: for repo (%s) and usr (%s) for dgst (%s)", reponame, usrname, dgst.String())
 
 	if reqtype == "MANIFEST" {
@@ -727,7 +730,7 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 	var bytesreader *Bytes.Reader
 	cachehit := false
 	size := 0
-	DurationML := 0.0
+	DurationML = 0.0
 	DurationMAC := 0.0
 	DurationLCT := 0.0
 	var tp string
@@ -832,7 +835,7 @@ Sendasmanifest:
 	}
 
 out:
-	DurationNTT, size, err := bs.TransferBlob(ctx, w, r, _desc, bytesreader)
+	DurationNTT, size, err = bs.TransferBlob(ctx, w, r, _desc, bytesreader)
 	if err != nil {
 		return err
 	}
@@ -880,7 +883,7 @@ out:
 				Dgstmap: dgstmap,
 			}
 		}
-		err1 := bw.blobStore.registry.metdataService.SetRLMapEntry(ctx, reponame, rlmapentry)
+		err1 = bw.blobStore.registry.metdataService.SetRLMapEntry(ctx, reponame, rlmapentry)
 		if err1 != nil {
 			return err1
 		}

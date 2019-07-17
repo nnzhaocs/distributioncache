@@ -42,7 +42,7 @@ type registry struct {
 	layerslicingfnctthres int
 
 	servers   []*url.URL
-	blobcache *regCache.RegCache
+	blobcache *regCache.BlobCache
 }
 
 // manifestURLs holds regular expressions for controlling manifest URL whitelisting

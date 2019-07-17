@@ -337,7 +337,7 @@ func (rdms *redisDedupMetadataService) fileDescriptorHashKey(dgst digest.Digest)
 	return "File::" + dgst.String()
 }
 
-var _ distribution.DedupMetadataService = &redisDedupMetadataService{}
+var _ distribution.RedisDedupMetadataService = &redisDedupMetadataService{}
 
 func (rdms *redisDedupMetadataService) StatFile(ctx context.Context, dgst digest.Digest) (distribution.FileDescriptor, error) {
 	reply, err := rdms.cluster.Get(rdms.fileDescriptorHashKey(dgst)).Result()
@@ -443,11 +443,11 @@ func (rdms *redisDedupMetadataService) SetSliceRecipe(ctx context.Context, dgst 
 
 //metadataservice for rlmap and ulmap
 
-func (rdms *redisDedupMetadataService) RLMapHashKey(ctx context.Context, reponame string) string {
+func (rdms *redisDedupMetadataService) RLMapHashKey(reponame string) string {
 	return "RLMap::" + reponame
 }
 
-func (rdms *redisDedupMetadataService) ULMapHashKey(ctx context.Context, usrname string) string {
+func (rdms *redisDedupMetadataService) ULMapHashKey(usrname string) string {
 	return "ULMap::" + usrname
 }
 
