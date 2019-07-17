@@ -17,8 +17,8 @@ const (
 var KeyNotFoundError = errors.New("Key not found.")
 
 type Cache interface {
-	Set(key interface{}, value int) error
-	SetWithExpire(key interface{}, value int, expiration time.Duration) error
+	Set(key, value interface{}) error
+	SetWithExpire(key, value interface{}, expiration time.Duration) error
 	Get(key interface{}) (interface{}, error)
 	GetIFPresent(key interface{}) (interface{}, error)
 	GetALL(checkExpired bool) map[interface{}]interface{}
@@ -53,8 +53,8 @@ type (
 	EvictedFunc      func(interface{}, interface{})
 	PurgeVisitorFunc func(interface{}, interface{})
 	AddedFunc        func(interface{}, interface{})
-	DeserializeFunc  func(interface{}, int) (interface{}, error)
-	SerializeFunc    func(interface{}, int) (interface{}, error)
+	DeserializeFunc  func(interface{}, interface{}) (interface{}, error)
+	SerializeFunc    func(interface{}, interface{}) (interface{}, error)
 )
 
 type CacheBuilder struct {
