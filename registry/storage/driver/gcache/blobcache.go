@@ -20,23 +20,11 @@ type BlobCache struct {
 	SliceLST *ARC
 }
 
-const (
-	TYPE_EXPIARTION_REPO = "expirationrepo"
-	TYPE_EXPIARTION_USR  = "expirationusr"
-)
-
-var TYPE_EXPIARTION string
 var DefaultTTL int
 
-func (cache *BlobCache) SetTTL(usrttl int, repottl int, tp string) error {
+func (cache *BlobCache) SetTTL(ttl string) error {
 
-	if tp == "expirationrepo" {
-		DefaultTTL = repottl
-		TYPE_EXPIARTION = TYPE_EXPIARTION_REPO
-	} else {
-		DefaultTTL = usrttl
-		TYPE_EXPIARTION = TYPE_EXPIARTION_USR
-	}
+	DefaultTTL = ttl*time.Millisecond
 	fmt.Printf("NANNAN: DefaultTTL: %d\n\n", cache.DefaultTTL)
 	return nil
 }
@@ -46,19 +34,19 @@ func (cache *BlobCache) NewARClsts(FileCacheCap int, LayerCacheCap int64, SliceC
 		cache.MemCache.Delete(key)
 		fmt.Println("NANNAN: evicted key:", key)
 	}).
-		Expiration(DefaultTTL).
+		Expiration(DefaultTTL*3).
 		Build()
 	cache.LayerLST = New(LayerCacheCap * 1024 * 1024).ARC().EvictedFunc(func(key, value interface{}) {
 		cache.DiskCache.Erase(key)
 		fmt.Println("NANNAN: evicted key:", key)
 	}).
-		Expiration(DefaultTTL).
+		Expiration(DefaultTTL*2).
 		Build()
 	cache.SliceLST = New(SliceCacheCap * 1024 * 1024).ARC().EvictedFunc(func(key, value interface{}) {
 		cache.DiskCache.Erase(key)
 		fmt.Println("NANNAN: evicted key:", key)
 	}).
-		Expiration(DefaultTTL).
+		Expiration(DefaultTTL*1).
 		Build()
 
 	fmt.Printf("NANNAN: FileCacheCap: %d B, LayerCacheCap: %d B, SliceCacheCap: %d B\n\n",
@@ -112,25 +100,11 @@ func FileHashKey(dgst string) string {
 	return "File::" + dgst
 }
 
-func (cache *BlobCache) SetLayer(usrname string, reponame string, layerdgst string, bss []byte) bool {
+func (cache *BlobCache) SetLayer(layerdgst string, bss []byte) bool {
 	key := LayerHashKey(layerdgst)
 	size := len(bss)
-	var val Value
 
-	if TYPE_EXPIARTION == TYPE_EXPIARTION_REPO {
-		val = Value{
-			Size:      size,
-			KeyExpire: reponame,
-		}
-	} else {
-		val = Value{
-			Size:      size,
-			KeyExpire: usrname,
-		}
-
-	}
-
-	if err := cache.LayerLST.SetWithExpire(key, val, DefaultTTL); err != nil {
+	if err := cache.LayerLST.Set(key, size); err != nil {
 		fmt.Printf("NANNAN: BlobCache cannot set dgst %s: %v\n", dgst, err)
 		return err
 	}
@@ -146,23 +120,10 @@ func (cache *BlobCache) SetLayer(usrname string, reponame string, layerdgst stri
 	return true
 }
 
-func (cache *BlobCache) GetLayer(usrname string, reponame string, dgst string) ([]byte, bool) {
+func (cache *BlobCache) GetLayer(dgst string) ([]byte, bool) {
 	key := LayerHashKey(dgst)
-	var val Value
-
-	if TYPE_EXPIARTION == TYPE_EXPIARTION_REPO {
-		val = Value{
-			Size:      0,
-			KeyExpire: reponame,
-		}
-	} else {
-		val = Value{
-			Size:      0,
-			KeyExpire: usrname,
-		}
-
-	}
-	if _, err := cache.LayerLST.Get(key, val); err != nil {
+	
+	if _, err := cache.LayerLST.Get(key); err != nil {
 		fmt.Printf("NANNAN: BlobCache cannot get dgst %s: %v\n", dgst, err)
 	}
 
@@ -174,25 +135,11 @@ func (cache *BlobCache) GetLayer(usrname string, reponame string, dgst string) (
 	return bss, true
 }
 
-func (cache *BlobCache) SetSlice(usrname string, reponame string, dgst string, bss []byte) bool {
+func (cache *BlobCache) SetSlice(dgst string, bss []byte) bool {
 	key := SliceHashKey(layerdgst)
 	size := len(bss)
-	var val Value
 
-	if TYPE_EXPIARTION == TYPE_EXPIARTION_REPO {
-		val = Value{
-			Size:      size,
-			KeyExpire: reponame,
-		}
-	} else {
-		val = Value{
-			Size:      size,
-			KeyExpire: usrname,
-		}
-
-	}
-
-	if err := cache.SliceLST.SetWithExpire(key, val, DefaultTTL); err != nil {
+	if err := cache.SliceLST.Set(key, size); err != nil {
 		fmt.Printf("NANNAN: BlobCache cannot set dgst %s: %v\n", dgst, err)
 		return err
 	}
@@ -208,23 +155,9 @@ func (cache *BlobCache) SetSlice(usrname string, reponame string, dgst string, b
 	return true
 }
 
-func (cache *BlobCache) GetSlice(usrname string, reponame string, dgst string) ([]byte, bool) {
+func (cache *BlobCache) GetSlice(dgst string) ([]byte, bool) {
 	key := SliceHashKey(dgst)
-	var val Value
-
-	if TYPE_EXPIARTION == TYPE_EXPIARTION_REPO {
-		val = Value{
-			Size:      0,
-			KeyExpire: reponame,
-		}
-	} else {
-		val = Value{
-			Size:      0,
-			KeyExpire: usrname,
-		}
-
-	}
-	if _, err := cache.SliceLST.Get(key, val); err != nil {
+	if _, err := cache.SliceLST.Get(key); err != nil {
 		fmt.Printf("NANNAN: BlobCache cannot get dgst %s: %v\n", dgst, err)
 	}
 
@@ -236,25 +169,11 @@ func (cache *BlobCache) GetSlice(usrname string, reponame string, dgst string) (
 	return bss, true
 }
 
-func (cache *BlobCache) SetFile(usrname string, reponame string, dgst string, bss []byte) bool {
+func (cache *BlobCache) SetFile(dgst string, bss []byte) bool {
 	key := FileHashKey(dgst)
 	size := len(bss)
-	var val Value
 
-	if TYPE_EXPIARTION == TYPE_EXPIARTION_REPO {
-		val = Value{
-			Size:      size,
-			KeyExpire: reponame,
-		}
-	} else {
-		val = Value{
-			Size:      size,
-			KeyExpire: usrname,
-		}
-
-	}
-
-	if err := cache.FileLST.SetWithExpire(key, val, DefaultTTL); err != nil {
+	if err := cache.FileLST.Set(key, size); err != nil {
 		fmt.Printf("NANNAN: BlobCache cannot set dgst %s: %v\n", dgst, err)
 		return err
 	}
@@ -266,23 +185,9 @@ func (cache *BlobCache) SetFile(usrname string, reponame string, dgst string, bs
 	return true
 }
 
-func (cache *BlobCache) GetFile(usrname string, reponame string, dgst string) ([]byte, bool) {
+func (cache *BlobCache) GetFile(dgst string) ([]byte, bool) {
 	key := FileHashKey(dgst)
-	var val Value
-
-	if TYPE_EXPIARTION == TYPE_EXPIARTION_REPO {
-		val = Value{
-			Size:      0,
-			KeyExpire: reponame,
-		}
-	} else {
-		val = Value{
-			Size:      0,
-			KeyExpire: usrname,
-		}
-
-	}
-	if _, err := cache.FileLST.Get(key, val); err != nil {
+	if _, err := cache.FileLST.Get(key); err != nil {
 		fmt.Printf("NANNAN: BlobCache cannot get dgst %s: %v\n", dgst, err)
 	}
 
