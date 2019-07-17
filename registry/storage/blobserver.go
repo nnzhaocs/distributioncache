@@ -427,8 +427,9 @@ func (bs *blobServer) TransferBlob(ctx context.Context, w http.ResponseWriter, r
 }
 
 type Restoringbuffer struct {
-	cnd  *sync.Cond
-	bufp *bytes.Buffer
+	sync.Mutex
+	cnd  	*sync.Cond
+	bufp 	*bytes.Buffer
 }
 
 /*
@@ -566,22 +567,23 @@ func (bs *blobServer) ConstructSlice(ctx context.Context, desc distribution.Slic
 
 	rbuf := &Restoringbuffer{
 		bufp: &comprssbuf,
-		cnd:  sync.NewCond(),
 	}
+	rbuf.cnd = sync.NewCond(rbuf)
+
 	start := time.Now()
 	rsbuf, ok := reg.restoringslicermap.LoadOrStore(dgst.String(), rbuf)
 	if ok {
-		rsbuf.cnd.L.Lock()
+		rsbuf.Lock()
 		rsbuf.cnd.Wait()
 		context.GetLogger(ctx).Debugf("NANNAN: slice construct finish waiting for digest: %v", dgst.String())
-		rsbuf.cnd.L.Unlock()
+		rsbuf.Unlock()
 		DurationWSCT := time.Since(start).Seconds()
 
 		tp := "WAITSLICECONSTRUCT"
 		bss := rsbuf.bufp.Bytes()
 		return bss, DurationWSCT, tp
 	} else {
-		rbuf.cnd.L.Lock()
+		rbuf.Lock()
 		start := time.Now()
 		DurationCP := bs.packAllFiles(ctx, desc, &buf, constructtype)
 
@@ -589,8 +591,8 @@ func (bs *blobServer) ConstructSlice(ctx context.Context, desc distribution.Slic
 		bss := pgzipTarFile(bufp, &compressbufp, reg.compr_level)
 		DurationCMP := time.Since(start).Seconds()
 
-		rbuf.cnd.L.Broadcast()
-		rbuf.cnd.L.Unlock()
+		rbuf.cnd.Broadcast()
+		rbuf.Unlock()
 		DurationSCT := time.Since(start).Seconds()
 
 		bss = compressbufp.Bytes()
@@ -611,20 +613,22 @@ func (bs *blobServer) ConstructLayer(ctx context.Context, desc distribution.Laye
 	rbuf := &Restoringbuffer{
 		bufp: &comprssbuf,
 	}
+	rbuf.cnd = sync.NewCond(rbuf)
+	
 	start := time.Now()
 	rsbuf, ok := reg.restoringlayermap.LoadOrStore(dgst.String(), rbuf)
 	if ok {
-		rsbuf.cnd.L.Lock()
+		rsbuf.Lock()
 		rsbuf.cnd.Wait()
 		context.GetLogger(ctx).Debugf("NANNAN: layer construct finish waiting for digest: %v", dgst.String())
-		rsbuf.cnd.L.Unlock()
+		rsbuf.Unlock()
 		DurationWLCT := time.Since(start).Seconds()
 
 		tp := "WAITLAYERCONSTRUCT"
 		bss := rsbuf.bufp.Bytes()
 		return bss, DurationWLCT, tp
 	} else {
-		rbuf.cnd.L.Lock()
+		rbuf.Lock()
 
 		start := time.Now()
 		for _, hserver := range desc.HostServerIps {
@@ -634,8 +638,8 @@ func (bs *blobServer) ConstructLayer(ctx context.Context, desc distribution.Laye
 		wg.Wait()
 		DurationLCT := time.Since(start).Seconds()
 
-		rbuf.cnd.L.Broadcast()
-		rbuf.cnd.L.Unlock()
+		rbuf.cnd.Broadcast()
+		rbuf.Unlock()
 
 		tp := "LAYERCONSTRUCT"
 		bss := comprssbuf.Bytes()
