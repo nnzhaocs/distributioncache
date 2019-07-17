@@ -446,8 +446,8 @@ func (bs *blobServer) NotifyPeerPreconstructLayer(ctx context.Context, dgst dige
 
 	dgststring := dgst.String()
 	var regipbuffer bytes.Buffer
-	reponame := context.getRepoName(ctx)
-	usrname := context.getUsrAddr(ctx)
+	reponame := context.GetRepoName(ctx)
+	usrname := context.GetUsrAddr(ctx)
 
 	desc, err := bs.metdataService.StatLayerRecipe(ctx, dgst)
 	if err != nil {
@@ -506,8 +506,8 @@ func (bs *blobServer) GetSliceFromRegistry(ctx context.Context, dgst digest.Dige
 
 	dgststring := dgst.String()
 	var regipbuffer bytes.Buffer
-	reponame := context.getRepoName(ctx)
-	usrname := context.getUsrAddr(ctx)
+	reponame := context.GetRepoName(ctx)
+	usrname := context.GetUsrAddr(ctx)
 
 	regipbuffer.WriteString(regip)
 	regipbuffer.WriteString(":5000")
@@ -646,8 +646,8 @@ func (bs *blobServer) ConstructLayer(ctx context.Context, desc distribution.Laye
 
 func (bs *blobServer) Preconstructlayers(ctx context.Context, reg *registry) error {
 	//image preconstruction master,
-	reponame := context.getRepoName(ctx)
-	usrname := context.getUsrAddr(ctx)
+	reponame := context.GetRepoName(ctx)
+	usrname := context.GetUsrAddr(ctx)
 	context.GetLogger(ctx).Debugf("NANNAN: Preconstructlayers: for repo (%s) and usr (%s) for dgst (%s)", reponame, usrname, dgst.String())
 
 	rlmapentry, err := bs.metdataService.StatRLMapEntry(ctx, reponame)
@@ -703,11 +703,11 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 	}
 	DurationML := time.Since(start).Seconds()
 
-	reqtype := context.getType(ctx)
+	reqtype := context.GetType(ctx)
 	context.GetLogger(ctx).Debugf("NANNAN: ServeBlob: type: %s\n", reqtype)
 
-	reponame := context.getRepoName(ctx)
-	usrname := context.getUsrAddr(ctx)
+	reponame := context.GetRepoName(ctx)
+	usrname := context.GetUsrAddr(ctx)
 	context.GetLogger(ctx).Debugf("NANNAN: Preconstructlayers: for repo (%s) and usr (%s) for dgst (%s)", reponame, usrname, dgst.String())
 
 	if reqtype == "MANIFEST" {
