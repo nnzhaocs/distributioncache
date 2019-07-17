@@ -25,7 +25,7 @@ type MetricsTracker interface {
 
 type cachedBlobStatter struct {
 	cache         distribution.BlobDescriptorService
-	metadatacache distribution.DedupMetadataService
+	metadatacache distribution.RedisDedupMetadataService
 	backend       distribution.BlobDescriptorService
 	tracker       MetricsTracker
 }
@@ -172,7 +172,7 @@ fallback:
 	return desc, err
 }
 
-func (rdms *redisDedupMetadataService) SetLayerRecipe(ctx context.Context, dgst digest.Digest, desc distribution.LayerRecipeDescriptor) error {
+func (rdms *RedisDedupMetadataService) SetLayerRecipe(ctx context.Context, dgst digest.Digest, desc distribution.LayerRecipeDescriptor) error {
 	if err := cbds.metadatacache.SetLayerRecipe(ctx, dgst, desc); err != nil {
 		context.GetLogger(ctx).Errorf("SetLayerRecipe: error adding recipe descriptor %v to cache: %v", desc.Digest, err)
 	}
@@ -209,7 +209,7 @@ func (cbds *cachedBlobStatter) SetSliceRecipe(ctx context.Context, dgst digest.D
 	return nil
 }
 
-func (rdms *redisDedupMetadataService) StatRLMapEntry(ctx context.Context, reponame string) (distribution.RLmapEntry, error) {
+func (rdms *RedisDedupMetadataService) StatRLMapEntry(ctx context.Context, reponame string) (distribution.RLmapEntry, error) {
 	desc, err := cbds.metadatacache.StatRLMapEntry(ctx, reponame)
 	if err != nil {
 		if err != distribution.ErrBlobUnknown {
@@ -228,18 +228,18 @@ fallback:
 		cbds.tracker.Miss()
 
 	}
-	return desc, err	
+	return desc, err
 }
 
-func (rdms *redisDedupMetadataService) SetRLMapEntry(ctx context.Context, reponame string, desc distribution.RLmapEntry) error {
+func (rdms *RedisDedupMetadataService) SetRLMapEntry(ctx context.Context, reponame string, desc distribution.RLmapEntry) error {
 	if err := cbds.metadatacache.SetRLMapEntry(ctx, reponame, desc); err != nil {
 		context.GetLogger(ctx).Errorf("SetRLMapEntry: error adding recipe descriptor %v to cache: %v", desc.Digest, err)
 	}
-	return nil	
-	
+	return nil
+
 }
 
-func (rdms *redisDedupMetadataService) StatULMapEntry(ctx context.Context, usrname string) (distribution.ULmapEntry, error) {
+func (rdms *RedisDedupMetadataService) StatULMapEntry(ctx context.Context, usrname string) (distribution.ULmapEntry, error) {
 	desc, err := cbds.metadatacache.StatULMapEntry(ctx, usrname)
 	if err != nil {
 		if err != distribution.ErrBlobUnknown {
@@ -258,9 +258,9 @@ fallback:
 		cbds.tracker.Miss()
 
 	}
-	return desc, err	
+	return desc, err
 }
-func (rdms *redisDedupMetadataService) SetULMapEntry(ctx context.Context, usrname string, desc distribution.ULmapEntry) error {
+func (rdms *RedisDedupMetadataService) SetULMapEntry(ctx context.Context, usrname string, desc distribution.ULmapEntry) error {
 	if err := cbds.metadatacache.SetULMapEntry(ctx, usrname, desc); err != nil {
 		context.GetLogger(ctx).Errorf("SetULMapEntry: error adding recipe descriptor %v to cache: %v", desc.Digest, err)
 	}

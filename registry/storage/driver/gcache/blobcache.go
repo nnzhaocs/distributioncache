@@ -20,12 +20,12 @@ type BlobCache struct {
 	SliceLST *ARC
 }
 
-var DefaultTTL int
+var DefaultTTL time.Duration
 
-func (cache *BlobCache) SetTTL(ttl string) error {
+func (cache *BlobCache) SetTTL(ttl int) error {
 
-	DefaultTTL = ttl*time.Millisecond
-	fmt.Printf("NANNAN: DefaultTTL: %d\n\n", cache.DefaultTTL)
+	DefaultTTL = ttl * time.Millisecond
+	fmt.Printf("NANNAN: DefaultTTL: %d\n\n", DefaultTTL)
 	return nil
 }
 
@@ -34,19 +34,19 @@ func (cache *BlobCache) NewARClsts(FileCacheCap int, LayerCacheCap int64, SliceC
 		cache.MemCache.Delete(key)
 		fmt.Println("NANNAN: evicted key:", key)
 	}).
-		Expiration(DefaultTTL*3).
+		Expiration(DefaultTTL * 3).
 		Build()
 	cache.LayerLST = New(LayerCacheCap * 1024 * 1024).ARC().EvictedFunc(func(key, value interface{}) {
 		cache.DiskCache.Erase(key)
 		fmt.Println("NANNAN: evicted key:", key)
 	}).
-		Expiration(DefaultTTL*2).
+		Expiration(DefaultTTL * 2).
 		Build()
 	cache.SliceLST = New(SliceCacheCap * 1024 * 1024).ARC().EvictedFunc(func(key, value interface{}) {
 		cache.DiskCache.Erase(key)
 		fmt.Println("NANNAN: evicted key:", key)
 	}).
-		Expiration(DefaultTTL*1).
+		Expiration(DefaultTTL * 1).
 		Build()
 
 	fmt.Printf("NANNAN: FileCacheCap: %d B, LayerCacheCap: %d B, SliceCacheCap: %d B\n\n",
@@ -122,7 +122,7 @@ func (cache *BlobCache) SetLayer(layerdgst string, bss []byte) bool {
 
 func (cache *BlobCache) GetLayer(dgst string) ([]byte, bool) {
 	key := LayerHashKey(dgst)
-	
+
 	if _, err := cache.LayerLST.Get(key); err != nil {
 		fmt.Printf("NANNAN: BlobCache cannot get dgst %s: %v\n", dgst, err)
 	}

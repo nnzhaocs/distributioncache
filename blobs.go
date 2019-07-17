@@ -188,7 +188,7 @@ type BlobDescriptorService interface {
 // NANNAN: DedupMetadataService
 // and recipeservice
 
-type DedupMetadataService interface {
+type RedisDedupMetadataService interface {
 	StatFile(ctx context.Context, dgst digest.Digest) (FileDescriptor, error)
 	SetFileDescriptor(ctx context.Context, dgst digest.Digest, desc FileDescriptor) error
 

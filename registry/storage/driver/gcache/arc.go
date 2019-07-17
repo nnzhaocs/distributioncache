@@ -40,20 +40,20 @@ func (c *ARC) replace(key interface{}) {
 	}
 	var old interface{}
 	if c.t1.size > 0 && ((c.b2.Has(key) && c.t1.size == c.part) || (c.t1.size > c.part)) {
-		old = c.t1.RemoveTail()
-		c.b1.PushFront(old)
+		old, size := c.t1.RemoveTail()
+		c.b1.PushFront(old, size)
 	} else if c.t2.size > 0 {
-		old = c.t2.RemoveTail()
-		c.b2.PushFront(old)
+		old, size := c.t2.RemoveTail()
+		c.b2.PushFront(old, size)
 	} else {
-		old = c.t1.RemoveTail()
-		c.b1.PushFront(old)
+		old, size := c.t1.RemoveTail()
+		c.b1.PushFront(old, size)
 	}
 	item, ok := c.items[old]
 	if ok {
 		//NANNAN
 		c.size -= item.value
-		
+
 		delete(c.items, old)
 		if c.evictedFunc != nil {
 			c.evictedFunc(item.key, item.value)
@@ -61,7 +61,7 @@ func (c *ARC) replace(key interface{}) {
 	}
 }
 
-func (c *ARC) Set(key, value interface{}) error {
+func (c *ARC) Set(key interface{}, value int) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	_, err := c.set(key, value)
@@ -69,7 +69,7 @@ func (c *ARC) Set(key, value interface{}) error {
 }
 
 // Set a new key-value pair with an expiration time
-func (c *ARC) SetWithExpire(key, value interface{}, expiration time.Duration) error {
+func (c *ARC) SetWithExpire(key interface{}, value int, expiration time.Duration) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	item, err := c.set(key, value)
@@ -82,7 +82,7 @@ func (c *ARC) SetWithExpire(key, value interface{}, expiration time.Duration) er
 	return nil
 }
 
-func (c *ARC) set(key, value interface{}) (interface{}, error) {
+func (c *ARC) set(key interface{}, value int) (interface{}, error) {
 	var err error
 	if c.serializeFunc != nil {
 		value, err = c.serializeFunc(key, value)
@@ -96,8 +96,8 @@ func (c *ARC) set(key, value interface{}) (interface{}, error) {
 		item.value = value
 	} else {
 		//NANNAN
-		c.size += val
-		
+		c.size += value
+
 		item = &arcItem{
 			clock: c.clock,
 			key:   key,
@@ -125,7 +125,7 @@ func (c *ARC) set(key, value interface{}) (interface{}, error) {
 		c.setPart(minInt(c.size, c.part+maxInt(c.b2.size/c.b1.size, 1)))
 		c.replace(key)
 		c.b1.Remove(key, elt)
-		c.t2.PushFront(key)
+		c.t2.PushFront(key, value)
 		return item, nil
 	}
 
@@ -133,17 +133,17 @@ func (c *ARC) set(key, value interface{}) (interface{}, error) {
 		c.setPart(maxInt(0, c.part-maxInt(c.b1.size/c.b2.size, 1)))
 		c.replace(key)
 		c.b2.Remove(key, elt)
-		c.t2.PushFront(key)
+		c.t2.PushFront(key, value)
 		return item, nil
 	}
 
-	if c.isCacheFull() && c.t1.size + c.b1.size == c.size {
-	//if c.isCacheFull() && c.t1.Len()+c.b1.Len() == c.size {
+	if c.isCacheFull() && c.t1.size+c.b1.size == c.size {
+		//if c.isCacheFull() && c.t1.Len()+c.b1.Len() == c.size {
 		if c.t1.size < c.size {
 			c.b1.RemoveTail()
 			c.replace(key)
 		} else {
-			pop := c.t1.RemoveTail()
+			pop, _ := c.t1.RemoveTail()
 			item, ok := c.items[pop]
 			if ok {
 				delete(c.items, pop)
@@ -170,7 +170,7 @@ func (c *ARC) set(key, value interface{}) (interface{}, error) {
 }
 
 // Get a value from cache pool using key if it exists. If not exists and it has LoaderFunc, it will generate the value using you have specified LoaderFunc method returns value.
-func (c *ARC) Get(key interface{}) (interface{}, error) {
+func (c *ARC) Get(key interface{}) (int, error) {
 	v, err := c.get(key, false)
 	if err == KeyNotFoundError {
 		return c.getWithLoader(key, true)
@@ -181,7 +181,7 @@ func (c *ARC) Get(key interface{}) (interface{}, error) {
 // GetIFPresent gets a value from cache pool using key if it exists.
 // If it dose not exists key, returns KeyNotFoundError.
 // And send a request which refresh value for specified key if cache object has LoaderFunc.
-func (c *ARC) GetIFPresent(key interface{}) (interface{}, error) {
+func (c *ARC) GetIFPresent(key interface{}) (int, error) {
 	v, err := c.get(key, false)
 	if err == KeyNotFoundError {
 		return c.getWithLoader(key, false)
@@ -209,7 +209,7 @@ func (c *ARC) getValue(key interface{}, onLoad bool) (interface{}, error) {
 		//NANNAN
 		t := c.clock.Now().Add(*c.expiration)
 		item.expiration = &t
-		
+
 		if !item.IsExpired(nil) {
 			c.t2.PushFront(key)
 			if !onLoad {
@@ -229,7 +229,7 @@ func (c *ARC) getValue(key interface{}, onLoad bool) (interface{}, error) {
 		//NANNAN
 		t := c.clock.Now().Add(*c.expiration)
 		item.expiration = &t
-		
+
 		if !item.IsExpired(nil) {
 			c.t2.MoveToFront(elt)
 			if !onLoad {
@@ -308,8 +308,10 @@ func (c *ARC) remove(key interface{}) bool {
 	if elt := c.t1.Lookup(key); elt != nil {
 		c.t1.Remove(key, elt)
 		item := c.items[key]
+		//NANNAN
+		size := item.value
 		delete(c.items, key)
-		c.b1.PushFront(key)
+		c.b1.PushFront(key, size)
 		if c.evictedFunc != nil {
 			c.evictedFunc(key, item.value)
 		}
@@ -412,25 +414,25 @@ func (it *arcItem) IsExpired(now *time.Time) bool {
 }
 
 type arcList struct {
-	l    	*list.List
+	l *list.List
 	//NANNAN
-	size	int
-	sizes	map[interface{}]int
-	keys map[interface{}]*list.Element
+	size  int
+	sizes map[interface{}]int
+	keys  map[interface{}]*list.Element
 }
 
 type arcItem struct {
 	clock      Clock
 	key        interface{}
-	value      interface{}
+	value      int
 	expiration *time.Time
 }
 
 func newARCList() *arcList {
 	return &arcList{
-		l:    		list.New(),
-		sizes:		make(map[interface{}]int),
-		keys: 		make(map[interface{}]*list.Element),
+		l:     list.New(),
+		sizes: make(map[interface{}]int),
+		keys:  make(map[interface{}]*list.Element),
 	}
 }
 
@@ -456,7 +458,7 @@ func (al *arcList) PushFront(key interface{}, val int) {
 	//NANNAN
 	al.size += val
 	al.sizes[key] = val
-	
+
 	elt := al.l.PushFront(key)
 	al.keys[key] = elt
 }
@@ -465,12 +467,12 @@ func (al *arcList) Remove(key interface{}, elt *list.Element) {
 	//NANNAN
 	val := al.sizes[key]
 	al.size -= val
-	
+
 	delete(al.keys, key)
 	al.l.Remove(elt)
 }
 
-func (al *arcList) RemoveTail() interface{} {
+func (al *arcList) RemoveTail() (interface{}, int) {
 	elt := al.l.Back()
 	al.l.Remove(elt)
 
@@ -478,16 +480,16 @@ func (al *arcList) RemoveTail() interface{} {
 	//NANNAN
 	val := al.sizes[key]
 	al.size -= val
-	
+
 	delete(al.keys, key)
 
-	return key
+	return key, val
 }
 
 func (al *arcList) Len() int {
 	return al.l.Len()
 }
 
-func (al *arcList) Len() int {
+func (al *arcList) Size() int {
 	return al.size
 }
