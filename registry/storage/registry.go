@@ -3,7 +3,6 @@ package storage
 import (
 	"fmt"
 	"net/http"
-	"net/url"
 	"regexp"
 	"sync"
 
@@ -62,6 +61,7 @@ func EnableRedirect(registry *registry) error {
 	return nil
 }
 
+/*
 func SetCacheType(t string) RegistryOption {
 	return func(registry *registry) error {
 		registry.blobServer.cache.SetType(t)
@@ -82,15 +82,32 @@ func SetCacheSize(size int) RegistryOption {
 //		return nil
 //	}
 //}
-
-func SetSmallTarThreshold(smalltar int) RegistryOption {
+*/
+func SetRegistryParams(repullcntthres int64,
+	compr_level int,
+	layerslicingfcntthres int,
+	layerslicingdirsizethres int64) RegistryOption {
 	return func(registry *registry) error {
-		registry.smalltarfcnt = smalltar
-		fmt.Printf("Small tar threshold config: %d\n", smalltar)
+		registry.repullcntthres = repullcntthres
+		registry.compr_level = compr_level
+		registry.layerslicingfcntthres = layerslicingfcntthres
+		registry.layerslicingdirsizethres = layerslicingdirsizethres
+		//registry.
+		//registry.
+		//registry.
+		fmt.Printf("Registry config: repullcntthres: %d, compr_level: %d, layerslicingfcntthres: %d, layerslicingdirsizethres: %d\n", repullcntthres, compr_level, layerslicingfcntthres, layerslicingdirsizethres)
 		return nil
 	}
 }
 
+func SetCacheParams(FileCacheCap, LayerCacheCap, SliceCacheCap, ttl int) RegistryOption {
+	return func(registry *registry) error {
+		registry.blobcache.SetCapTTL(FileCacheCap, LayerCacheCap, SliceCacheCap, ttl)
+		return nil
+	}
+}
+
+/*
 func SetDiskCacheSize(size int) RegistryOption {
 	return func(registry *registry) error {
 		registry.blobServer.cache.SetDiskCacheSize(size)
@@ -104,7 +121,7 @@ func SetDiskCacheCnt(cnt int) RegistryOption {
 		return nil
 	}
 }
-
+*/
 // EnableDelete is a functional option for NewRegistry. It enables deletion on
 // the registry.
 func EnableDelete(registry *registry) error {
@@ -170,7 +187,7 @@ func BlobDescriptorCacheProviderWithFileCache(blobDescriptorCacheProvider cache.
 			registry.blobServer.statter = statter
 			registry.blobDescriptorCacheProvider = blobDescriptorCacheProvider
 			registry.metdataService = metdataService
-//			registry.metdataService = metdataService
+			//			registry.metdataService = metdataService
 			registry.blobServer.reg = registry
 		}
 		return nil
@@ -202,7 +219,7 @@ func BlobDescriptorCacheProvider(blobDescriptorCacheProvider cache.BlobDescripto
 // resulting registry may be shared by multiple goroutines but is cheap to
 // allocate. If the Redirect option is specified, the backend blob server will
 // attempt to use (StorageDriver).URLFor to serve all blobs.
-func NewRegistry(ctx context.Context, serverIp string, servers []*url.URL, driver storagedriver.StorageDriver, options ...RegistryOption) (distribution.Namespace, error) {
+func NewRegistry(ctx context.Context, serverIp string, servers []string, driver storagedriver.StorageDriver, options ...RegistryOption) (distribution.Namespace, error) {
 	// create global statter
 
 	statter := &blobStatter{
@@ -226,7 +243,7 @@ func NewRegistry(ctx context.Context, serverIp string, servers []*url.URL, drive
 		},
 		statter:                statter,
 		resumableDigestEnabled: true,
-		serverIp:               serverIp,
+		hostserverIp:           serverIp,
 	}
 
 	for _, option := range options {

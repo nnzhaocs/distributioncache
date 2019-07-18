@@ -595,7 +595,7 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) e
 	rlmapentry, err := bw.blobStore.registry.metdataService.StatRLMapEntry(ctx, reponame)
 	if err == nil {
 		// exsist
-		if val, ok := rlmapentry.Dgstmap[desc.Digest]; ok {
+		if _, ok := rlmapentry.Dgstmap[desc.Digest]; ok {
 			//do something here
 		} else {
 			rlmapentry.Dgstmap[desc.Digest] = 1
@@ -869,8 +869,8 @@ func (bw *blobWriter) Uniqdistribution(
 		return true
 	}
 
-	sort.Slice(nodistributedfiles, func(i, j int) bool { 
-			return nodistributedfiles[i].Size > nodistributedfiles[j].Size
+	sort.Slice(nodistributedfiles, func(i, j int) bool {
+		return nodistributedfiles[i].Size > nodistributedfiles[j].Size
 	})
 
 	sss := make([]Pair, len(sliceSizeMap))
@@ -882,17 +882,17 @@ func (bw *blobWriter) Uniqdistribution(
 	}
 
 	for _, f := range nodistributedfiles {
-		sort.Slice(sss, func(i, j int) bool { 
-				secondi, _ := sss[i].second.(int64)
-				secondj, _ := sss[j].second.(int64)
+		sort.Slice(sss, func(i, j int) bool {
+			secondi, _ := sss[i].second.(int64)
+			secondj, _ := sss[j].second.(int64)
 			return secondi < secondj
-			//return int(sss[i].second) < int(sss[j].second) 
+			//return int(sss[i].second) < int(sss[j].second)
 		})
-		
-		HostServerIp, _ = sss[0].first.(string)
+
+		HostServerIp, _ := sss[0].first.(string)
 		f.HostServerIp = HostServerIp
-		
-		err := bw.blobStore.registry.blobcache.SetFileDescriptor(ctx, f.Digest, f)
+
+		err := bw.blobStore.registry.metdataService.SetFileDescriptor(ctx, f.Digest, f)
 		if err != nil {
 			if err1 := os.Remove(f.FilePath); err1 != nil {
 				context.GetLogger(ctx).Errorf("NANNAN: Uniqdistribution: %v", err1)
@@ -901,13 +901,13 @@ func (bw *blobWriter) Uniqdistribution(
 			//skip
 			continue
 		}
-		
+
 		ssssecond, _ := sss[0].second.(int64)
 		ssssecond += f.Size
 		sssfirst, _ := sss[0].first.(string)
-		
+
 		sss[0].second = ssssecond // smallest file to smallest bucket
-		
+
 		slices[sssfirst] = append(slices[sssfirst], f)
 
 		if sssfirst != bw.blobStore.registry.hostserverIp {
@@ -918,7 +918,7 @@ func (bw *blobWriter) Uniqdistribution(
 	for _, pelem := range sss {
 		pelemfirst, _ := pelem.first.(string)
 		pelemsecond, _ := pelem.second.(int64)
-		sliceSizeMap[pelemfirst] = sliceSizeMap[pelemsecond]
+		sliceSizeMap[pelemfirst] = pelemsecond
 	}
 
 	return true

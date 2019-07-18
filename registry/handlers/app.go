@@ -258,83 +258,44 @@ func NewApp(ctx context.Context, config *configuration.Configuration) *App {
 			}
 		}
 	}
-	//  here use bigcache as filecache;
-	if cc, ok := config.Storage["blobcache"]; ok {
-		//fmt.Printf("hehehehehere\n\n")
-		c, ok := cc["type"]
-		if ok {
-			switch c {
-			case "lru":
-				options = append(options, storage.SetCacheType("lru"))
-			case "arc":
-				options = append(options, storage.SetCacheType("arc"))
-			default:
-				if c != "" {
-					panic(fmt.Sprintf("invalid cache type: %#v", c))
-				}
-			}
-		}
-		size, ok := cc["size"]
-		if ok {
-			switch size := size.(type) {
-			case int:
-				options = append(options, storage.SetCacheSize(size))
-			default:
-				panic(fmt.Sprintf("invalid type for cache size config: %#v", size))
-			}
-		}
 
-		//		sizelim, ok := cc["sizelimit"]
-		//		if ok {
-		//			switch sizelim := sizelim.(type) {
-		//			case int:
-		//				options = append(options, storage.SetCacheSizeLimit(sizelim))
-		//			default:
-		//				panic(fmt.Sprintf("invalid type for cache entry size limit config: %#v", sizelim))
-		//			}
-		//		}
-	}
-	//configure small tar threshold
-	if cc, ok := config.Storage["smalltar"]; ok {
-		smalltar, ok := cc["fcnt"]
-		if ok {
-			switch smalltar := smalltar.(type) {
-			case int:
-				options = append(options, storage.SetSmallTarThreshold(smalltar))
-			default:
-				panic(fmt.Sprintf("invalid type for small tar threshold config: %#v", smalltar))
+	if cc, ok := config.Storage["cacheparams"]; ok {
+		FileCacheCap, ok1 := cc["FileCacheCap"]
+		LayerCacheCap, ok2 := cc["LayerCacheCap"]
+		SliceCacheCap, ok3 := cc["SliceCacheCap"]
+		ttl, ok4 := cc["ttl"]
+		if ok1 && ok2 && ok3 && ok4 {
+			fileCacheCap, ok1 := FileCacheCap.(int)
+			layerCacheCap, ok2 := LayerCacheCap.(int)
+			sliceCacheCap, ok3 := SliceCacheCap.(int)
+			Ttl, ok4 := ttl.(int)
+			if ok1 && ok2 && ok3 && ok4 {
+				options = append(options, storage.SetCacheParams(fileCacheCap, layerCacheCap, sliceCacheCap, Ttl))
 			}
 		}
 	}
 
-	if cc, ok := config.Storage["diskcache"]; ok {
-		size, ok := cc["size"]
-		if ok {
-			switch size := size.(type) {
-			case int:
-				options = append(options, storage.SetDiskCacheSize(size))
-			default:
-				panic(fmt.Sprintf("invalid type for disk cache size: %#v", size))
-			}
-		}
-		cnt, ok := cc["cnt"]
-		if ok {
-			switch cnt := cnt.(type) {
-			case int:
-				options = append(options, storage.SetDiskCacheCnt(cnt))
-			default:
-				panic(fmt.Sprintf("invalid type for disk cache max file cnt: %#v", cnt))
+	if cc, ok := config.Storage["registryparams"]; ok {
+		repullcntthres, ok1 := cc["repullcntthres"]
+		compr_level, ok2 := cc["compr_level"]
+		layerslicingfcntthres, ok3 := cc["layerslicingfcntthres"]
+		layerslicingdirsizethres, ok4 := cc["layerslicingdirsizethres"]
+		if ok1 && ok2 && ok3 && ok4 {
+			Repullcntthres, ok1 := repullcntthres.(int64)
+			Compr_level, ok2 := compr_level.(int)
+			Layerslicingfcntthres, ok3 := layerslicingfcntthres.(int)
+			Layerslicingdirsizethres, ok4 := layerslicingdirsizethres.(int64)
+			if ok1 && ok2 && ok3 && ok4 {
+				options = append(options, storage.SetRegistryParams(Repullcntthres, Compr_level, Layerslicingfcntthres, Layerslicingdirsizethres))
 			}
 		}
 	}
 
-	// configure storage caches
-
-	var servers []*url.URL
+	var servers []string //[]*url.URL
 
 	for _, registry := range config.Notifications.Registries {
-		registryurl := &url.URL{Host: registry}
-		servers = append(servers, registryurl)
+		//registryurl := &url.URL{Host: registry}
+		servers = append(servers, registry) //url)
 	}
 
 	ctxu.GetLogger(app).Warn("server in the cluster: >>>>>>>>", servers)
