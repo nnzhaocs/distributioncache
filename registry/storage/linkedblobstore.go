@@ -80,7 +80,7 @@ func (lbs *linkedBlobStore) ServeBlob(ctx context.Context, w http.ResponseWriter
 		// Set the repository local content type.
 		w.Header().Set("Content-Type", canonical.MediaType)
 	}
-	lbs.blobServer.reg = lbs.registry
+//	lbs.blobServer.reg = lbs.registry
 	return lbs.blobServer.ServeBlob(ctx, w, r, canonical.Digest)
 }
 

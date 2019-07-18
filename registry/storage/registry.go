@@ -170,7 +170,8 @@ func BlobDescriptorCacheProviderWithFileCache(blobDescriptorCacheProvider cache.
 			registry.blobServer.statter = statter
 			registry.blobDescriptorCacheProvider = blobDescriptorCacheProvider
 			registry.metdataService = metdataService
-			registry.blobServer.metdataService = metdataService
+//			registry.metdataService = metdataService
+			registry.blobServer.reg = registry
 		}
 		return nil
 	}

@@ -851,7 +851,7 @@ func (bw *blobWriter) Uniqdistribution(
 		nodistributedfcnt += 1
 	}
 
-	if dirSize <= bw.blobStore.registry.layerslicingdirsizethres || nodistributedSize <= bw.blobStore.registry.layerslicingdirsizethres || nodistributedfcnt <= bw.blobStore.registry.layerslicingfcntthres || int(fcnt) <= bw.blobStore.registry.layerslicingfcntthres {
+	if dirSize <= bw.blobStore.registry.layerslicingdirsizethres || nodistributedSize <= bw.blobStore.registry.layerslicingdirsizethres || nodistributedfcnt <= bw.blobStore.registry.layerslicingfcntthres || fcnt <= int64(bw.blobStore.registry.layerslicingfcntthres) {
 		//no need to distribute
 		for _, f := range nodistributedfiles {
 			f.HostServerIp = bw.blobStore.registry.hostserverIp
@@ -869,19 +869,29 @@ func (bw *blobWriter) Uniqdistribution(
 		return true
 	}
 
-	sort.Slice(nodistributedfiles, func(i, j int) bool { return int(nodistributedfiles[i].Size) > int(nodistributedfiles[j].Size) })
+	sort.Slice(nodistributedfiles, func(i, j int) bool { 
+			return nodistributedfiles[i].Size > nodistributedfiles[j].Size
+	})
 
 	sss := make([]Pair, len(sliceSizeMap))
 	i := 0
 
 	for sip, size := range sliceSizeMap {
-		sss[i] = Pair{sip, size}
+		sss[i] = Pair{sip, int64(size)}
 		i += 1
 	}
 
 	for _, f := range nodistributedfiles {
-		sort.Slice(sss, func(i, j int) bool { return int(sss[i].second) < int(sss[j].second) })
-		f.HostServerIp = sss[0].first
+		sort.Slice(sss, func(i, j int) bool { 
+				secondi, _ := sss[i].second.(int64)
+				secondj, _ := sss[j].second.(int64)
+			return secondi < secondj
+			//return int(sss[i].second) < int(sss[j].second) 
+		})
+		
+		HostServerIp, _ = sss[0].first.(string)
+		f.HostServerIp = HostServerIp
+		
 		err := bw.blobStore.registry.blobcache.SetFileDescriptor(ctx, f.Digest, f)
 		if err != nil {
 			if err1 := os.Remove(f.FilePath); err1 != nil {
@@ -891,17 +901,24 @@ func (bw *blobWriter) Uniqdistribution(
 			//skip
 			continue
 		}
+		
+		ssssecond, _ := sss[0].second.(int64)
+		ssssecond += f.Size
+		sssfirst, _ := sss[0].first.(string)
+		
+		sss[0].second = ssssecond // smallest file to smallest bucket
+		
+		slices[sssfirst] = append(slices[sssfirst], f)
 
-		sss[0].second += f.Size // smallest file to smallest bucket
-		slices[sss[0].first] = append(slices[sss[0].first], f)
-
-		if sss[0].first != bw.blobStore.registry.hostserverIp {
-			serverForwardMap[sss[0].first] = append(serverForwardMap[sss[0].first], f.FilePath)
+		if sssfirst != bw.blobStore.registry.hostserverIp {
+			serverForwardMap[sssfirst] = append(serverForwardMap[sssfirst], f.FilePath)
 		}
 	}
 
 	for _, pelem := range sss {
-		sliceSizeMap[pelem.first] = sliceSizeMap[pelem.second]
+		pelemfirst, _ := pelem.first.(string)
+		pelemsecond, _ := pelem.second.(int64)
+		sliceSizeMap[pelemfirst] = sliceSizeMap[pelemsecond]
 	}
 
 	return true
