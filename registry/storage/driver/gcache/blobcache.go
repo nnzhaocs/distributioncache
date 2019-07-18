@@ -21,15 +21,23 @@ type BlobCache struct {
 }
 
 var DefaultTTL time.Duration
+var FileCacheCap, LayerCacheCap, SliceCacheCap int
 
-func SetTTL(ttl int) error {
+func SetCapTTL(FileCacheCap, LayerCacheCap, SliceCacheCap, ttl int) error {
 
 	DefaultTTL = time.Duration(ttl) * time.Millisecond
 	fmt.Printf("NANNAN: DefaultTTL: %d\n\n", DefaultTTL)
+	
+	FileCacheCap := FileCacheCap
+	LayerCacheCap := LayerCacheCap
+	SliceCacheCap := SliceCacheCap
+	
+	fmt.Printf("NANNAN: FileCacheCap: %d B, LayerCacheCap: %d B, SliceCacheCap: %d B\n\n",
+		FileCacheCap, LayerCacheCap, SliceCacheCap)
 	return nil
 }
 
-func Init(FileCacheCap int, LayerCacheCap int, SliceCacheCap int) (*BlobCache, error) {
+func Init() (*BlobCache, error) {
 	cache := &BlobCache{}
 	cache.FileLST = New(FileCacheCap * 1024 * 1024).ARC().EvictedFunc(func(key, value interface{}) {
 		if k, ok := key.(string); ok {
