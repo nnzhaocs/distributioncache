@@ -522,7 +522,7 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) e
 		Digest: desc.Digest,
 	})
 
-	_, err = bw.blobStore.registry.metdataService.StatLayerRecipe(ctx, desc.Digest)
+	_, err = bw.blobStore.registry.metadataService.StatLayerRecipe(ctx, desc.Digest)
 	if err == nil {
 		context.GetLogger(ctx).Debugf("NANNAN: THIS LAYER TARBALL ALREADY DEDUPED :=>%v", desc.Digest)
 		return nil
@@ -592,14 +592,14 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) e
 	//start deduplication, first store in cache
 	bw.blobStore.registry.blobcache.SetLayer(desc.Digest.String(), bss) //, "PUTLAYER")
 	//update RLMap
-	rlmapentry, err := bw.blobStore.registry.metdataService.StatRLMapEntry(ctx, reponame)
+	rlmapentry, err := bw.blobStore.registry.metadataService.StatRLMapEntry(ctx, reponame)
 	if err == nil {
 		// exsist
 		if _, ok := rlmapentry.Dgstmap[desc.Digest]; ok {
 			//do something here
 		} else {
 			rlmapentry.Dgstmap[desc.Digest] = 1
-			err1 := bw.blobStore.registry.metdataService.SetRLMapEntry(ctx, reponame, rlmapentry)
+			err1 := bw.blobStore.registry.metadataService.SetRLMapEntry(ctx, reponame, rlmapentry)
 			if err1 != nil {
 				return err1
 			}
@@ -611,7 +611,7 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) e
 		rlmapentry = distribution.RLmapEntry{
 			Dgstmap: dgstmap,
 		}
-		err1 := bw.blobStore.registry.metdataService.SetRLMapEntry(ctx, reponame, rlmapentry)
+		err1 := bw.blobStore.registry.metadataService.SetRLMapEntry(ctx, reponame, rlmapentry)
 		if err1 != nil {
 			return err1
 		}
@@ -647,7 +647,7 @@ func (bw *blobWriter) doDedup(ctx context.Context, desc distribution.Descriptor,
 	}
 
 	start := time.Now()
-	err := filepath.Walk(unpackPath, bw.CheckDuplicate(ctx, bw.blobStore.registry.hostserverIp, bw.blobStore.registry.metdataService,
+	err := filepath.Walk(unpackPath, bw.CheckDuplicate(ctx, bw.blobStore.registry.hostserverIp, bw.blobStore.registry.metadataService,
 		nodistributedfiles,
 		slices,
 		sliceSizeMap,
@@ -682,7 +682,7 @@ func (bw *blobWriter) doDedup(ctx context.Context, desc distribution.Descriptor,
 		UncompressionSize: dirSize,
 	}
 	start = time.Now()
-	err = bw.blobStore.registry.metdataService.SetLayerRecipe(ctx, desc.Digest, des)
+	err = bw.blobStore.registry.metadataService.SetLayerRecipe(ctx, desc.Digest, des)
 	if err != nil {
 		//cleanup everything; omitted
 		return 0.0, 0.0, 0.0, 0, err, false, false
@@ -695,7 +695,7 @@ func (bw *blobWriter) doDedup(ctx context.Context, desc distribution.Descriptor,
 			Files:        files,
 			SliceSize:    sliceSizeMap[sip],
 		}
-		err = bw.blobStore.registry.metdataService.SetSliceRecipe(ctx, desc.Digest, des)
+		err = bw.blobStore.registry.metadataService.SetSliceRecipe(ctx, desc.Digest, des)
 		if err != nil {
 			//cleanup slice // omitted
 			return 0.0, 0.0, 0.0, 0, err, false, false
@@ -855,7 +855,7 @@ func (bw *blobWriter) Uniqdistribution(
 		//no need to distribute
 		for _, f := range nodistributedfiles {
 			f.HostServerIp = bw.blobStore.registry.hostserverIp
-			err := bw.blobStore.registry.metdataService.SetFileDescriptor(ctx, f.Digest, f)
+			err := bw.blobStore.registry.metadataService.SetFileDescriptor(ctx, f.Digest, f)
 			if err != nil {
 				if err1 := os.Remove(f.FilePath); err1 != nil {
 					context.GetLogger(ctx).Errorf("NANNAN: Uniqdistribution: %v", err1)
@@ -892,7 +892,7 @@ func (bw *blobWriter) Uniqdistribution(
 		HostServerIp, _ := sss[0].first.(string)
 		f.HostServerIp = HostServerIp
 
-		err := bw.blobStore.registry.metdataService.SetFileDescriptor(ctx, f.Digest, f)
+		err := bw.blobStore.registry.metadataService.SetFileDescriptor(ctx, f.Digest, f)
 		if err != nil {
 			if err1 := os.Remove(f.FilePath); err1 != nil {
 				context.GetLogger(ctx).Errorf("NANNAN: Uniqdistribution: %v", err1)

@@ -1,4 +1,4 @@
-version: 0.1
+bnnnnnnnnbnmgversion: 0.1
 log:
   level: debug
   fields:
@@ -29,15 +29,19 @@ storage:
     maintenance:
         uploadpurging:
             enabled: false
-    smalltar: 
-        fcnt: 30 # file cnt
-    blobcache: # file cache 
-        type: lru # or arc
-        size: 500   #mb
+    registryparams: 
+        repullcntthres: lru # or arc
+        compr_level: 500   #mb
+        layerslicingfcntthres: 
+        layerslicingdirsizethres: 
 #        sizelimit: 
-    diskcache: # disk cache
-        size: 500 #mb
-        cnt: 500
+    cacheparams: # file cache 
+        FileCacheCap:
+        LayerCacheCap:
+        SliceCacheCap:
+        ttl:
+#        size: 500 #mb
+#        cnt: 500
     
 http:
     addr: :5000

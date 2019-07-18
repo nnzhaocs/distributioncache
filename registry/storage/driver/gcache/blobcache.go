@@ -66,10 +66,7 @@ func Init() (*BlobCache, error) {
 
 	fmt.Printf("NANNAN: FileCacheCap: %d B, LayerCacheCap: %d B, SliceCacheCap: %d B\n\n",
 		FileCacheCap, LayerCacheCap, SliceCacheCap)
-	//return
-	//}
 
-	//func (cache *BlobCache) Init() error {
 	var memcap float32 = float32(FileCacheCap) * 1.2
 	config := bigcache.Config{
 		Shards:           2,

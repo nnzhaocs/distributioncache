@@ -23,7 +23,7 @@ type registry struct {
 	statter    *blobStatter // global statter service.
 
 	blobDescriptorCacheProvider cache.BlobDescriptorCacheProvider
-	metdataService              cache.DedupMetadataServiceCacheProvider //NANNAN: add a metdataService for dedup
+	metadataService              cache.DedupMetadataServiceCacheProvider //NANNAN: add a metadataService for dedup
 
 	deleteEnabled                bool
 	resumableDigestEnabled       bool
@@ -61,28 +61,6 @@ func EnableRedirect(registry *registry) error {
 	return nil
 }
 
-/*
-func SetCacheType(t string) RegistryOption {
-	return func(registry *registry) error {
-		registry.blobServer.cache.SetType(t)
-		return nil
-	}
-}
-
-func SetCacheSize(size int) RegistryOption {
-	return func(registry *registry) error {
-		registry.blobServer.cache.SetSize(size)
-		return nil
-	}
-}
-
-//func SetCacheSizeLimit(sizelim int) RegistryOption {
-//	return func(registry *registry) error {
-//		registry.blobServer.cache.SetEntrylimit(sizelim)
-//		return nil
-//	}
-//}
-*/
 func SetRegistryParams(repullcntthres int64,
 	compr_level int,
 	layerslicingfcntthres int,
@@ -107,21 +85,6 @@ func SetCacheParams(FileCacheCap, LayerCacheCap, SliceCacheCap, ttl int) Registr
 	}
 }
 
-/*
-func SetDiskCacheSize(size int) RegistryOption {
-	return func(registry *registry) error {
-		registry.blobServer.cache.SetDiskCacheSize(size)
-		return nil
-	}
-}
-
-func SetDiskCacheCnt(cnt int) RegistryOption {
-	return func(registry *registry) error {
-		registry.blobServer.cache.SetDiskCacheCnt(cnt)
-		return nil
-	}
-}
-*/
 // EnableDelete is a functional option for NewRegistry. It enables deletion on
 // the registry.
 func EnableDelete(registry *registry) error {
@@ -173,7 +136,7 @@ func BlobDescriptorServiceFactory(factory distribution.BlobDescriptorServiceFact
 // BlobDescriptorCacheProvider returns a functional option for
 // NewRegistry. It creates a cached blob statter for use by the
 // registry.
-func BlobDescriptorCacheProviderWithFileCache(blobDescriptorCacheProvider cache.BlobDescriptorCacheProvider, metdataService cache.DedupMetadataServiceCacheProvider) RegistryOption {
+func BlobDescriptorCacheProviderWithFileCache(blobDescriptorCacheProvider cache.BlobDescriptorCacheProvider, metadataService cache.DedupMetadataServiceCacheProvider) RegistryOption {
 	// TODO(aaronl): The duplication of statter across several objects is
 	// ugly, and prevents us from using interface types in the registry
 	// struct. Ideally, blobStore and blobServer should be lazily
@@ -182,12 +145,12 @@ func BlobDescriptorCacheProviderWithFileCache(blobDescriptorCacheProvider cache.
 
 	return func(registry *registry) error {
 		if blobDescriptorCacheProvider != nil {
-			statter := cache.NewCachedBlobStatterWithMetadataCache(blobDescriptorCacheProvider, metdataService, registry.statter)
+			statter := cache.NewCachedBlobStatterWithMetadataCache(blobDescriptorCacheProvider, metadataService, registry.statter)
 			registry.blobStore.statter = statter
 			registry.blobServer.statter = statter
 			registry.blobDescriptorCacheProvider = blobDescriptorCacheProvider
-			registry.metdataService = metdataService
-			//			registry.metdataService = metdataService
+			registry.metadataService = metadataService
+			//			registry.metadataService = metadataService
 			registry.blobServer.reg = registry
 		}
 		return nil
@@ -237,9 +200,6 @@ func NewRegistry(ctx context.Context, serverIp string, servers []string, driver 
 			driver:  driver,
 			statter: statter,
 			pathFn:  bs.path,
-			//cache:    new(regCache.RegCache),
-			//serverIp: serverIp,
-			//servers:  servers,
 		},
 		statter:                statter,
 		resumableDigestEnabled: true,
@@ -251,7 +211,7 @@ func NewRegistry(ctx context.Context, serverIp string, servers []string, driver 
 			return nil, err
 		}
 	}
-	//registry.blobServer.cache.Init()
+	registry.blobcache = regCache.Init()
 	return registry, nil
 }
 

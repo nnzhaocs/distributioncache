@@ -39,7 +39,7 @@ type blobServer struct {
 	statter distribution.BlobStatter
 	reg     *registry
 	//ring                        	roundrobin.RoundRobin
-	metdataService storagecache.DedupMetadataServiceCacheProvider //NANNAN: add a metdataService for restore
+	metadataService storagecache.DedupMetadataServiceCacheProvider //NANNAN: add a metadataService for restore
 	pathFn         func(dgst digest.Digest) (string, error)
 	redirect       bool // allows disabling URLFor redirects
 }
@@ -449,7 +449,7 @@ func (bs *blobServer) notifyPeerPreconstructLayer(ctx context.Context, dgst dige
 	reponame := context.GetRepoName(ctx)
 	usrname := context.GetUsrAddr(ctx)
 
-	desc, err := bs.metdataService.StatLayerRecipe(ctx, dgst)
+	desc, err := bs.metadataService.StatLayerRecipe(ctx, dgst)
 	if err != nil {
 		context.GetLogger(ctx).Warnf("NANNAN: COULDN'T FIND LAYER RECIPE: %v or Empty layer \n", err)
 		return false
@@ -665,12 +665,12 @@ func (bs *blobServer) Preconstructlayers(ctx context.Context, reg *registry) err
 	usrname := context.GetUsrAddr(ctx)
 	context.GetLogger(ctx).Debugf("NANNAN: Preconstructlayers: for repo (%s) and usr (%s)", reponame, usrname)
 
-	rlmapentry, err := bs.metdataService.StatRLMapEntry(ctx, reponame)
+	rlmapentry, err := bs.metadataService.StatRLMapEntry(ctx, reponame)
 	if err != nil {
 		context.GetLogger(ctx).Debugf("NANNAN: Preconstructlayers: cannot get rlmapentry for repo (%s)", reponame)
 	}
 
-	ulmapentry, err := bs.metdataService.StatULMapEntry(ctx, usrname)
+	ulmapentry, err := bs.metadataService.StatULMapEntry(ctx, usrname)
 	if err != nil {
 		context.GetLogger(ctx).Debugf("NANNAN: Preconstructlayers: cannot get ulentry for usr (%s)", usrname)
 	}
@@ -803,7 +803,7 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 			}
 			goto out
 		} else {
-			desc, err := bs.metdataService.StatLayerRecipe(ctx, dgst)
+			desc, err := bs.metadataService.StatLayerRecipe(ctx, dgst)
 			Uncompressedsize = desc.UncompressionSize
 			DurationML = time.Since(start).Seconds()
 
@@ -839,7 +839,7 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 			goto out
 		} else {
 			start := time.Now()
-			desc, err := bs.metdataService.StatSliceRecipe(ctx, dgst)
+			desc, err := bs.metadataService.StatSliceRecipe(ctx, dgst)
 			DurationML = time.Since(start).Seconds()
 
 			if err != nil || (err == nil && len(desc.Files) == 0) {
@@ -890,7 +890,7 @@ out:
 
 	//update ulmap
 	if reqtype == "LAYER" {
-		ulmapentry, err := bs.reg.metdataService.StatULMapEntry(ctx, usrname)
+		ulmapentry, err := bs.reg.metadataService.StatULMapEntry(ctx, usrname)
 		if err == nil {
 			// exsist
 			if _, ok := ulmapentry.Dgstmap[dgst]; ok {
@@ -908,13 +908,13 @@ out:
 				Dgstmap: dgstmap,
 			}
 		}
-		err1 := bs.reg.metdataService.SetULMapEntry(ctx, usrname, ulmapentry)
+		err1 := bs.reg.metadataService.SetULMapEntry(ctx, usrname, ulmapentry)
 		if err1 != nil {
 			return err1
 		}
 
 		//update rlmap
-		rlmapentry, err := bs.reg.metdataService.StatRLMapEntry(ctx, reponame)
+		rlmapentry, err := bs.reg.metadataService.StatRLMapEntry(ctx, reponame)
 		if err == nil {
 			// exsist
 			if _, ok := rlmapentry.Dgstmap[dgst]; ok {
@@ -931,7 +931,7 @@ out:
 				Dgstmap: dgstmap,
 			}
 		}
-		err1 = bs.reg.metdataService.SetRLMapEntry(ctx, reponame, rlmapentry)
+		err1 = bs.reg.metadataService.SetRLMapEntry(ctx, reponame, rlmapentry)
 		if err1 != nil {
 			return err1
 		}
