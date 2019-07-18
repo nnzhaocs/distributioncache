@@ -12,7 +12,7 @@ import (
 	"github.com/docker/distribution/reference"
 	"github.com/docker/distribution/registry/storage/driver"
 	"github.com/docker/distribution/uuid"
-	"github.com/opencontainers/go-digest"
+	digest "github.com/opencontainers/go-digest"
 )
 
 // linkPathFunc describes a function that can resolve a link based on the
@@ -80,11 +80,11 @@ func (lbs *linkedBlobStore) ServeBlob(ctx context.Context, w http.ResponseWriter
 		// Set the repository local content type.
 		w.Header().Set("Content-Type", canonical.MediaType)
 	}
-
-	return lbs.blobServer.ServeBlob(ctx, w, r, canonical.Digest, registry)
+	lbs.blobServer.reg = lbs.registry
+	return lbs.blobServer.ServeBlob(ctx, w, r, canonical.Digest)
 }
 
-func (lbs *linkedBlobStore)ServeHeadBlob(ctx context.Context, w http.ResponseWriter, r *http.Request, dgst digest.Digest) error {
+func (lbs *linkedBlobStore) ServeHeadBlob(ctx context.Context, w http.ResponseWriter, r *http.Request, dgst digest.Digest) error {
 	canonical, err := lbs.Stat(ctx, dgst) // access check
 	if err != nil {
 		return err
@@ -95,7 +95,7 @@ func (lbs *linkedBlobStore)ServeHeadBlob(ctx context.Context, w http.ResponseWri
 		w.Header().Set("Content-Type", canonical.MediaType)
 	}
 
-	return lbs.blobServer.ServeHeadBlob(ctx, w, r, canonical.Digest)	
+	return lbs.blobServer.ServeHeadBlob(ctx, w, r, canonical.Digest)
 }
 
 func (lbs *linkedBlobStore) Put(ctx context.Context, mediaType string, p []byte) (distribution.Descriptor, error) {

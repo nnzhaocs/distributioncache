@@ -138,10 +138,14 @@ func (m *LayerRecipeDescriptor) UnmarshalBinary(data []byte) error {
 
 type RLmapEntry struct {
 	Dgstmap map[digest.Digest]int64
+	//Dgstlst []digest.Digest
+	//Pullcnt int64
 }
 
 type ULmapEntry struct {
 	Dgstmap map[digest.Digest]int64 // dgst ->> pullcnt
+	//Dgstlst []digest.Digest
+	//Pullcnt int64
 }
 
 func (m *RLmapEntry) MarshalBinary() ([]byte, error) {

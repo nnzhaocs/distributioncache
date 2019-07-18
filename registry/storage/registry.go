@@ -35,13 +35,14 @@ type registry struct {
 	restoringlayermap  sync.Map /* only one uniq layer will be restored, currently restoring layers */
 	restoringslicermap sync.Map /* only one uniq slice will be restored, currently restoring layers */
 
-	repullratiothres float32
-	compr_level      int
-	hostserverIp     string
+	repullcntthres int64
+	compr_level    int
+	hostserverIp   string
 
-	layerslicingfnctthres int
+	layerslicingfcntthres    int
+	layerslicingdirsizethres int64
 
-	servers   []*url.URL
+	servers   []string
 	blobcache *regCache.BlobCache
 }
 
@@ -215,12 +216,12 @@ func NewRegistry(ctx context.Context, serverIp string, servers []*url.URL, drive
 	registry := &registry{
 		blobStore: bs,
 		blobServer: &blobServer{
-			driver:   driver,
-			statter:  statter,
-			pathFn:   bs.path,
-			cache:    new(regCache.RegCache),
-			serverIp: serverIp,
-			servers:  servers,
+			driver:  driver,
+			statter: statter,
+			pathFn:  bs.path,
+			//cache:    new(regCache.RegCache),
+			//serverIp: serverIp,
+			//servers:  servers,
 		},
 		statter:                statter,
 		resumableDigestEnabled: true,
@@ -232,7 +233,7 @@ func NewRegistry(ctx context.Context, serverIp string, servers []*url.URL, drive
 			return nil, err
 		}
 	}
-	registry.blobServer.cache.Init()
+	//registry.blobServer.cache.Init()
 	return registry, nil
 }
 

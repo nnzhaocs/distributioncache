@@ -21,7 +21,8 @@ import (
 	"github.com/docker/distribution/registry/client/transport"
 	"github.com/docker/distribution/registry/storage/cache"
 	"github.com/docker/distribution/registry/storage/cache/memory"
-	"github.com/opencontainers/go-digest"
+
+	digest "github.com/opencontainers/go-digest"
 )
 
 // Registry provides an interface for calling Repositories, which returns a catalog of repositories.
@@ -672,6 +673,13 @@ func (bs *blobs) ServeHeadBlob(ctx context.Context, w http.ResponseWriter, r *ht
 	panic("not implemented")
 }
 
+//func (bs *blobs) NotifyPeerPreconstructLayer(ctx context.Context, dgst digest.Digest, wg *sync.WaitGroup) bool {
+//	panic("not implemented")
+//}
+//
+//func (bs *blobs) ConstructLayer(ctx context.Context, desc distribution.LayerRecipeDescriptor, dgst digest.Digest, constructtype string) {
+//	panic("not implemented")
+//}
 
 func (bs *blobs) Put(ctx context.Context, mediaType string, p []byte) (distribution.Descriptor, error) {
 
@@ -726,7 +734,7 @@ func (bs *blobs) Create(ctx context.Context, options ...distribution.BlobCreateO
 
 	//log.Warnf("IBM: Registry creating blobs")
 	log.Warnf("NANNAN: repository: Registry creating blobs")
-	
+
 	for _, option := range options {
 		err := option.Apply(&opts)
 		if err != nil {
@@ -765,9 +773,9 @@ func (bs *blobs) Create(ctx context.Context, options ...distribution.BlobCreateO
 		if err != nil {
 			return nil, err
 		}
-	// /repoPrefix/current_image_name/_uploads/repository.id/startedat
-	// /home/lustre/dockerimages/layers /docker/registry/v2/repositories/nnzhaocs/ubuntu/_uploads/	
-	log.Warnf("NANNAN: repository: Registry creating blobs: location is %s", location)
+		// /repoPrefix/current_image_name/_uploads/repository.id/startedat
+		// /home/lustre/dockerimages/layers /docker/registry/v2/repositories/nnzhaocs/ubuntu/_uploads/
+		log.Warnf("NANNAN: repository: Registry creating blobs: location is %s", location)
 		return &httpBlobUpload{
 			statter:   bs.statter,
 			client:    bs.client,
