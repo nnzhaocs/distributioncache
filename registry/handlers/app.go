@@ -260,9 +260,9 @@ func NewApp(ctx context.Context, config *configuration.Configuration) *App {
 	}
 
 	if cc, ok := config.Storage["cacheparams"]; ok {
-		FileCacheCap, ok1 := cc["FileCacheCap"]
-		LayerCacheCap, ok2 := cc["LayerCacheCap"]
-		SliceCacheCap, ok3 := cc["SliceCacheCap"]
+		FileCacheCap, ok1 := cc["filecachecap"]
+		LayerCacheCap, ok2 := cc["layercachecap"]
+		SliceCacheCap, ok3 := cc["slicecachecap"]
 		ttl, ok4 := cc["ttl"]
 		if ok1 && ok2 && ok3 && ok4 {
 			fileCacheCap, ok1 := FileCacheCap.(int)

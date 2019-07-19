@@ -32,7 +32,7 @@ func (cache *BlobCache) SetCapTTL(fileCacheCap, layerCacheCap, sliceCacheCap, tt
 	LayerCacheCap = layerCacheCap
 	SliceCacheCap = sliceCacheCap
 
-	fmt.Printf("NANNAN: FileCacheCap: %d B, LayerCacheCap: %d B, SliceCacheCap: %d B\n\n",
+	fmt.Printf("NANNAN: FileCacheCap: %d MB, LayerCacheCap: %d MB, SliceCacheCap: %d MB\n\n",
 		FileCacheCap, LayerCacheCap, SliceCacheCap)
 	return nil
 }
@@ -64,7 +64,7 @@ func Init() (*BlobCache, error) {
 		Expiration(DefaultTTL * 1).
 		Build()
 
-	fmt.Printf("NANNAN: FileCacheCap: %d B, LayerCacheCap: %d B, SliceCacheCap: %d B\n\n",
+	fmt.Printf("NANNAN: FileCacheCap: %d MB, LayerCacheCap: %d MB, SliceCacheCap: %d MB\n\n",
 		FileCacheCap, LayerCacheCap, SliceCacheCap)
 
 	var memcap float32 = float32(FileCacheCap) * 1.2
@@ -82,7 +82,7 @@ func Init() (*BlobCache, error) {
 	}
 	cache.MemCache = MemCache
 
-	pth := "/var/lib/registry/docker/registry/v2/pull_tars/diskcache/"
+	pth := "/var/lib/registry/docker/registry/v2/diskcache/"
 	err = os.MkdirAll(pth, 0777)
 	if err != nil {
 		fmt.Printf("NANNAN: cannot create DiskCache: %s \n", err)

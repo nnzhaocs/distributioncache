@@ -1,4 +1,4 @@
-bnnnnnnnnbnmgversion: 0.1
+version: 0.1
 log:
   level: debug
   fields:
@@ -30,19 +30,15 @@ storage:
         uploadpurging:
             enabled: false
     registryparams: 
-        repullcntthres: lru # or arc
-        compr_level: 500   #mb
-        layerslicingfcntthres: 
-        layerslicingdirsizethres: 
-#        sizelimit: 
+        repullcntthres: 5
+        compr_level: 4 #1-6
+        layerslicingfcntthres: 30 
+        layerslicingdirsizethres: 1 # MB 
     cacheparams: # file cache 
-        FileCacheCap:
-        LayerCacheCap:
-        SliceCacheCap:
-        ttl:
-#        size: 500 #mb
-#        cnt: 500
-    
+        filecachecap: 82 # MB
+        layercachecap: 164 # MB
+        slicecachecap: 164 # MB
+        ttl: 5000 # 0.001s    
 http:
     addr: :5000
     debug:
