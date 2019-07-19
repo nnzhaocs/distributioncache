@@ -52,7 +52,7 @@ func Init() (*BlobCache, error) {
 	//	return nil, errors.New("failed")
 	//}
 
-	cache.FileLST = FileLST
+//	cache.FileLST = FileLST
 
 	LayerLST := New(LayerCacheCap * 1024 * 1024).ARC().EvictedFunc(func(key, value interface{}) {
 		if k, ok := key.(string); ok {
@@ -70,7 +70,7 @@ func Init() (*BlobCache, error) {
 	//	fmt.Println("NANNAN: ERROR cannot generate LayerLST")
 	//	return nil, errors.New("failed")
 	//}
-	cache.LayerLST = LayerLST
+//	cache.LayerLST = LayerLST
 
 	SliceLST := New(SliceCacheCap * 1024 * 1024).ARC().EvictedFunc(func(key, value interface{}) {
 		if k, ok := key.(string); ok {
@@ -85,7 +85,7 @@ func Init() (*BlobCache, error) {
 	//	fmt.Println("NANNAN: ERROR cannot generate SliceLST")
 	//	return nil, errors.New("failed")
 	//}
-	cache.SliceLST = SliceLST
+//	cache.SliceLST = SliceLST
 
 	fmt.Printf("NANNAN: FileCacheCap: %d MB, LayerCacheCap: %d MB, SliceCacheCap: %d MB\n\n",
 		FileCacheCap, LayerCacheCap, SliceCacheCap)
@@ -103,7 +103,7 @@ func Init() (*BlobCache, error) {
 		fmt.Printf("NANNAN: cannot create BlobCache: %s \n", err)
 		return nil, err
 	}
-	cache.MemCache = MemCache
+//	cache.MemCache = MemCache
 
 	pth := "/var/lib/registry/docker/registry/v2/diskcache/"
 	err = os.MkdirAll(pth, 0777)
@@ -119,10 +119,20 @@ func Init() (*BlobCache, error) {
 		CacheSizeMax: 1024 * 1024 * 64,
 	})
 
-	cache.DiskCache = DiskCache
+//	cache.DiskCache = DiskCache
 
 	fmt.Printf("NANNAN: init cache: mem cache capacity: %d MB \n\n",
 		int(memcap))
+	
+	cache := BlobCache{
+		MemCache: MemCache
+		DiskCache: DiskCache
+
+		FileLST:  FileLST
+		LayerLST: LayerLST
+		SliceLST: SliceLST
+	}
+	
 	return &cache, err
 }
 
