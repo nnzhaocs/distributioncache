@@ -23,7 +23,7 @@ type registry struct {
 	statter    *blobStatter // global statter service.
 
 	blobDescriptorCacheProvider cache.BlobDescriptorCacheProvider
-	metadataService              cache.DedupMetadataServiceCacheProvider //NANNAN: add a metadataService for dedup
+	metadataService             cache.DedupMetadataServiceCacheProvider //NANNAN: add a metadataService for dedup
 
 	deleteEnabled                bool
 	resumableDigestEnabled       bool
@@ -210,41 +210,14 @@ func NewRegistry(ctx context.Context, serverIp string, servers []string, driver 
 			return nil, err
 		}
 	}
-	registry.blobcache = regCache.Init()
+	blobcache, err := regCache.Init()
+	if err != nil {
+		registry.blobcache = blobcache
+	} else {
+		return registry, err
+	}
 	return registry, nil
 }
-
-//func NewRegistry(ctx context.Context, driver storagedriver.StorageDriver, options ...RegistryOption) (distribution.Namespace, error) {
-//	// create global statter
-//	statter := &blobStatter{
-//		driver: driver,
-//	}
-//
-//	bs := &blobStore{
-//		driver:  driver,
-//		statter: statter,
-//	}
-//
-//	registry := &registry{
-//		blobStore: bs,
-//		blobServer: &blobServer{
-//			driver:  driver,
-//			statter: statter,
-//			pathFn:  bs.path,
-//		},
-//		statter:                statter,
-//		resumableDigestEnabled: true,
-//		driver:                 driver,
-//	}
-//
-//	for _, option := range options {
-//		if err := option(registry); err != nil {
-//			return nil, err
-//		}
-//	}
-//
-//	return registry, nil
-//}
 
 // Scope returns the namespace scope for a registry. The registry
 // will only serve repositories contained within this scope.
