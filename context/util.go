@@ -28,26 +28,26 @@ func getName(ctx Context) (name string) {
 	return GetStringValue(ctx, "vars.name")
 }
 
-//TYPE XXX USRADDR XXX REPONAME XXX
+//TYPE XXX USRADDR XXX REPONAME XXX lowercases
 //manifest or layer?
 func GetType(ctx Context) (name string) {
 	varsname := GetStringValue(ctx, "vars.name")
-	tmps := strings.Split(varsname, "USRADDR")[0]
-	rtype := strings.Split(tmps, "TYPE")[1]
-	return rtype
+	tmps := strings.Split(varsname, "usraddr")[0]
+	rtype := strings.Split(tmps, "type")[1]
+	return strings.ToUpper(rtype)
 }
 
 //usraddr
 func GetUsrAddr(ctx Context) (name string) {
 	varsname := GetStringValue(ctx, "vars.name")
-	tmps := strings.Split(varsname, "REPONAME")[0]
-	usraddr := strings.Split(tmps, "USRADDR")[1]
+	tmps := strings.Split(varsname, "reponame")[0]
+	usraddr := strings.Split(tmps, "usraddr")[1]
 	return usraddr
 }
 
 //reponame
 func GetRepoName(ctx Context) (name string) {
 	varsname := GetStringValue(ctx, "vars.name")
-	reponame := strings.Split(varsname, "REPONAME")[1]
+	reponame := strings.Split(varsname, "reponame")[1]
 	return reponame
 }
