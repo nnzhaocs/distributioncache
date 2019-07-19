@@ -3,6 +3,7 @@ package context
 import (
 	"strings"
 	"time"
+	"fmt"
 )
 
 // Since looks up key, which should be a time.Time, and returns the duration
@@ -33,6 +34,10 @@ func getName(ctx Context) (name string) {
 func GetType(ctx Context) (name string) {
 	varsname := GetStringValue(ctx, "vars.name")
 	tmps := strings.Split(varsname, "usraddr")[0]
+	if len(tmps) < 2{
+		fmt.Println("NANNAN: wrong input: ", tmps)
+		return nil
+	}
 	rtype := strings.Split(tmps, "type")[1]
 	return strings.ToUpper(rtype)
 }
@@ -41,6 +46,10 @@ func GetType(ctx Context) (name string) {
 func GetUsrAddr(ctx Context) (name string) {
 	varsname := GetStringValue(ctx, "vars.name")
 	tmps := strings.Split(varsname, "reponame")[0]
+	if len(tmps) < 2{
+		fmt.Println("NANNAN: wrong input: ", tmps)
+		return nil
+	}
 	usraddr := strings.Split(tmps, "usraddr")[1]
 	return usraddr
 }
@@ -48,6 +57,10 @@ func GetUsrAddr(ctx Context) (name string) {
 //reponame
 func GetRepoName(ctx Context) (name string) {
 	varsname := GetStringValue(ctx, "vars.name")
+	if len(tmps) < 2{
+		fmt.Println("NANNAN: wrong input: ", tmps)
+		return nil
+	}
 	reponame := strings.Split(varsname, "reponame")[1]
 	return reponame
 }

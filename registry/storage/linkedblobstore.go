@@ -142,7 +142,7 @@ func WithMountFrom(ref reference.Canonical) distribution.BlobCreateOption {
 
 // Writer begins a blob write session, returning a handle.
 func (lbs *linkedBlobStore) Create(ctx context.Context, options ...distribution.BlobCreateOption) (distribution.BlobWriter, error) {
-	context.GetLogger(ctx).Debug("NANNAN: This is for upload(*linkedBlobStore).Writer")
+//	context.GetLogger(ctx).Debug("NANNAN: This is for upload(*linkedBlobStore).Writer")
 
 	var opts distribution.CreateOptions
 
@@ -168,7 +168,7 @@ func (lbs *linkedBlobStore) Create(ctx context.Context, options ...distribution.
 		name: lbs.repository.Named().Name(),
 		id:   uuid,
 	})
-	context.GetLogger(ctx).Debug("NANNAN: lbs: start upload location is %s", path)
+//	context.GetLogger(ctx).Debug("NANNAN: lbs: start upload location is %s", path)
 	if err != nil {
 		return nil, err
 	}
@@ -183,16 +183,16 @@ func (lbs *linkedBlobStore) Create(ctx context.Context, options ...distribution.
 	}
 
 	// Write a startedat file for this upload
-	context.GetLogger(ctx).Debug("NANNAN: lbs: startedat file is %s", startedAtPath)
+//	context.GetLogger(ctx).Debug("NANNAN: lbs: startedat file is %s", startedAtPath)
 	if err := lbs.blobStore.driver.PutContent(ctx, startedAtPath, []byte(startedAt.Format(time.RFC3339))); err != nil {
 		return nil, err
 	}
-	context.GetLogger(ctx).Debug("NANNAN: (*linkedBlobStore).Writer: call lbs.newBlobUpload")
+//	context.GetLogger(ctx).Debug("NANNAN: (*linkedBlobStore).Writer: call lbs.newBlobUpload")
 	return lbs.newBlobUpload(ctx, uuid, path, startedAt, false)
 }
 
 func (lbs *linkedBlobStore) Resume(ctx context.Context, id string) (distribution.BlobWriter, error) {
-	context.GetLogger(ctx).Debug("(*linkedBlobStore).Resume")
+//	context.GetLogger(ctx).Debug("(*linkedBlobStore).Resume")
 
 	startedAtPath, err := pathFor(uploadStartedAtPathSpec{
 		name: lbs.repository.Named().Name(),

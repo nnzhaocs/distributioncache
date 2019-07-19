@@ -33,7 +33,7 @@ func blobUploadDispatcher(ctx *Context, r *http.Request) http.Handler {
 	}
 
 	if !ctx.readOnly {
-		ctxu.GetLogger(ctx).Infof("NANNAN: blobUploadDispatcher")
+//		ctxu.GetLogger(ctx).Infof("NANNAN: blobUploadDispatcher")
 		handler["POST"] = http.HandlerFunc(buh.StartBlobUpload)
 		handler["PATCH"] = http.HandlerFunc(buh.PatchBlobData)
 		handler["PUT"] = http.HandlerFunc(buh.PutBlobUploadComplete)
