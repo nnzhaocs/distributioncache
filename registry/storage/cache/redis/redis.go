@@ -39,11 +39,6 @@ import (
 // we store dbNoFile on a redis cluster
 var (
 	dbNoBlob = 0
-
-//	dbNoFile        = 1
-//	dbNoBFRecipe    = 2
-//	dbNoSFRecipe    = 3
-//	dbNoSResProfile = 4
 )
 
 type redisBlobDescriptorService struct {
@@ -56,7 +51,6 @@ func NewRedisBlobDescriptorCacheProvider(pool *redis.Pool) cache.BlobDescriptorC
 
 	return &redisBlobDescriptorService{
 		pool: pool,
-		//		serverIp: serverIp,
 	}
 }
 
