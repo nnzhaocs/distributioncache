@@ -70,9 +70,6 @@ func SetRegistryParams(repullcntthres int64,
 		registry.compr_level = compr_level
 		registry.layerslicingfcntthres = layerslicingfcntthres
 		registry.layerslicingdirsizethres = layerslicingdirsizethres * 1024 * 1024 //MB
-		//registry.
-		//registry.
-		//registry.
 		fmt.Printf("Registry config: repullcntthres: %d, compr_level: %d, layerslicingfcntthres: %d, layerslicingdirsizethres: %d\n", repullcntthres, compr_level, layerslicingfcntthres, layerslicingdirsizethres)
 		return nil
 	}

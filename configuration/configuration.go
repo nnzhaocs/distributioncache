@@ -447,11 +447,11 @@ func (storage *Storage) UnmarshalYAML(unmarshal func(interface{}) error) error {
 					// allow configuration of delete
 				case "redirect":
 					// allow configuration of redirect
-				case "blobcache":
+				case "cacheparams":
 					// allow configuration of blob caching
-				case "smalltar":
+				case "registryparams":
 				
-				case "diskcache":
+//				case "diskcache":
 				
 				default:
 					types = append(types, k)
