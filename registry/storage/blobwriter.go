@@ -633,7 +633,7 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) e
 
 func (bw *blobWriter) doDedup(ctx context.Context, desc distribution.Descriptor, unpackPath string, blobPath string) (float64, float64, float64, int64, error, bool, bool) {
 
-	var nodistributedfiles *[]distribution.FileDescriptor
+	var nodistributedfiles []distribution.FileDescriptor
 	slices := make(map[string][]distribution.FileDescriptor)
 	serverForwardMap := make(map[string][]string)
 	sliceSizeMap := make(map[string]int64)
@@ -648,7 +648,7 @@ func (bw *blobWriter) doDedup(ctx context.Context, desc distribution.Descriptor,
 
 	start := time.Now()
 	err := filepath.Walk(unpackPath, bw.CheckDuplicate(ctx, bw.blobStore.registry.hostserverIp, bw.blobStore.registry.metadataService,
-		nodistributedfiles,
+		&nodistributedfiles,
 		slices,
 		sliceSizeMap,
 		serverStoreCntMap,
@@ -665,7 +665,7 @@ func (bw *blobWriter) doDedup(ctx context.Context, desc distribution.Descriptor,
 		return 0.0, 0.0, 0.0, 0, nil, false, false
 	}
 
-	bw.Uniqdistribution(ctx, dirSize, fcnt, *nodistributedfiles, sliceSizeMap, slices, serverForwardMap)
+	bw.Uniqdistribution(ctx, dirSize, fcnt, nodistributedfiles, sliceSizeMap, slices, serverForwardMap)
 
 	hostserverIps := make([]string, len(slices))
 	i := 0
