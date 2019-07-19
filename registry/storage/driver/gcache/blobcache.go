@@ -118,17 +118,23 @@ func (cache *BlobCache) SetLayer(dgst string, bss []byte) bool {
 	key := LayerHashKey(dgst)
 	size := len(bss)
 
+	fmt.Printf("NANNAN: BlobCache LayerLST setting dgst %s\n", dgst)
+
 	if err := cache.LayerLST.Set(key, size); err != nil {
-		fmt.Printf("NANNAN: BlobCache cannot set dgst %s: %v\n", dgst, err)
+		fmt.Printf("NANNAN: BlobCache LayerLST cannot set dgst %s: %v\n", dgst, err)
 		return false
 	}
+
+	fmt.Printf("NANNAN: BlobCache LayerLST set dgst %s\n", dgst)
 
 	if ok := cache.DiskCache.Has(key); ok {
 		return true
 	}
 
+	fmt.Printf("NANNAN: BlobCache does not have dgst %s\n", dgst)
+	
 	if err := cache.DiskCache.Write(key, bss); err != nil {
-		fmt.Printf("NANNAN: BlobCache cannot set dgst %s: %v\n", dgst, err)
+		fmt.Printf("NANNAN: BlobCache DiskCache cannot set dgst %s: %v\n", dgst, err)
 		return false
 	}
 	return true
