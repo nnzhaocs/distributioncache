@@ -207,10 +207,9 @@ func NewRegistry(ctx context.Context, serverIp string, servers []string, driver 
 			return nil, err
 		}
 	}
-	blobcache, err := regCache.Init()
+	registry.blobcache = new(regCache.BlobCache)
+	err := registry.blobcache.Init()
 	if err != nil {
-		registry.blobcache = blobcache
-	} else {
 		return registry, err
 	}
 	return registry, nil

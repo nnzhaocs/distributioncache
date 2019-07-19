@@ -37,7 +37,40 @@ func (cache *BlobCache) SetCapTTL(fileCacheCap, layerCacheCap, sliceCacheCap, tt
 	return nil
 }
 
-func Init() (*BlobCache, error) {
+func (cache *BlobCache) Init() error {
+	var memcap float32 = float32(FileCacheCap) * 1.2
+	config := bigcache.Config{
+		Shards:           2,
+		LifeWindow:       3600 * time.Minute,
+		Verbose:          true,
+		HardMaxCacheSize: int(memcap),
+		OnRemove:         nil,
+	}
+	MemCache, err := bigcache.NewBigCache(config)
+	if err != nil {
+		fmt.Printf("NANNAN: cannot create BlobCache: %s \n", err)
+		return err
+	}
+	cache.MemCache = MemCache
+
+	pth := "/var/lib/registry/docker/registry/v2/diskcache/"
+	err = os.MkdirAll(pth, 0777)
+	if err != nil {
+		fmt.Printf("NANNAN: cannot create DiskCache: %s \n", err)
+		return err
+	}
+
+	flatTransform := func(s string) []string { return []string{} }
+	DiskCache := diskv.New(diskv.Options{
+		BasePath:     pth,
+		Transform:    flatTransform,
+		CacheSizeMax: 1024 * 1024 * 64,
+	})
+	cache.DiskCache = DiskCache
+
+	fmt.Printf("NANNAN: init cache: mem cache capacity: %d MB \n\n",
+		int(memcap))
+
 	FileLST := New(FileCacheCap * 1024 * 1024).ARC().EvictedFunc(func(key, value interface{}) {
 		if k, ok := key.(string); ok {
 			cache.MemCache.Delete(k)
@@ -47,12 +80,7 @@ func Init() (*BlobCache, error) {
 		Expiration(DefaultTTL * 3).
 		Build()
 
-	//if FileLST == nil {
-	//	fmt.Println("NANNAN: ERROR cannot generate FileLST")
-	//	return nil, errors.New("failed")
-	//}
-
-//	cache.FileLST = FileLST
+	cache.FileLST = FileLST
 
 	LayerLST := New(LayerCacheCap * 1024 * 1024).ARC().EvictedFunc(func(key, value interface{}) {
 		if k, ok := key.(string); ok {
@@ -65,12 +93,8 @@ func Init() (*BlobCache, error) {
 	//if err := LayerLST.Set("key", 1000); err != nil {
 	//	fmt.Println("NANNAN: ERROR cannot set for LayerLST ", err)
 	//}
-	//layerlst, ok := LayerLST.(*ARC)
-	//if !ok {
-	//	fmt.Println("NANNAN: ERROR cannot generate LayerLST")
-	//	return nil, errors.New("failed")
-	//}
-//	cache.LayerLST = LayerLST
+
+	cache.LayerLST = LayerLST
 
 	SliceLST := New(SliceCacheCap * 1024 * 1024).ARC().EvictedFunc(func(key, value interface{}) {
 		if k, ok := key.(string); ok {
@@ -81,59 +105,11 @@ func Init() (*BlobCache, error) {
 		Expiration(DefaultTTL * 1).
 		Build()
 
-	//if SliceLST == nil {
-	//	fmt.Println("NANNAN: ERROR cannot generate SliceLST")
-	//	return nil, errors.New("failed")
-	//}
-//	cache.SliceLST = SliceLST
+	cache.SliceLST = SliceLST
 
 	fmt.Printf("NANNAN: FileCacheCap: %d MB, LayerCacheCap: %d MB, SliceCacheCap: %d MB\n\n",
 		FileCacheCap, LayerCacheCap, SliceCacheCap)
-
-	var memcap float32 = float32(FileCacheCap) * 1.2
-	config := bigcache.Config{
-		Shards:           2,
-		LifeWindow:       3600 * time.Minute,
-		Verbose:          true,
-		HardMaxCacheSize: int(memcap),
-		OnRemove:         nil,
-	}
-	MemCache, err := bigcache.NewBigCache(config)
-	if err != nil {
-		fmt.Printf("NANNAN: cannot create BlobCache: %s \n", err)
-		return nil, err
-	}
-//	cache.MemCache = MemCache
-
-	pth := "/var/lib/registry/docker/registry/v2/diskcache/"
-	err = os.MkdirAll(pth, 0777)
-	if err != nil {
-		fmt.Printf("NANNAN: cannot create DiskCache: %s \n", err)
-		return nil, err
-	}
-
-	flatTransform := func(s string) []string { return []string{} }
-	DiskCache := diskv.New(diskv.Options{
-		BasePath:     pth,
-		Transform:    flatTransform,
-		CacheSizeMax: 1024 * 1024 * 64,
-	})
-
-//	cache.DiskCache = DiskCache
-
-	fmt.Printf("NANNAN: init cache: mem cache capacity: %d MB \n\n",
-		int(memcap))
-	
-	cache := BlobCache{
-		MemCache: MemCache
-		DiskCache: DiskCache
-
-		FileLST:  FileLST
-		LayerLST: LayerLST
-		SliceLST: SliceLST
-	}
-	
-	return &cache, err
+	return err
 }
 
 func LayerHashKey(dgst string) string {
