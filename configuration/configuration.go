@@ -400,11 +400,11 @@ func (storage Storage) Type() string {
 			// allow configuration of delete
 		case "redirect":
 			// allow configuration of redirect
-		case "blobcache":
+		case "cacheparams":
 			// allow configuration of content cache
-		case "smalltar":
+		case "registryparams":
 				
-		case "diskcache":			
+//		case "diskcache":			
 			
 		default:
 			storageType = append(storageType, k)
