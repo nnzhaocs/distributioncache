@@ -8,7 +8,6 @@ import (
 
 	"github.com/allegro/bigcache"
 	"github.com/peterbourgon/diskv"
-	"errors"
 )
 
 // preconstruction cache
@@ -39,8 +38,7 @@ func (cache *BlobCache) SetCapTTL(fileCacheCap, layerCacheCap, sliceCacheCap, tt
 }
 
 func Init() (*BlobCache, error) {
-	cache := &BlobCache{}
-	FileLST = New(FileCacheCap * 1024 * 1024).ARC().EvictedFunc(func(key, value interface{}) {
+	FileLST := New(FileCacheCap * 1024 * 1024).ARC().EvictedFunc(func(key, value interface{}) {
 		if k, ok := key.(string); ok {
 			cache.MemCache.Delete(k)
 		}
@@ -48,15 +46,15 @@ func Init() (*BlobCache, error) {
 	}).
 		Expiration(DefaultTTL * 3).
 		Build()
-		
-	if FileLST == nil{
-		fmt.Println("NANNAN: ERROR cannot generate FileLST")
-		return errors.New("failed")
-	}
-		
+
+	//if FileLST == nil {
+	//	fmt.Println("NANNAN: ERROR cannot generate FileLST")
+	//	return nil, errors.New("failed")
+	//}
+
 	cache.FileLST = FileLST
-	
-	cache.LayerLST = New(LayerCacheCap * 1024 * 1024).ARC().EvictedFunc(func(key, value interface{}) {
+
+	LayerLST := New(LayerCacheCap * 1024 * 1024).ARC().EvictedFunc(func(key, value interface{}) {
 		if k, ok := key.(string); ok {
 			cache.DiskCache.Erase(k)
 		}
@@ -64,14 +62,17 @@ func Init() (*BlobCache, error) {
 	}).
 		Expiration(DefaultTTL * 2).
 		Build()
-		
-	if LayerLST == nil{
-		fmt.Println("NANNAN: ERROR cannot generate LayerLST")
-		return errors.New("failed")
-	}	
+	//if err := LayerLST.Set("key", 1000); err != nil {
+	//	fmt.Println("NANNAN: ERROR cannot set for LayerLST ", err)
+	//}
+	//layerlst, ok := LayerLST.(*ARC)
+	//if !ok {
+	//	fmt.Println("NANNAN: ERROR cannot generate LayerLST")
+	//	return nil, errors.New("failed")
+	//}
 	cache.LayerLST = LayerLST
-		
-	cache.SliceLST = New(SliceCacheCap * 1024 * 1024).ARC().EvictedFunc(func(key, value interface{}) {
+
+	SliceLST := New(SliceCacheCap * 1024 * 1024).ARC().EvictedFunc(func(key, value interface{}) {
 		if k, ok := key.(string); ok {
 			cache.DiskCache.Erase(k)
 		}
@@ -79,13 +80,12 @@ func Init() (*BlobCache, error) {
 	}).
 		Expiration(DefaultTTL * 1).
 		Build()
-		
-	if SliceLST == nil{
-		fmt.Println("NANNAN: ERROR cannot generate SliceLST")
-		return errors.New("failed")
-	}	
-	cache.SliceLST = SliceLST	
-		
+
+	//if SliceLST == nil {
+	//	fmt.Println("NANNAN: ERROR cannot generate SliceLST")
+	//	return nil, errors.New("failed")
+	//}
+	cache.SliceLST = SliceLST
 
 	fmt.Printf("NANNAN: FileCacheCap: %d MB, LayerCacheCap: %d MB, SliceCacheCap: %d MB\n\n",
 		FileCacheCap, LayerCacheCap, SliceCacheCap)
@@ -123,7 +123,7 @@ func Init() (*BlobCache, error) {
 
 	fmt.Printf("NANNAN: init cache: mem cache capacity: %d MB \n\n",
 		int(memcap))
-	return cache, err
+	return &cache, err
 }
 
 func LayerHashKey(dgst string) string {
@@ -155,7 +155,7 @@ func (cache *BlobCache) SetLayer(dgst string, bss []byte) bool {
 	}
 
 	fmt.Printf("NANNAN: BlobCache does not have dgst %s\n", dgst)
-	
+
 	if err := cache.DiskCache.Write(key, bss); err != nil {
 		fmt.Printf("NANNAN: BlobCache DiskCache cannot set dgst %s: %v\n", dgst, err)
 		return false
