@@ -23,14 +23,14 @@ type BlobCache struct {
 var DefaultTTL time.Duration
 var FileCacheCap, LayerCacheCap, SliceCacheCap int
 
-func (cache *BlobCache) SetCapTTL(FileCacheCap, LayerCacheCap, SliceCacheCap, ttl int) error {
+func (cache *BlobCache) SetCapTTL(fileCacheCap, layerCacheCap, sliceCacheCap, ttl int) error {
 
 	DefaultTTL = time.Duration(ttl) * time.Millisecond
 	fmt.Printf("NANNAN: DefaultTTL: %d\n\n", DefaultTTL)
 
-	FileCacheCap = FileCacheCap
-	LayerCacheCap = LayerCacheCap
-	SliceCacheCap = SliceCacheCap
+	FileCacheCap = fileCacheCap
+	LayerCacheCap = layerCacheCap
+	SliceCacheCap = sliceCacheCap
 
 	fmt.Printf("NANNAN: FileCacheCap: %d B, LayerCacheCap: %d B, SliceCacheCap: %d B\n\n",
 		FileCacheCap, LayerCacheCap, SliceCacheCap)
