@@ -200,6 +200,7 @@ func NewRegistry(ctx context.Context, serverIp string, servers []string, driver 
 		statter:                statter,
 		resumableDigestEnabled: true,
 		hostserverIp:           serverIp,
+		servers:  				servers,
 	}
 
 	for _, option := range options {
