@@ -39,7 +39,7 @@ type blobServer struct {
 	statter distribution.BlobStatter
 	reg     *registry
 	//ring                        	roundrobin.RoundRobin
-	metadataService storagecache.DedupMetadataServiceCacheProvider //NANNAN: add a metadataService for restore
+//	metadataService storagecache.DedupMetadataServiceCacheProvider //NANNAN: add a metadataService for restore
 	pathFn         func(dgst digest.Digest) (string, error)
 	redirect       bool // allows disabling URLFor redirects
 }
