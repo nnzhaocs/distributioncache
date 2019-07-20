@@ -51,6 +51,12 @@ func GetType(ctx Context) (name string) {
 //usraddr
 func GetUsrAddr(ctx Context) (name string) {
 	varsname := GetStringValue(ctx, "vars.name")
+	
+	if ok := strings.Contains(varsname, "forward_repo"); ok{
+		fmt.Println("NANNAN: this is forwarding! ")
+		return strings.ToUpper("forward_repo")
+	}
+	
 	tmps := strings.Split(varsname, "reponame")[0]
 	if len(tmps) < 2 {
 		fmt.Println("NANNAN: wrong input: ", tmps)
@@ -63,6 +69,12 @@ func GetUsrAddr(ctx Context) (name string) {
 //reponame
 func GetRepoName(ctx Context) (name string) {
 	varsname := GetStringValue(ctx, "vars.name")
+	
+	if ok := strings.Contains(varsname, "forward_repo"); ok{
+		fmt.Println("NANNAN: this is forwarding! ")
+		return strings.ToUpper("forward_repo")
+	}
+	
 	if len(varsname) < 2 {
 		fmt.Println("NANNAN: wrong input: ", varsname)
 		return ""
