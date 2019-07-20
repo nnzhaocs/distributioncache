@@ -39,9 +39,15 @@ type blobServer struct {
 	statter distribution.BlobStatter
 	reg     *registry
 	//ring                        	roundrobin.RoundRobin
+//<<<<<<< HEAD
 //	metadataService storagecache.DedupMetadataServiceCacheProvider //NANNAN: add a metadataService for restore
 	pathFn         func(dgst digest.Digest) (string, error)
 	redirect       bool // allows disabling URLFor redirects
+//=======
+//	metadataService storagecache.DedupMetadataServiceCacheProvider //NANNAN: add a metadataService for restore
+//	pathFn          func(dgst digest.Digest) (string, error)
+//	redirect        bool // allows disabling URLFor redirects
+//>>>>>>> 761468f29df65c3e34c39992aa46c3d43062e8b0
 }
 
 type registriesAPIResponse struct {
@@ -669,29 +675,32 @@ func (bs *blobServer) Preconstructlayers(ctx context.Context, reg *registry) err
 	if err != nil {
 		context.GetLogger(ctx).Debugf("NANNAN: Preconstructlayers: cannot get rlmapentry for repo (%s)", reponame)
 	}
-
+	fmt.Println("NANNAN: PrecontstructionLayer: rlmapentry => %v", rlmapentry)
 	ulmapentry, err := bs.metadataService.StatULMapEntry(ctx, usrname)
 	if err != nil {
 		context.GetLogger(ctx).Debugf("NANNAN: Preconstructlayers: cannot get ulentry for usr (%s)", usrname)
 	}
-
+	fmt.Println("NANNAN: PrecontstructionLayer: rlmapentry => %v", rlmapentry)
 	var Dgstlst []interface{}
 	i := 0
 	for k := range rlmapentry.Dgstmap {
 		Dgstlst[i] = k
 		i += 1
 	}
+	fmt.Println("NANNAN: PrecontstructionLayer: rlmapentry dgstlst")
 	rlset := mapset.NewSetFromSlice(Dgstlst)
 	i = 0
 	for k := range ulmapentry.Dgstmap {
 		Dgstlst[i] = k
 		i += 1
 	}
+	fmt.Println("NANNAN: PrecontstructionLayer: ulmapentry dgstlst")
 	ulset := mapset.NewSetFromSlice(Dgstlst)
 
 	diffset := rlset.Difference(ulset)
 	sameset := rlset.Intersect(ulset)
-
+	fmt.Println("NANNAN: PrecontstructionLayer: diffset dgstlst: ", diffset)
+	fmt.Println("NANNAN: PrecontstructionLayer: sameset dgstlst: ", sameset)
 	var repulldgsts []interface{}
 	it := sameset.Iterator()
 	for elem := range it.C {
