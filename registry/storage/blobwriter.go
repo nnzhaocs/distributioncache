@@ -851,7 +851,10 @@ func (bw *blobWriter) Uniqdistribution(
 		nodistributedfcnt += 1
 	}
 
-	if dirSize <= bw.blobStore.registry.layerslicingdirsizethres || nodistributedSize <= bw.blobStore.registry.layerslicingdirsizethres || nodistributedfcnt <= bw.blobStore.registry.layerslicingfcntthres || fcnt <= int64(bw.blobStore.registry.layerslicingfcntthres) {
+	if dirSize <= bw.blobStore.registry.layerslicingdirsizethres || 
+		nodistributedSize <= bw.blobStore.registry.layerslicingdirsizethres || 
+		nodistributedfcnt <= bw.blobStore.registry.layerslicingfcntthres || 
+		fcnt <= int64(bw.blobStore.registry.layerslicingfcntthres) {
 		//no need to distribute
 		for _, f := range nodistributedfiles {
 			f.HostServerIp = bw.blobStore.registry.hostserverIp
@@ -864,11 +867,13 @@ func (bw *blobWriter) Uniqdistribution(
 				//skip
 				continue
 			}
-			slices[bw.blobStore.registry.hostserverIp] = append(slices[bw.blobStore.registry.hostserverIp], f)
+			fmt.Printf("NANNAN: Uniqdistribution append to slices %s\n", bw.blobStore.registry.hostserverIp)
+			slices[bw.blobStore.registry.hostserverIp] = append(slices[bw.blobStore.registry.hostserverIp], f)	
 		}
 		return true
 	}
-
+		
+	fmt.Printf("NANNAN: Uniqdistribution before sort slices \n ")
 	sort.Slice(nodistributedfiles, func(i, j int) bool {
 		return nodistributedfiles[i].Size > nodistributedfiles[j].Size
 	})
@@ -882,6 +887,9 @@ func (bw *blobWriter) Uniqdistribution(
 	}
 
 	for _, f := range nodistributedfiles {
+		
+		fmt.Printf("NANNAN: Uniqdistribution first sort slices \n ")
+		
 		sort.Slice(sss, func(i, j int) bool {
 			secondi, _ := sss[i].second.(int64)
 			secondj, _ := sss[j].second.(int64)
@@ -914,7 +922,7 @@ func (bw *blobWriter) Uniqdistribution(
 			serverForwardMap[sssfirst] = append(serverForwardMap[sssfirst], f.FilePath)
 		}
 	}
-
+	fmt.Printf("NANNAN: Uniqdistribution then set sliceSizeMap \n ")
 	for _, pelem := range sss {
 		pelemfirst, _ := pelem.first.(string)
 		pelemsecond, _ := pelem.second.(int64)
