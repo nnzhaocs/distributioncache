@@ -896,6 +896,8 @@ func (bw *blobWriter) Uniqdistribution(
 			return secondi < secondj
 			//return int(sss[i].second) < int(sss[j].second)
 		})
+		
+		fmt.Printf("NANNAN: Uniqdistribution first assign biggest file to smallest slices \n ")
 
 		HostServerIp, _ := sss[0].first.(string)
 		f.HostServerIp = HostServerIp
@@ -909,13 +911,13 @@ func (bw *blobWriter) Uniqdistribution(
 			//skip
 			continue
 		}
-
+		fmt.Printf("NANNAN: Uniqdistribution then assign biggest file to smallest slices \n ")
 		ssssecond, _ := sss[0].second.(int64)
 		ssssecond += f.Size
 		sssfirst, _ := sss[0].first.(string)
 
 		sss[0].second = ssssecond // smallest file to smallest bucket
-
+		fmt.Printf("NANNAN: Uniqdistribution then add biggest file to smallest slices \n ")
 		slices[sssfirst] = append(slices[sssfirst], f)
 
 		if sssfirst != bw.blobStore.registry.hostserverIp {
