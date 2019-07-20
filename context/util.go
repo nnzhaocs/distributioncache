@@ -74,8 +74,8 @@ func GetRepoName(ctx Context) (name string) {
 		fmt.Println("NANNAN: this is forwarding! ")
 		return strings.ToUpper("forward_repo")
 	}
-	
-	if len(varsname) < 2 {
+	tmps := strings.Split(varsname, "reponame")
+	if len(tmps) < 2 {
 		fmt.Println("NANNAN: wrong input: ", varsname)
 		return ""
 	}
