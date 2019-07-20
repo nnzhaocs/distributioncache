@@ -885,7 +885,7 @@ func (bw *blobWriter) Uniqdistribution(
 		sss[i] = Pair{sip, int64(size)}
 		i += 1
 	}
-
+	fmt.Println("NANNAN: Uniqdistribution print sss !", sss)
 	for _, f := range nodistributedfiles {
 		
 		fmt.Printf("NANNAN: Uniqdistribution first sort slices \n ")
@@ -912,6 +912,7 @@ func (bw *blobWriter) Uniqdistribution(
 			continue
 		}
 		fmt.Printf("NANNAN: Uniqdistribution then assign biggest file to smallest slices \n ")
+		
 		ssssecond, _ := sss[0].second.(int64)
 		ssssecond += f.Size
 		sssfirst, _ := sss[0].first.(string)
