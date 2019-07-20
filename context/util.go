@@ -33,6 +33,7 @@ func getName(ctx Context) (name string) {
 //manifest or layer?
 func GetType(ctx Context) (name string) {
 	varsname := GetStringValue(ctx, "vars.name")
+	fmt.Println("NANNAN: varsname input: ", varsname)
 	tmps := strings.Split(varsname, "usraddr")[0]
 	if len(tmps) < 2 {
 		fmt.Println("NANNAN: wrong input: ", tmps)

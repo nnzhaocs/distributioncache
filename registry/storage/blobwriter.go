@@ -867,13 +867,13 @@ func (bw *blobWriter) Uniqdistribution(
 				//skip
 				continue
 			}
-			fmt.Printf("NANNAN: Uniqdistribution append to slices %s\n", bw.blobStore.registry.hostserverIp)
+//			fmt.Printf("NANNAN: Uniqdistribution append to slices %s\n", bw.blobStore.registry.hostserverIp)
 			slices[bw.blobStore.registry.hostserverIp] = append(slices[bw.blobStore.registry.hostserverIp], f)	
 		}
 		return true
 	}
 		
-	fmt.Printf("NANNAN: Uniqdistribution before sort slices \n ")
+//	fmt.Printf("NANNAN: Uniqdistribution before sort slices \n ")
 	sort.Slice(nodistributedfiles, func(i, j int) bool {
 		return nodistributedfiles[i].Size > nodistributedfiles[j].Size
 	})
@@ -885,10 +885,10 @@ func (bw *blobWriter) Uniqdistribution(
 		sss[i] = Pair{sip, int64(size)}
 		i += 1
 	}
-	fmt.Println("NANNAN: Uniqdistribution print sss !", sss)
+//	fmt.Println("NANNAN: Uniqdistribution print sss !", sss)
 	for _, f := range nodistributedfiles {
 		
-		fmt.Printf("NANNAN: Uniqdistribution first sort slices \n ")
+//		fmt.Printf("NANNAN: Uniqdistribution first sort slices \n ")
 		
 		sort.Slice(sss, func(i, j int) bool {
 			secondi, _ := sss[i].second.(int64)
@@ -897,7 +897,7 @@ func (bw *blobWriter) Uniqdistribution(
 			//return int(sss[i].second) < int(sss[j].second)
 		})
 		
-		fmt.Printf("NANNAN: Uniqdistribution first assign biggest file to smallest slices \n ")
+//		fmt.Printf("NANNAN: Uniqdistribution first assign biggest file to smallest slices \n ")
 
 		HostServerIp, _ := sss[0].first.(string)
 		f.HostServerIp = HostServerIp
@@ -911,7 +911,7 @@ func (bw *blobWriter) Uniqdistribution(
 			//skip
 			continue
 		}
-		fmt.Printf("NANNAN: Uniqdistribution then assign biggest file to smallest slices \n ")
+//		fmt.Printf("NANNAN: Uniqdistribution then assign biggest file to smallest slices \n ")
 		
 		ssssecond, _ := sss[0].second.(int64)
 		ssssecond += f.Size
@@ -925,7 +925,7 @@ func (bw *blobWriter) Uniqdistribution(
 			serverForwardMap[sssfirst] = append(serverForwardMap[sssfirst], f.FilePath)
 		}
 	}
-	fmt.Printf("NANNAN: Uniqdistribution then set sliceSizeMap \n ")
+//	fmt.Printf("NANNAN: Uniqdistribution then set sliceSizeMap \n ")
 	for _, pelem := range sss {
 		pelemfirst, _ := pelem.first.(string)
 		pelemsecond, _ := pelem.second.(int64)
