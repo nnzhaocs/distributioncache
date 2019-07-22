@@ -470,7 +470,7 @@ func (bs *blobServer) notifyPeerPreconstructLayer(ctx context.Context, dgst dige
 
 	urlbuffer.WriteString(dgststring)
 	url := urlbuffer.String()
-	url = trings.ToLower(url)
+	url = strings.ToLower(url)
 	context.GetLogger(ctx).Debugf("NANNAN: notifyPeerPreconstructLayer URL %s \n", url)
 
 	//let's skip head request
