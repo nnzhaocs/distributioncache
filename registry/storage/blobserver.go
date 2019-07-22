@@ -24,7 +24,6 @@ import (
 	"time"
 
 	mapset "github.com/deckarep/golang-set"
-	storagecache "github.com/docker/distribution/registry/storage/cache"
 	digest "github.com/opencontainers/go-digest"
 	"github.com/panjf2000/ants"
 )
@@ -39,15 +38,9 @@ type blobServer struct {
 	statter distribution.BlobStatter
 	reg     *registry
 	//ring                        	roundrobin.RoundRobin
-//<<<<<<< HEAD
-//	metadataService storagecache.DedupMetadataServiceCacheProvider //NANNAN: add a metadataService for restore
-	pathFn         func(dgst digest.Digest) (string, error)
-	redirect       bool // allows disabling URLFor redirects
-//=======
-//	metadataService storagecache.DedupMetadataServiceCacheProvider //NANNAN: add a metadataService for restore
-//	pathFn          func(dgst digest.Digest) (string, error)
-//	redirect        bool // allows disabling URLFor redirects
-//>>>>>>> 761468f29df65c3e34c39992aa46c3d43062e8b0
+	//metadataService storagecache.DedupMetadataServiceCacheProvider //NANNAN: add a metadataService for restore
+	pathFn   func(dgst digest.Digest) (string, error)
+	redirect bool // allows disabling URLFor redirects
 }
 
 type registriesAPIResponse struct {
@@ -674,13 +667,14 @@ func (bs *blobServer) Preconstructlayers(ctx context.Context, reg *registry) err
 	rlmapentry, err := bs.reg.metadataService.StatRLMapEntry(ctx, reponame)
 	if err != nil {
 		context.GetLogger(ctx).Debugf("NANNAN: Preconstructlayers: cannot get rlmapentry for repo (%s)", reponame)
+		return err
 	}
 	fmt.Println("NANNAN: PrecontstructionLayer: rlmapentry => %v", rlmapentry)
-	ulmapentry, err := bs.reg.metadataService.StatULMapEntry(ctx, usrname)
+	ulmapentry, err := bs.metadataService.StatULMapEntry(ctx, usrname)
 	if err != nil {
 		context.GetLogger(ctx).Debugf("NANNAN: Preconstructlayers: cannot get ulentry for usr (%s)", usrname)
 	}
-	fmt.Println("NANNAN: PrecontstructionLayer: rlmapentry => %v", rlmapentry)
+	fmt.Println("NANNAN: PrecontstructionLayer: ulmapentry => %v", ulmapentry)
 	var Dgstlst []interface{}
 	i := 0
 	for k := range rlmapentry.Dgstmap {
@@ -812,7 +806,7 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 			}
 			goto out
 		} else {
-			desc, err := bs.reg.metadataService.StatLayerRecipe(ctx, dgst)
+			desc, err := bs.metadataService.StatLayerRecipe(ctx, dgst)
 			Uncompressedsize = desc.UncompressionSize
 			DurationML = time.Since(start).Seconds()
 
@@ -848,7 +842,7 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 			goto out
 		} else {
 			start := time.Now()
-			desc, err := bs.reg.metadataService.StatSliceRecipe(ctx, dgst)
+			desc, err := bs.metadataService.StatSliceRecipe(ctx, dgst)
 			DurationML = time.Since(start).Seconds()
 
 			if err != nil || (err == nil && len(desc.Files) == 0) {
