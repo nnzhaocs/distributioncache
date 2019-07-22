@@ -692,14 +692,14 @@ func (bs *blobServer) Preconstructlayers(ctx context.Context, reg *registry) err
 		return err
 	}
 	fmt.Println("NANNAN: PrecontstructionLayer: ulmapentry => %v", ulmapentry)
-	
+
 	var rlgstlst []interface{}
 	for k := range rlmapentry.Dgstmap {
 		rlgstlst = append(rlgstlst, k)
 	}
 	fmt.Println("NANNAN: PrecontstructionLayer: rlmapentry dgstlst")
 	rlset := mapset.NewSetFromSlice(rlgstlst)
-	
+
 	var ulgstlst []interface{}
 	for k := range ulmapentry.Dgstmap {
 		ulgstlst = append(ulgstlst, k)
@@ -710,10 +710,10 @@ func (bs *blobServer) Preconstructlayers(ctx context.Context, reg *registry) err
 
 	diffset := rlset.Difference(ulset)
 	sameset := rlset.Intersect(ulset)
-	
+
 	fmt.Println("NANNAN: PrecontstructionLayer: diffset dgstlst: ", diffset)
 	fmt.Println("NANNAN: PrecontstructionLayer: sameset dgstlst: ", sameset)
-	
+
 	var repulldgsts []interface{}
 	it := sameset.Iterator()
 	for elem := range it.C {
@@ -731,7 +731,7 @@ func (bs *blobServer) Preconstructlayers(ctx context.Context, reg *registry) err
 	if len(descdgstset.ToSlice()) == 0 {
 		return nil
 	}
-	
+
 	var wg sync.WaitGroup
 	it = descdgstset.Iterator()
 	for elem := range it.C {
