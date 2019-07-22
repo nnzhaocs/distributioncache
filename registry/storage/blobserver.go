@@ -675,26 +675,27 @@ func (bs *blobServer) Preconstructlayers(ctx context.Context, reg *registry) err
 		context.GetLogger(ctx).Debugf("NANNAN: Preconstructlayers: cannot get ulentry for usr (%s)", usrname)
 	}
 	fmt.Println("NANNAN: PrecontstructionLayer: ulmapentry => %v", ulmapentry)
-	var Dgstlst []interface{}
-	i := 0
+	
+	var rlgstlst []interface{}
 	for k := range rlmapentry.Dgstmap {
-		Dgstlst[i] = k
-		i += 1
+		rlgstlst = append(rlgstlst, k)
 	}
 	fmt.Println("NANNAN: PrecontstructionLayer: rlmapentry dgstlst")
-	rlset := mapset.NewSetFromSlice(Dgstlst)
-	i = 0
+	rlset := mapset.NewSetFromSlice(rlgstlst)
+	
+	var ulgstlst []interface{}
 	for k := range ulmapentry.Dgstmap {
-		Dgstlst[i] = k
-		i += 1
+		ulgstlst = append(ulgstlst, k)
 	}
 	fmt.Println("NANNAN: PrecontstructionLayer: ulmapentry dgstlst")
-	ulset := mapset.NewSetFromSlice(Dgstlst)
+	ulset := mapset.NewSetFromSlice(ulgstlst)
 
 	diffset := rlset.Difference(ulset)
 	sameset := rlset.Intersect(ulset)
+	
 	fmt.Println("NANNAN: PrecontstructionLayer: diffset dgstlst: ", diffset)
 	fmt.Println("NANNAN: PrecontstructionLayer: sameset dgstlst: ", sameset)
+	
 	var repulldgsts []interface{}
 	it := sameset.Iterator()
 	for elem := range it.C {
@@ -707,11 +708,12 @@ func (bs *blobServer) Preconstructlayers(ctx context.Context, reg *registry) err
 	repullset := mapset.NewSetFromSlice(repulldgsts)
 
 	descdgstset := diffset.Union(repullset)
-
 	context.GetLogger(ctx).Debugf("NANNAN: descdgstlst: %v \n", descdgstset)
+	'
 	if len(descdgstset.ToSlice()) == 0 {
 		return nil
 	}
+	
 	var wg sync.WaitGroup
 	it = descdgstset.Iterator()
 	for elem := range it.C {
