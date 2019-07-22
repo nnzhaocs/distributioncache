@@ -670,7 +670,7 @@ func (bs *blobServer) Preconstructlayers(ctx context.Context, reg *registry) err
 		return err
 	}
 	fmt.Println("NANNAN: PrecontstructionLayer: rlmapentry => %v", rlmapentry)
-	ulmapentry, err := bs.metadataService.StatULMapEntry(ctx, usrname)
+	ulmapentry, err := bs.reg.metadataService.StatULMapEntry(ctx, usrname)
 	if err != nil {
 		context.GetLogger(ctx).Debugf("NANNAN: Preconstructlayers: cannot get ulentry for usr (%s)", usrname)
 	}
@@ -806,7 +806,7 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 			}
 			goto out
 		} else {
-			desc, err := bs.metadataService.StatLayerRecipe(ctx, dgst)
+			desc, err := bs.reg.metadataService.StatLayerRecipe(ctx, dgst)
 			Uncompressedsize = desc.UncompressionSize
 			DurationML = time.Since(start).Seconds()
 
@@ -842,7 +842,7 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 			goto out
 		} else {
 			start := time.Now()
-			desc, err := bs.metadataService.StatSliceRecipe(ctx, dgst)
+			desc, err := bs.reg.metadataService.StatSliceRecipe(ctx, dgst)
 			DurationML = time.Since(start).Seconds()
 
 			if err != nil || (err == nil && len(desc.Files) == 0) {
