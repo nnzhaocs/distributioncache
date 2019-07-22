@@ -667,18 +667,25 @@ func (bw *blobWriter) doDedup(ctx context.Context, desc distribution.Descriptor,
 
 	bw.Uniqdistribution(ctx, dirSize, fcnt, nodistributedfiles, sliceSizeMap, slices, serverForwardMap)
 
-	hostserverIps := make([]string, len(slices))
-	i := 0
+	var hostserverIps []string
+	sliceSizeMapnew := make(map[string]int64)
+	var maxsize int64 = 0
+	var masterIp string
 	for sip := range slices {
-		hostserverIps[i] = sip
-		i += 1
+		sliceSizeMap[sip] > 0{
+			hostserverIps = append(hostserverIps, sip)
+			sliceSizeMapnew[sip] = sliceSizeMap[sip]
+			if maxsize < sliceSizeMapnew[sip]{
+				masterIp = sip
+			}
+		}
 	}
 
 	des := distribution.LayerRecipeDescriptor{
 		Digest:            desc.Digest,
-		MasterIp:          bw.blobStore.registry.hostserverIp,
+		MasterIp:          masterIp, //bw.blobStore.registry.hostserverIp,
 		HostServerIps:     hostserverIps, //RemoveDuplicateIpsFromIps(serverIps),
-		SliceSizeMap:      sliceSizeMap,
+		SliceSizeMap:      sliceSizeMapnew,
 		UncompressionSize: dirSize,
 	}
 	start = time.Now()
@@ -689,16 +696,18 @@ func (bw *blobWriter) doDedup(ctx context.Context, desc distribution.Descriptor,
 	}
 
 	for sip, files := range slices {
-		des := distribution.SliceRecipeDescriptor{
-			Digest:       desc.Digest,
-			HostServerIp: sip,
-			Files:        files,
-			SliceSize:    sliceSizeMap[sip],
-		}
-		err = bw.blobStore.registry.metadataService.SetSliceRecipe(ctx, desc.Digest, des)
-		if err != nil {
-			//cleanup slice // omitted
-			return 0.0, 0.0, 0.0, 0, err, false, false
+		if 0 < len(files) && 0 < sliceSizeMap[sip]{
+			des := distribution.SliceRecipeDescriptor{
+				Digest:       desc.Digest,
+				HostServerIp: sip,
+				Files:        files,
+				SliceSize:    sliceSizeMap[sip],
+			}
+			err = bw.blobStore.registry.metadataService.SetSliceRecipe(ctx, desc.Digest, des)
+			if err != nil {
+				//cleanup slice // omitted
+				return 0.0, 0.0, 0.0, 0, err, false, false
+			}
 		}
 	}
 	DurationSRM := time.Since(start).Seconds()
@@ -929,9 +938,7 @@ func (bw *blobWriter) Uniqdistribution(
 	for _, pelem := range sss {
 		pelemfirst, _ := pelem.first.(string)
 		pelemsecond, _ := pelem.second.(int64)
-		if pelemsecond > 0{
-			sliceSizeMap[pelemfirst] = pelemsecond
-		}
+		sliceSizeMap[pelemfirst] = pelemsecond
 	}
 
 	return true

@@ -450,7 +450,7 @@ func (bs *blobServer) notifyPeerPreconstructLayer(ctx context.Context, dgst dige
 
 	desc, err := bs.reg.metadataService.StatLayerRecipe(ctx, dgst)
 	if err != nil {
-		context.GetLogger(ctx).Warnf("NANNAN: COULDN'T FIND LAYER RECIPE: %v or Empty layer \n", err)
+		context.GetLogger(ctx).Warnf("NANNAN: COULDN'T FIND LAYER RECIPE: %v or Empty layer for dgst", err, dgst)
 		return false
 	}
 	regip := desc.MasterIp
@@ -458,7 +458,7 @@ func (bs *blobServer) notifyPeerPreconstructLayer(ctx context.Context, dgst dige
 	regipbuffer.WriteString(regip)
 	regipbuffer.WriteString(":5000")
 	regip = regipbuffer.String()
-	context.GetLogger(ctx).Debugf("NANNAN: notifyPeerPreconstructLayer from %s, dgst: %s \n", regip, dgststring)
+	context.GetLogger(ctx).Debugf("NANNAN: notifyPeerPreconstructLayer for %s, dgst: %s", regip, dgststring)
 
 	//GET /v2/<name>/blobs/<digest>
 	var urlbuffer bytes.Buffer
@@ -471,7 +471,7 @@ func (bs *blobServer) notifyPeerPreconstructLayer(ctx context.Context, dgst dige
 	urlbuffer.WriteString(dgststring)
 	url := urlbuffer.String()
 	url = strings.ToLower(url)
-	context.GetLogger(ctx).Debugf("NANNAN: notifyPeerPreconstructLayer URL %s \n", url)
+	context.GetLogger(ctx).Debugf("NANNAN: notifyPeerPreconstructLayer URL %s", url)
 
 	//let's skip head request
 	req, err := http.NewRequest("GET", url, nil)
@@ -486,9 +486,8 @@ func (bs *blobServer) notifyPeerPreconstructLayer(ctx context.Context, dgst dige
 		context.GetLogger(ctx).Errorf("NANNAN: notifyPeerPreconstructLayer Do GET URL %s, err %s", url, err)
 		return false
 	}
-
+	context.GetLogger(ctx).Debugf("NANNAN: %s returned status code %d", regip, resp.StatusCode)
 	if resp.StatusCode < 200 || resp.StatusCode > 299 {
-		context.GetLogger(ctx).Errorf("%s returned status code %d", regip, resp.StatusCode)
 		return false //errors.New("notifyPeerPreconstructLayer to other servers, failed")
 	}
 	return true
@@ -503,8 +502,10 @@ SLICE*/
 func (bs *blobServer) GetSliceFromRegistry(ctx context.Context, dgst digest.Digest, regip string, pw *PgzipFile, wg *sync.WaitGroup, constructtype string) error {
 
 	defer wg.Done()
-
 	dgststring := dgst.String()
+
+	//	if regip != bs.reg.hostserverIp{
+
 	var regipbuffer bytes.Buffer
 	reponame := context.GetRepoName(ctx)
 	usrname := context.GetUsrAddr(ctx)
@@ -512,7 +513,7 @@ func (bs *blobServer) GetSliceFromRegistry(ctx context.Context, dgst digest.Dige
 	regipbuffer.WriteString(regip)
 	regipbuffer.WriteString(":5000")
 	regip = regipbuffer.String()
-	context.GetLogger(ctx).Debugf("NANNAN: GetSliceFromRegistry from %s, dgst: %s \n", regip, dgststring)
+	context.GetLogger(ctx).Debugf("NANNAN: GetSliceFromRegistry from %s, dgst: %s ", regip, dgststring)
 
 	//GET /v2/<name>/blobs/<digest>
 	var urlbuffer bytes.Buffer
@@ -527,7 +528,7 @@ func (bs *blobServer) GetSliceFromRegistry(ctx context.Context, dgst digest.Dige
 
 	urlbuffer.WriteString(dgststring)
 	url := urlbuffer.String()
-	context.GetLogger(ctx).Debugf("NANNAN: GetSliceFromRegistry URL %s \n", url)
+	context.GetLogger(ctx).Debugf("NANNAN: GetSliceFromRegistry URL %s ", url)
 
 	//let's skip head request
 	req, err := http.NewRequest("GET", url, nil)
@@ -550,13 +551,27 @@ func (bs *blobServer) GetSliceFromRegistry(ctx context.Context, dgst digest.Dige
 	}
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		context.GetLogger(ctx).Errorf("NANNAN: cannot read from resp.body: %s\n", err)
+		context.GetLogger(ctx).Errorf("NANNAN: cannot read from resp.body: %s", err)
 		return err
 	}
 
 	buf := bytes.NewBuffer(body)
 	err = pgzipconcatTarFile(buf, pw)
 	return err
+	//	}else{
+	//		start := time.Now()
+	//		desc, err := bs.reg.metadataService.StatSliceRecipe(ctx, dgst)
+	//		DurationML = time.Since(start).Seconds()
+	//
+	//		if err != nil || (err == nil && len(desc.Files) == 0) {
+	//			context.GetLogger(ctx).Warnf("NANNAN: COULDN'T FIND SLICE RECIPE: %v or Empty slice for dgst %v", err, dgst)
+	//			return err
+	//		}
+	//		bss, DurationSCT, tp = bs.constructSlice(ctx, desc, dgst, bs.reg, constructtype)
+	//		buf := bytes.NewBuffer(bss)
+	//		err = pgzipconcatTarFile(buf, pw)
+	//		return err
+	//	}
 }
 
 func (bs *blobServer) constructSlice(ctx context.Context, desc distribution.SliceRecipeDescriptor, dgst digest.Digest, reg *registry, constructtype string) ([]byte, float64, string) {
@@ -606,7 +621,8 @@ func (bs *blobServer) constructSlice(ctx context.Context, desc distribution.Slic
 	return nil, 0.0, ""
 }
 
-func (bs *blobServer) constructLayer(ctx context.Context, desc distribution.LayerRecipeDescriptor, dgst digest.Digest, constructtype string) ([]byte, float64, string) {
+func (bs *blobServer) constructLayer(ctx context.Context, desc distribution.LayerRecipeDescriptor,
+	dgst digest.Digest, constructtype string) ([]byte, float64, string) {
 
 	var wg sync.WaitGroup
 	var comprssbuf bytes.Buffer
@@ -660,7 +676,6 @@ func (bs *blobServer) constructLayer(ctx context.Context, desc distribution.Laye
 }
 
 func (bs *blobServer) Preconstructlayers(ctx context.Context, reg *registry) error {
-	//image preconstruction master,
 	reponame := context.GetRepoName(ctx)
 	usrname := context.GetUsrAddr(ctx)
 	context.GetLogger(ctx).Debugf("NANNAN: Preconstructlayers: for repo (%s) and usr (%s)", reponame, usrname)
@@ -674,6 +689,7 @@ func (bs *blobServer) Preconstructlayers(ctx context.Context, reg *registry) err
 	ulmapentry, err := bs.reg.metadataService.StatULMapEntry(ctx, usrname)
 	if err != nil {
 		context.GetLogger(ctx).Debugf("NANNAN: Preconstructlayers: cannot get ulentry for usr (%s)", usrname)
+		return err
 	}
 	fmt.Println("NANNAN: PrecontstructionLayer: ulmapentry => %v", ulmapentry)
 
@@ -689,6 +705,7 @@ func (bs *blobServer) Preconstructlayers(ctx context.Context, reg *registry) err
 		ulgstlst = append(ulgstlst, k)
 	}
 	fmt.Println("NANNAN: PrecontstructionLayer: ulmapentry dgstlst")
+
 	ulset := mapset.NewSetFromSlice(ulgstlst)
 
 	diffset := rlset.Difference(ulset)
@@ -709,7 +726,7 @@ func (bs *blobServer) Preconstructlayers(ctx context.Context, reg *registry) err
 	repullset := mapset.NewSetFromSlice(repulldgsts)
 
 	descdgstset := diffset.Union(repullset)
-	context.GetLogger(ctx).Debugf("NANNAN: descdgstlst: %v \n", descdgstset)
+	context.GetLogger(ctx).Debugf("NANNAN: descdgstlst: %v ", descdgstset)
 
 	if len(descdgstset.ToSlice()) == 0 {
 		return nil
@@ -753,7 +770,7 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 	DurationML := time.Since(start).Seconds()
 
 	reqtype := context.GetType(ctx)
-	context.GetLogger(ctx).Debugf("NANNAN: ServeBlob: type: %s\n", reqtype)
+	context.GetLogger(ctx).Debugf("NANNAN: ServeBlob: type: %s", reqtype)
 
 	reponame := context.GetRepoName(ctx)
 	usrname := context.GetUsrAddr(ctx)
@@ -762,7 +779,7 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 	if reqtype == "MANIFEST" {
 		// Userlru lst change
 		DurationML := time.Since(start).Seconds()
-		context.GetLogger(ctx).Debugf("NANNAN: THIS IS A MANIFEST REQUEST, serve and preconstruct layers\n")
+		context.GetLogger(ctx).Debugf("NANNAN: THIS IS A MANIFEST REQUEST, serve and preconstruct layers")
 
 		go bs.Preconstructlayers(ctx, bs.reg) // prefetch window
 
@@ -814,7 +831,7 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 			DurationML = time.Since(start).Seconds()
 
 			if err != nil || (err == nil && len(desc.HostServerIps) == 0) {
-				context.GetLogger(ctx).Warnf("NANNAN: COULDN'T FIND LAYER RECIPE: %v or Empty layer \n", err)
+				context.GetLogger(ctx).Warnf("NANNAN: COULDN'T FIND LAYER RECIPE: %v or Empty layer ", err)
 				goto Sendasmanifest
 			}
 
@@ -849,7 +866,7 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 			DurationML = time.Since(start).Seconds()
 
 			if err != nil || (err == nil && len(desc.Files) == 0) {
-				context.GetLogger(ctx).Warnf("NANNAN: COULDN'T FIND SLICE RECIPE: %v or Empty slice \n", err)
+				context.GetLogger(ctx).Warnf("NANNAN: COULDN'T FIND SLICE RECIPE: %v or Empty slice ", err)
 				goto Sendasmanifest
 			}
 
@@ -865,7 +882,7 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 	}
 
 	if reqtype != "SLICE" && reqtype != "PRECONSTRUCTSLICE" && reqtype != "LAYER" && reqtype != "PRECONSTRUCTLAYER" && reqtype != "MANIFEST" {
-		context.GetLogger(ctx).Errorf("NANNAN: ServeBlob: No type found\n")
+		context.GetLogger(ctx).Errorf("NANNAN: ServeBlob: No type found")
 		return err
 	}
 
