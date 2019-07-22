@@ -470,6 +470,7 @@ func (bs *blobServer) notifyPeerPreconstructLayer(ctx context.Context, dgst dige
 
 	urlbuffer.WriteString(dgststring)
 	url := urlbuffer.String()
+	url = trings.ToLower(url)
 	context.GetLogger(ctx).Debugf("NANNAN: notifyPeerPreconstructLayer URL %s \n", url)
 
 	//let's skip head request
@@ -709,7 +710,7 @@ func (bs *blobServer) Preconstructlayers(ctx context.Context, reg *registry) err
 
 	descdgstset := diffset.Union(repullset)
 	context.GetLogger(ctx).Debugf("NANNAN: descdgstlst: %v \n", descdgstset)
-	'
+	
 	if len(descdgstset.ToSlice()) == 0 {
 		return nil
 	}
