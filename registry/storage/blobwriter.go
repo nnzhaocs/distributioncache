@@ -929,7 +929,9 @@ func (bw *blobWriter) Uniqdistribution(
 	for _, pelem := range sss {
 		pelemfirst, _ := pelem.first.(string)
 		pelemsecond, _ := pelem.second.(int64)
-		sliceSizeMap[pelemfirst] = pelemsecond
+		if pelemsecond > 0{
+			sliceSizeMap[pelemfirst] = pelemsecond
+		}
 	}
 
 	return true
