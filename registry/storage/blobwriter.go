@@ -617,7 +617,7 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) e
 		}
 	}
 
-	DurationRDF, DurationSRM, DurationSFT, dirSize, err, isdedup, isforward := bw.doDedup(ctx, desc, unpackPath, blobPath)
+	DurationRDF, DurationSRM, DurationSFT, dirSize, err, isdedup, isforward := bw.doDedup(ctx, desc, unpackPath, blobPath, comressSize)
 	if err != nil {
 		return err
 	}
@@ -631,7 +631,7 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) e
 	return nil
 }
 
-func (bw *blobWriter) doDedup(ctx context.Context, desc distribution.Descriptor, unpackPath string, blobPath string) (float64, float64, float64, int64, error, bool, bool) {
+func (bw *blobWriter) doDedup(ctx context.Context, desc distribution.Descriptor, unpackPath string, blobPath string, comressSize int64) (float64, float64, float64, int64, error, bool, bool) {
 
 	var nodistributedfiles []distribution.FileDescriptor
 	slices := make(map[string][]distribution.FileDescriptor)
@@ -687,6 +687,7 @@ func (bw *blobWriter) doDedup(ctx context.Context, desc distribution.Descriptor,
 		HostServerIps:     hostserverIps, //RemoveDuplicateIpsFromIps(serverIps),
 		SliceSizeMap:      sliceSizeMapnew,
 		UncompressionSize: dirSize,
+		CompressionSize: comressSize,
 	}
 	start = time.Now()
 	err = bw.blobStore.registry.metadataService.SetLayerRecipe(ctx, desc.Digest, des)
