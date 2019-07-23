@@ -9,7 +9,7 @@ import (
 	"github.com/docker/distribution/registry/api/errcode"
 	"github.com/docker/distribution/registry/api/v2"
 	"github.com/gorilla/handlers"
-	"github.com/opencontainers/go-digest"
+	digest "github.com/opencontainers/go-digest"
 )
 
 // blobDispatcher uses the request context to build a blobHandler.
@@ -32,7 +32,7 @@ func blobDispatcher(ctx *Context, r *http.Request) http.Handler {
 		Context: ctx,
 		Digest:  dgst,
 	}
-//	context.GetLogger(ctx).Infof("NANNAN: blobDispatcher, uses the request context to build a blobHandler")
+	//	context.GetLogger(ctx).Infof("NANNAN: blobDispatcher, uses the request context to build a blobHandler")
 	mhandler := handlers.MethodHandler{
 		"GET":  http.HandlerFunc(blobHandler.GetBlob), //Head Blob GetBlob
 		"HEAD": http.HandlerFunc(blobHandler.HeadBlob),
