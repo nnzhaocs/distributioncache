@@ -7,7 +7,7 @@ import (
 	"github.com/docker/distribution"
 	"github.com/docker/distribution/context"
 	"github.com/docker/distribution/registry/storage/driver"
-	"github.com/opencontainers/go-digest"
+	digest "github.com/opencontainers/go-digest"
 )
 
 // blobStore implements the read side of the blob store interface over a
@@ -195,11 +195,11 @@ func (bs *blobStatter) Stat(ctx context.Context, dgst digest.Digest) (distributi
 	path, err := pathFor(blobDataPathSpec{
 		digest: dgst,
 	})
-	size := 100
+	var size int64 = 100
 	if err != nil {
 		return distribution.Descriptor{}, err
 	}
-//	context.GetLogger(ctx).Infof("NANNAN: blobStatter: Stat, call bs.driver.stat")
+	//	context.GetLogger(ctx).Infof("NANNAN: blobStatter: Stat, call bs.driver.stat")
 	fi, err := bs.driver.Stat(ctx, path)
 	if err != nil {
 		switch err := err.(type) {
@@ -209,15 +209,15 @@ func (bs *blobStatter) Stat(ctx context.Context, dgst digest.Digest) (distributi
 			return distribution.Descriptor{}, err
 		}
 	}
-	
-	if fi{
+
+	if fi != nil {
 		if fi.IsDir() {
-		// NOTE(stevvooe): This represents a corruption situation. Somehow, we
-		// calculated a blob path and then detected a directory. We log the
-		// error and then error on the side of not knowing about the blob.
-		context.GetLogger(ctx).Warnf("blob path should not be a directory: %q", path)
-		return distribution.Descriptor{}, distribution.ErrBlobUnknown
-	}
+			// NOTE(stevvooe): This represents a corruption situation. Somehow, we
+			// calculated a blob path and then detected a directory. We log the
+			// error and then error on the side of not knowing about the blob.
+			context.GetLogger(ctx).Warnf("blob path should not be a directory: %q", path)
+			return distribution.Descriptor{}, distribution.ErrBlobUnknown
+		}
 		size = fi.Size()
 	}
 
@@ -296,4 +296,3 @@ func (bs *blobStatter) SetDescriptor(ctx context.Context, dgst digest.Digest, de
 //func (bs *blobStatter) SetDescriptor(ctx context.Context, dgst digest.Digest, desc distribution.Descriptor) error {
 //	return distribution.ErrUnsupported
 //}
-
