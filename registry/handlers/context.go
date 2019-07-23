@@ -4,12 +4,13 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+
 	"github.com/docker/distribution"
 	ctxu "github.com/docker/distribution/context"
 	"github.com/docker/distribution/registry/api/errcode"
 	"github.com/docker/distribution/registry/api/v2"
 	"github.com/docker/distribution/registry/auth"
-	"github.com/opencontainers/go-digest"
+	digest "github.com/opencontainers/go-digest"
 	"golang.org/x/net/context"
 )
 
@@ -45,23 +46,23 @@ func (ctx *Context) Value(key interface{}) interface{} {
 
 func getName(ctx context.Context) (name string) {
 	varsname := ctxu.GetStringValue(ctx, "vars.name")
-	tp := GetType(ctx)
-	
+	//tp := GetType(ctx)
+
 	newname := strings.ReplaceAll(varsname, "type", "")
 	newname = strings.ReplaceAll(newname, "usraddr", "")
 	newname = strings.ReplaceAll(newname, "reponame", "")
-	
+
 	newname = strings.ReplaceAll(newname, "layer", "")
 	newname = strings.ReplaceAll(newname, "slice", "")
-	
+
 	newname = strings.ReplaceAll(newname, "preconstruct", "")
-	
-//	if ok := strings.Contains(tp, "PRECONSTRUCT"); ok{
-//		mname := strings.ReplaceAll(varsname, "preconstruct", "")
+
+	//	if ok := strings.Contains(tp, "PRECONSTRUCT"); ok{
+	//		mname := strings.ReplaceAll(varsname, "preconstruct", "")
 	fmt.Printf("NANNAN: clear reference var.name from getName %s: => %s \n", varsname, newname)
-//		return mname
-//	}
-	
+	//		return mname
+	//	}
+
 	return newname
 }
 
@@ -70,11 +71,11 @@ func getName(ctx context.Context) (name string) {
 func GetType(ctx context.Context) (name string) {
 	varsname := ctxu.GetStringValue(ctx, "vars.name")
 	//forward_repo/forward_repo
-	if ok := strings.Contains(varsname, "forward_repo"); ok{
+	if ok := strings.Contains(varsname, "forward_repo"); ok {
 		fmt.Println("NANNAN: this is forwarding! ")
 		return strings.ToUpper("forward_repo")
 	}
-//	fmt.Println("NANNAN: varsname input: ", varsname)
+	//	fmt.Println("NANNAN: varsname input: ", varsname)
 	tmps := strings.Split(varsname, "usraddr")[0]
 	if len(tmps) < 2 {
 		fmt.Println("NANNAN: wrong input: ", tmps)
@@ -87,12 +88,12 @@ func GetType(ctx context.Context) (name string) {
 //usraddr
 func GetUsrAddr(ctx context.Context) (name string) {
 	varsname := ctxu.GetStringValue(ctx, "vars.name")
-	
-	if ok := strings.Contains(varsname, "forward_repo"); ok{
+
+	if ok := strings.Contains(varsname, "forward_repo"); ok {
 		fmt.Println("NANNAN: this is forwarding! ")
 		return strings.ToUpper("forward_repo")
 	}
-	
+
 	tmps := strings.Split(varsname, "reponame")[0]
 	if len(tmps) < 2 {
 		fmt.Println("NANNAN: wrong input: ", tmps)
@@ -105,8 +106,8 @@ func GetUsrAddr(ctx context.Context) (name string) {
 //reponame
 func GetRepoName(ctx context.Context) (name string) {
 	varsname := ctxu.GetStringValue(ctx, "vars.name")
-	
-	if ok := strings.Contains(varsname, "forward_repo"); ok{
+
+	if ok := strings.Contains(varsname, "forward_repo"); ok {
 		fmt.Println("NANNAN: this is forwarding! ")
 		return strings.ToUpper("forward_repo")
 	}
