@@ -466,9 +466,13 @@ func (bs *blobServer) notifyPeerPreconstructLayer(ctx context.Context, dgst dige
 	urlbuffer.WriteString(regip)
 	urlbuffer.WriteString("/v2/")
 	urlbuffer.WriteString(tp + "USRADDR" + usrname + "REPONAME" + reponame)
-	urlbuffer.WriteString("/blobs/")
+	urlbuffer.WriteString("/blobs/sha256:")
 
-	urlbuffer.WriteString(dgststring)
+	
+	
+	newdgststring = strings.SplitN(dgststring, "sha256:", 2)[1]
+	urlbuffer.WriteString(newdgststring)
+	
 	url := urlbuffer.String()
 	url = strings.ToLower(url)
 	context.GetLogger(ctx).Debugf("NANNAN: notifyPeerPreconstructLayer URL %s", url)

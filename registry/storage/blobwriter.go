@@ -441,7 +441,7 @@ func checkNeedDedupOrNot(ctx context.Context, unpackPath string) (bool, error) {
 	for _, f := range files {
 		fmatch, _ := path.Match("NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL", f.Name())
 		if fmatch {
-			context.GetLogger(ctx).Debugf("NANNAN: NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL ", f.Name())
+			context.GetLogger(ctx).Debugf("NANNAN: NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL: %s", f.Name())
 			/*
 			 /home/nannan/dockerimages/layers
 			 /docker/registry/v2/blobs/sha256/07/078bb24d9ee4ddf90f349d0b63004d3ac6897dae28dd37cc8ae97a0306e6aa33/
@@ -460,7 +460,7 @@ func checkNeedDedupOrNot(ctx context.Context, unpackPath string) (bool, error) {
 					//get next level directories
 					fds, err := ioutil.ReadDir(path.Join(unpackPath, "NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL/docker/registry/v2/blobs/sha256/", f.Name()))
 					if err != nil {
-						context.GetLogger(ctx).Errorf("NANNAN: %s, cannot read this unpackpath filepath: %s", path.Join(unpackPath, "NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL/docker/registry/v2/blobs/sha256/", f.Name()), err)
+						context.GetLogger(ctx).Errorf("NANNAN: %s, cannot read this unpackpath filepath: %s: %v", path.Join(unpackPath, "NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL/docker/registry/v2/blobs/sha256/", f.Name()), err)
 						return false, err
 					}
 					for _, fd := range fds {
