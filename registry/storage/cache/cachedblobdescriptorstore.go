@@ -78,31 +78,31 @@ func (cbds *cachedBlobStatter) Stat(ctx context.Context, dgst digest.Digest) (di
 			context.GetLogger(ctx).Errorf("Stat: error retrieving descriptor from cache: %v", err)
 		}
 
-		return nil, err
-//		goto fallback
+		return distribution.Descriptor{}, err
+		//		goto fallback
 	}
 
 	if cbds.tracker != nil {
 		cbds.tracker.Hit()
 	}
 	return desc, nil
-//fallback:
-//	if cbds.tracker != nil {
-//		cbds.tracker.Miss()
-//	}
-//	
-//	//then check disk
-//	
-//	desc, err = cbds.backend.Stat(ctx, dgst)
-//	if err != nil {
-//		return desc, err
-//	}
-//
-//	if err := cbds.cache.SetDescriptor(ctx, dgst, desc); err != nil {
-//		context.GetLogger(ctx).Errorf("Stat SetDescriptor: error adding descriptor %v to cache: %v", desc.Digest, err)
-//	}
-//
-//	return desc, err
+	//fallback:
+	//	if cbds.tracker != nil {
+	//		cbds.tracker.Miss()
+	//	}
+	//
+	//	//then check disk
+	//
+	//	desc, err = cbds.backend.Stat(ctx, dgst)
+	//	if err != nil {
+	//		return desc, err
+	//	}
+	//
+	//	if err := cbds.cache.SetDescriptor(ctx, dgst, desc); err != nil {
+	//		context.GetLogger(ctx).Errorf("Stat SetDescriptor: error adding descriptor %v to cache: %v", desc.Digest, err)
+	//	}
+	//
+	//	return desc, err
 
 }
 
