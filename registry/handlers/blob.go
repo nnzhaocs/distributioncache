@@ -9,7 +9,7 @@ import (
 	"github.com/docker/distribution/registry/api/errcode"
 	"github.com/docker/distribution/registry/api/v2"
 	"github.com/gorilla/handlers"
-	"github.com/opencontainers/go-digest"
+	digest "github.com/opencontainers/go-digest"
 )
 
 // blobDispatcher uses the request context to build a blobHandler.
@@ -32,7 +32,7 @@ func blobDispatcher(ctx *Context, r *http.Request) http.Handler {
 		Context: ctx,
 		Digest:  dgst,
 	}
-//	context.GetLogger(ctx).Infof("NANNAN: blobDispatcher, uses the request context to build a blobHandler")
+	//	context.GetLogger(ctx).Infof("NANNAN: blobDispatcher, uses the request context to build a blobHandler")
 	mhandler := handlers.MethodHandler{
 		"GET":  http.HandlerFunc(blobHandler.GetBlob), //Head Blob GetBlob
 		"HEAD": http.HandlerFunc(blobHandler.HeadBlob),
@@ -87,9 +87,9 @@ func (bh *blobHandler) GetBlob(w http.ResponseWriter, r *http.Request) {
 		} else {
 			bh.Errors = append(bh.Errors, errcode.ErrorCodeUnknown.WithDetail(err))
 		}
-		if "PRECONSTRUCTLAYER" == handlers.GetType(bh) || "PRECONSTRUCTSLICE" == handlers.Gettype(bh){ //type == preconstruct// skip{}
+		if "PRECONSTRUCTLAYER" == GetType(bh) || "PRECONSTRUCTSLICE" == GetType(bh) { //type == preconstruct// skip{}
 			context.GetLogger(bh).Debugf("NANNAN: GetBlob: skip the errors for preconstruct layer or slice for dgst", bh.Digest)
-		}else{
+		} else {
 			return
 		}
 	}
