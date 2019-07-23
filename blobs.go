@@ -110,7 +110,7 @@ type LayerRecipeDescriptor struct {
 	HostServerIps     []string         //slice hosts
 	SliceSizeMap      map[string]int64 // layer digest.string+"::"+server
 	UncompressionSize int64
-	CompressionSize		int64
+	CompressionSize   int64
 }
 
 // NANNAN: Descriptors for slice recipe
@@ -220,7 +220,7 @@ type RedisDedupMetadataService interface {
 	StatLayerRecipe(ctx context.Context, dgst digest.Digest) (LayerRecipeDescriptor, error)
 	SetLayerRecipe(ctx context.Context, dgst digest.Digest, desc LayerRecipeDescriptor) error
 	StatSliceRecipe(ctx context.Context, dgst digest.Digest) (SliceRecipeDescriptor, error)
-	SetSliceRecipe(ctx context.Context, dgst digest.Digest, desc SliceRecipeDescriptor) error
+	SetSliceRecipe(ctx context.Context, dgst digest.Digest, desc SliceRecipeDescriptor, sip string) error
 
 	StatRLMapEntry(ctx context.Context, reponame string) (RLmapEntry, error)
 	SetRLMapEntry(ctx context.Context, reponame string, desc RLmapEntry) error
