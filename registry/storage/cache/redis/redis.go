@@ -56,6 +56,9 @@ func NewRedisBlobDescriptorCacheProvider(pool *redis.Pool) cache.BlobDescriptorC
 
 // RepositoryScoped returns the scoped cache.
 func (rbds *redisBlobDescriptorService) RepositoryScoped(repo string) (distribution.BlobDescriptorService, error) {
+	
+	repo = "testrepo"
+	
 	if _, err := reference.ParseNormalizedNamed(repo); err != nil {
 		return nil, err
 	}
@@ -301,11 +304,11 @@ func (rsrbds *repositoryScopedRedisBlobDescriptorService) setDescriptor(ctx cont
 }
 
 func (rsrbds *repositoryScopedRedisBlobDescriptorService) blobDescriptorHashKey(dgst digest.Digest) string {
-	return "repository::" + rsrbds.repo + "::blobs::" + dgst.String()
+	return "testrepo::" + dgst.String() //"repository::" + rsrbds.repo + "::blobs::" + dgst.String()
 }
 
 func (rsrbds *repositoryScopedRedisBlobDescriptorService) repositoryBlobSetKey(repo string) string {
-	return "repository::" + rsrbds.repo + "::blobs"
+	return "testrepo::" // "repository::" + rsrbds.repo + "::blobs"
 }
 
 //NANNAN: for deduplication

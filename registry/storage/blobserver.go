@@ -468,8 +468,6 @@ func (bs *blobServer) notifyPeerPreconstructLayer(ctx context.Context, dgst dige
 	urlbuffer.WriteString(tp + "USRADDR" + usrname + "REPONAME" + reponame)
 	urlbuffer.WriteString("/blobs/sha256:")
 
-	
-	
 	newdgststring := strings.SplitN(dgststring, "sha256:", 2)[1]
 	urlbuffer.WriteString(newdgststring)
 	

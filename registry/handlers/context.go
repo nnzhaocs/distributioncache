@@ -48,22 +48,22 @@ func getName(ctx context.Context) (name string) {
 	varsname := ctxu.GetStringValue(ctx, "vars.name")
 	//tp := GetType(ctx)
 
-	newname := strings.ReplaceAll(varsname, "type", "")
-	newname = strings.ReplaceAll(newname, "usraddr", "")
-	newname = strings.ReplaceAll(newname, "reponame", "")
-
-	newname = strings.ReplaceAll(newname, "layer", "")
-	newname = strings.ReplaceAll(newname, "slice", "")
-
-	newname = strings.ReplaceAll(newname, "preconstruct", "")
-
+//	newname := strings.ReplaceAll(varsname, "type", "")
+//	newname = strings.ReplaceAll(newname, "usraddr", "")
+//	newname = strings.ReplaceAll(newname, "reponame", "")
+//
+//	newname = strings.ReplaceAll(newname, "layer", "")
+//	newname = strings.ReplaceAll(newname, "slice", "")
+//	newname = strings.ReplaceAll(newname, "manifest", "")
+//
+//	newname = strings.ReplaceAll(newname, "preconstruct", "")
 	//	if ok := strings.Contains(tp, "PRECONSTRUCT"); ok{
 	//		mname := strings.ReplaceAll(varsname, "preconstruct", "")
-	fmt.Printf("NANNAN: clear reference var.name from getName %s: => %s \n", varsname, newname)
+//	fmt.Printf("NANNAN: clear reference var.name from getName %s: => %s \n", varsname, newname)
 	//		return mname
 	//	}
 
-	return newname
+	return varsname //newname
 }
 
 //TYPE XXX USRADDR XXX REPONAME XXX lowercases
