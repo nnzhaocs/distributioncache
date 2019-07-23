@@ -374,8 +374,8 @@ func (rdms *redisDedupMetadataService) LayerRecipeHashKey(dgst digest.Digest) st
 	return "Layer:Recipe::" + dgst.String()
 }
 
-func (rdms *redisDedupMetadataService) SliceRecipeHashKey(dgst digest.Digest) string {
-	return "Slice:Recipe::" + dgst.String() + "::" + rdms.hostserverIp
+func (rdms *redisDedupMetadataService) SliceRecipeHashKey(dgst digest.Digest, sip string) string {
+	return "Slice:Recipe::" + dgst.String() + "::" + sip //rdms.hostserverIp
 }
 
 func (rdms *redisDedupMetadataService) StatLayerRecipe(ctx context.Context, dgst digest.Digest) (distribution.LayerRecipeDescriptor, error) {
@@ -410,7 +410,7 @@ func (rdms *redisDedupMetadataService) SetLayerRecipe(ctx context.Context, dgst 
 
 func (rdms *redisDedupMetadataService) StatSliceRecipe(ctx context.Context, dgst digest.Digest) (distribution.SliceRecipeDescriptor, error) {
 
-	reply, err := rdms.cluster.Get(rdms.SliceRecipeHashKey(dgst)).Result()
+	reply, err := rdms.cluster.Get(rdms.SliceRecipeHashKey(dgst, rdms.hostserverIp)).Result()
 	if err == redisgo.Nil {
 		//		context.GetLogger(ctx).Debug("NANNAN: key %s doesnot exist", dgst.String())
 		return distribution.SliceRecipeDescriptor{}, err
@@ -428,9 +428,9 @@ func (rdms *redisDedupMetadataService) StatSliceRecipe(ctx context.Context, dgst
 	}
 }
 
-func (rdms *redisDedupMetadataService) SetSliceRecipe(ctx context.Context, dgst digest.Digest, desc distribution.SliceRecipeDescriptor) error {
+func (rdms *redisDedupMetadataService) SetSliceRecipe(ctx context.Context, dgst digest.Digest, desc distribution.SliceRecipeDescriptor, sip string) error {
 
-	err := rdms.cluster.SetNX(rdms.SliceRecipeHashKey(dgst), &desc, 0).Err()
+	err := rdms.cluster.SetNX(rdms.SliceRecipeHashKey(dgst, sip), &desc, 0).Err()
 	if err != nil {
 		context.GetLogger(ctx).Errorf("NANNAN: redis cluster cannot set value for key %s", err)
 		return err

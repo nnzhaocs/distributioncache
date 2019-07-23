@@ -207,8 +207,8 @@ fallback:
 	return desc, err
 }
 
-func (cbds *cachedBlobStatter) SetSliceRecipe(ctx context.Context, dgst digest.Digest, desc distribution.SliceRecipeDescriptor) error {
-	if err := cbds.metadatacache.SetSliceRecipe(ctx, dgst, desc); err != nil {
+func (cbds *cachedBlobStatter) SetSliceRecipe(ctx context.Context, dgst digest.Digest, desc distribution.SliceRecipeDescriptor, sip string) error {
+	if err := cbds.metadatacache.SetSliceRecipe(ctx, dgst, desc, sip); err != nil {
 		context.GetLogger(ctx).Errorf("SetSliceRecipe: error adding recipe descriptor %v to cache: %v", desc.Digest, err)
 	}
 	return nil

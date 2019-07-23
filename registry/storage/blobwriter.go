@@ -704,7 +704,7 @@ func (bw *blobWriter) doDedup(ctx context.Context, desc distribution.Descriptor,
 				Files:        files,
 				SliceSize:    sliceSizeMap[sip],
 			}
-			err = bw.blobStore.registry.metadataService.SetSliceRecipe(ctx, desc.Digest, des)
+			err = bw.blobStore.registry.metadataService.SetSliceRecipe(ctx, desc.Digest, des, sip)
 			if err != nil {
 				//cleanup slice // omitted
 				return 0.0, 0.0, 0.0, 0, err, false, false

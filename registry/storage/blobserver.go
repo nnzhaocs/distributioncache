@@ -530,6 +530,8 @@ func (bs *blobServer) GetSliceFromRegistry(ctx context.Context, dgst digest.Dige
 
 	urlbuffer.WriteString(dgststring)
 	url := urlbuffer.String()
+	url = strings.ToLower(url)
+	
 	context.GetLogger(ctx).Debugf("NANNAN: GetSliceFromRegistry URL %s ", url)
 
 	//let's skip head request
@@ -657,11 +659,17 @@ func (bs *blobServer) constructLayer(ctx context.Context, desc distribution.Laye
 		}
 	} else {
 		rbuf.Lock()
-
+//SLICE
+		constructtypeslice := ""
+		if "PRECONSTRUCTLAYER" == constructtype {
+			constructtypeslice = "PRECONSTRUCTSLICE" 
+		}else if "LAYER" == constructtype{
+			constructtypeslice = "SLICE" 
+		}
 		start := time.Now()
 		for _, hserver := range desc.HostServerIps {
 			wg.Add(1)
-			go bs.GetSliceFromRegistry(ctx, dgst, hserver, pf, &wg, constructtype)
+			go bs.GetSliceFromRegistry(ctx, dgst, hserver, pf, &wg, constructtypeslice)
 		}
 		wg.Wait()
 		DurationLCT := time.Since(start).Seconds()
@@ -868,23 +876,23 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 		bss, ok := bs.reg.blobcache.GetSlice(dgst.String())
 		if ok {
 			cachehit = true
-			if reqtype == "SLICE" {
+//			if reqtype == "SLICE" {
 				context.GetLogger(ctx).Debug("NANNAN: slice cache hit")
 				bytesreader = bytes.NewReader(bss)
 				DurationMAC = time.Since(start).Seconds()
 				size = bytesreader.Size()
-			} else {
-				bytesreader = bytes.NewReader([]byte("gotta!"))
-			}
+//			} else {
+//				bytesreader = bytes.NewReader([]byte("gotta!"))
+//			}
 			goto out
 		} else {
 			bss, DurationSCT, tp = bs.constructSlice(ctx, desc, dgst, bs.reg, constructtype)
-			if reqtype == "SLICE" {
+//			if reqtype == "SLICE" {
 				bytesreader = bytes.NewReader(bss)
 				size = bytesreader.Size()
-			} else {
-				bytesreader = bytes.NewReader([]byte("gotta!"))
-			}
+//			} else {
+//				bytesreader = bytes.NewReader([]byte("gotta!"))
+//			}
 			goto out
 		}
 	}
