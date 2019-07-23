@@ -50,7 +50,7 @@ func getName(ctx context.Context) (name string) {
 //TYPE XXX USRADDR XXX REPONAME XXX lowercases
 //manifest or layer?
 func GetType(ctx Context) (name string) {
-	varsname := GetStringValue(ctx, "vars.name")
+	varsname := ctxu.GetStringValue(ctx, "vars.name")
 	//forward_repo/forward_repo
 	if ok := strings.Contains(varsname, "forward_repo"); ok{
 		fmt.Println("NANNAN: this is forwarding! ")
@@ -68,7 +68,7 @@ func GetType(ctx Context) (name string) {
 
 //usraddr
 func GetUsrAddr(ctx Context) (name string) {
-	varsname := GetStringValue(ctx, "vars.name")
+	varsname := ctxu.GetStringValue(ctx, "vars.name")
 	
 	if ok := strings.Contains(varsname, "forward_repo"); ok{
 		fmt.Println("NANNAN: this is forwarding! ")
@@ -86,7 +86,7 @@ func GetUsrAddr(ctx Context) (name string) {
 
 //reponame
 func GetRepoName(ctx Context) (name string) {
-	varsname := GetStringValue(ctx, "vars.name")
+	varsname := ctxu.GetStringValue(ctx, "vars.name")
 	
 	if ok := strings.Contains(varsname, "forward_repo"); ok{
 		fmt.Println("NANNAN: this is forwarding! ")
