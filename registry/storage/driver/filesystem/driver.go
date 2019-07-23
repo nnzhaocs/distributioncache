@@ -246,7 +246,6 @@ func (d *driver) Stat(ctx context.Context, subPath string) (storagedriver.FileIn
 		if "PRECONSTRUCTLAYER" == context.GetType(ctx) || "PRECONSTRUCTSLICE" == context.GetType(ctx) { //type == preconstruct// skip{}
 			context.GetLogger(ctx).Debugf("NANNAN: driver fs Stat: skip the errors for preconstruct layer or slice for path: %v", subPath)
 		} else {
-
 			if os.IsNotExist(err) {
 				return nil, storagedriver.PathNotFoundError{Path: subPath}
 			}

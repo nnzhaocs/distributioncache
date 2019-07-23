@@ -195,7 +195,7 @@ func (bs *blobStatter) Stat(ctx context.Context, dgst digest.Digest) (distributi
 	path, err := pathFor(blobDataPathSpec{
 		digest: dgst,
 	})
-
+	size := 100
 	if err != nil {
 		return distribution.Descriptor{}, err
 	}
@@ -209,13 +209,16 @@ func (bs *blobStatter) Stat(ctx context.Context, dgst digest.Digest) (distributi
 			return distribution.Descriptor{}, err
 		}
 	}
-
-	if fi.IsDir() {
+	
+	if fi{
+		if fi.IsDir() {
 		// NOTE(stevvooe): This represents a corruption situation. Somehow, we
 		// calculated a blob path and then detected a directory. We log the
 		// error and then error on the side of not knowing about the blob.
 		context.GetLogger(ctx).Warnf("blob path should not be a directory: %q", path)
 		return distribution.Descriptor{}, distribution.ErrBlobUnknown
+	}
+		size = fi.Size()
 	}
 
 	// TODO(stevvooe): Add method to resolve the mediatype. We can store and
@@ -223,7 +226,7 @@ func (bs *blobStatter) Stat(ctx context.Context, dgst digest.Digest) (distributi
 	// mediatype that overrides the main one.
 
 	return distribution.Descriptor{
-		Size: fi.Size(),
+		Size: size,
 
 		// NOTE(stevvooe): The central blob store firewalls media types from
 		// other users. The caller should look this up and override the value
