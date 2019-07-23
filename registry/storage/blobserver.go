@@ -470,7 +470,7 @@ func (bs *blobServer) notifyPeerPreconstructLayer(ctx context.Context, dgst dige
 
 	urlbuffer.WriteString(dgststring)
 	url := urlbuffer.String()
-	url = trings.ToLower(url)
+	url = strings.ToLower(url)
 	context.GetLogger(ctx).Debugf("NANNAN: notifyPeerPreconstructLayer URL %s", url)
 
 	//let's skip head request
@@ -487,7 +487,7 @@ func (bs *blobServer) notifyPeerPreconstructLayer(ctx context.Context, dgst dige
 		return false
 	}
 	context.GetLogger(ctx).Debugf("NANNAN: %s returned status code %d", regip, resp.StatusCode)
-	if resp.StatusCode < 200 || resp.StatusCode > 299 {	
+	if resp.StatusCode < 200 || resp.StatusCode > 299 {
 		return false //errors.New("notifyPeerPreconstructLayer to other servers, failed")
 	}
 	return true
@@ -503,75 +503,75 @@ func (bs *blobServer) GetSliceFromRegistry(ctx context.Context, dgst digest.Dige
 
 	defer wg.Done()
 	dgststring := dgst.String()
-	
-//	if regip != bs.reg.hostserverIp{
-		
-		var regipbuffer bytes.Buffer
-		reponame := context.GetRepoName(ctx)
-		usrname := context.GetUsrAddr(ctx)
-	
-		regipbuffer.WriteString(regip)
-		regipbuffer.WriteString(":5000")
-		regip = regipbuffer.String()
-		context.GetLogger(ctx).Debugf("NANNAN: GetSliceFromRegistry from %s, dgst: %s ", regip, dgststring)
-	
-		//GET /v2/<name>/blobs/<digest>
-		var urlbuffer bytes.Buffer
-		urlbuffer.WriteString("http://")
-		urlbuffer.WriteString(regip)
-		urlbuffer.WriteString("/v2/")
-		if constructtype == "OnMiss" {
-			constructtype = "SLICE"
-		}
-		urlbuffer.WriteString("TYPE" + constructtype + "USRADDR" + usrname + "REPONAME" + reponame)
-		urlbuffer.WriteString("/blobs/")
-	
-		urlbuffer.WriteString(dgststring)
-		url := urlbuffer.String()
-		context.GetLogger(ctx).Debugf("NANNAN: GetSliceFromRegistry URL %s ", url)
-	
-		//let's skip head request
-		req, err := http.NewRequest("GET", url, nil)
-		if err != nil {
-			context.GetLogger(ctx).Errorf("NANNAN: ForwardToRegistry GET URL %s, err %s", url, err)
-			return err
-		}
-	
-		client := &http.Client{}
-		resp, err := client.Do(req)
-		if err != nil {
-			context.GetLogger(ctx).Errorf("NANNAN: GetSliceFromRegistry Do GET URL %s, err %s", url, err)
-			return err
-		}
-		defer resp.Body.Close()
-	
-		if resp.StatusCode < 200 || resp.StatusCode > 299 {
-			context.GetLogger(ctx).Errorf("%s returned status code %d", regip, resp.StatusCode)
-			return errors.New("get slices from other servers, failed")
-		}
-		body, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			context.GetLogger(ctx).Errorf("NANNAN: cannot read from resp.body: %s", err)
-			return err
-		}
-	
-		buf := bytes.NewBuffer(body)
-		err = pgzipconcatTarFile(buf, pw)
+
+	//	if regip != bs.reg.hostserverIp{
+
+	var regipbuffer bytes.Buffer
+	reponame := context.GetRepoName(ctx)
+	usrname := context.GetUsrAddr(ctx)
+
+	regipbuffer.WriteString(regip)
+	regipbuffer.WriteString(":5000")
+	regip = regipbuffer.String()
+	context.GetLogger(ctx).Debugf("NANNAN: GetSliceFromRegistry from %s, dgst: %s ", regip, dgststring)
+
+	//GET /v2/<name>/blobs/<digest>
+	var urlbuffer bytes.Buffer
+	urlbuffer.WriteString("http://")
+	urlbuffer.WriteString(regip)
+	urlbuffer.WriteString("/v2/")
+	if constructtype == "OnMiss" {
+		constructtype = "SLICE"
+	}
+	urlbuffer.WriteString("TYPE" + constructtype + "USRADDR" + usrname + "REPONAME" + reponame)
+	urlbuffer.WriteString("/blobs/")
+
+	urlbuffer.WriteString(dgststring)
+	url := urlbuffer.String()
+	context.GetLogger(ctx).Debugf("NANNAN: GetSliceFromRegistry URL %s ", url)
+
+	//let's skip head request
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		context.GetLogger(ctx).Errorf("NANNAN: ForwardToRegistry GET URL %s, err %s", url, err)
 		return err
-//	}else{
-//		start := time.Now()
-//		desc, err := bs.reg.metadataService.StatSliceRecipe(ctx, dgst)
-//		DurationML = time.Since(start).Seconds()
-//
-//		if err != nil || (err == nil && len(desc.Files) == 0) {
-//			context.GetLogger(ctx).Warnf("NANNAN: COULDN'T FIND SLICE RECIPE: %v or Empty slice for dgst %v", err, dgst)
-//			return err
-//		}
-//		bss, DurationSCT, tp = bs.constructSlice(ctx, desc, dgst, bs.reg, constructtype)
-//		buf := bytes.NewBuffer(bss)
-//		err = pgzipconcatTarFile(buf, pw)
-//		return err
-//	}
+	}
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		context.GetLogger(ctx).Errorf("NANNAN: GetSliceFromRegistry Do GET URL %s, err %s", url, err)
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode < 200 || resp.StatusCode > 299 {
+		context.GetLogger(ctx).Errorf("%s returned status code %d", regip, resp.StatusCode)
+		return errors.New("get slices from other servers, failed")
+	}
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		context.GetLogger(ctx).Errorf("NANNAN: cannot read from resp.body: %s", err)
+		return err
+	}
+
+	buf := bytes.NewBuffer(body)
+	err = pgzipconcatTarFile(buf, pw)
+	return err
+	//	}else{
+	//		start := time.Now()
+	//		desc, err := bs.reg.metadataService.StatSliceRecipe(ctx, dgst)
+	//		DurationML = time.Since(start).Seconds()
+	//
+	//		if err != nil || (err == nil && len(desc.Files) == 0) {
+	//			context.GetLogger(ctx).Warnf("NANNAN: COULDN'T FIND SLICE RECIPE: %v or Empty slice for dgst %v", err, dgst)
+	//			return err
+	//		}
+	//		bss, DurationSCT, tp = bs.constructSlice(ctx, desc, dgst, bs.reg, constructtype)
+	//		buf := bytes.NewBuffer(bss)
+	//		err = pgzipconcatTarFile(buf, pw)
+	//		return err
+	//	}
 }
 
 func (bs *blobServer) constructSlice(ctx context.Context, desc distribution.SliceRecipeDescriptor, dgst digest.Digest, reg *registry, constructtype string) ([]byte, float64, string) {
@@ -621,8 +621,8 @@ func (bs *blobServer) constructSlice(ctx context.Context, desc distribution.Slic
 	return nil, 0.0, ""
 }
 
-func (bs *blobServer) constructLayer(ctx context.Context, desc distribution.LayerRecipeDescriptor, 
-									dgst digest.Digest, constructtype string) ([]byte, float64, string) {
+func (bs *blobServer) constructLayer(ctx context.Context, desc distribution.LayerRecipeDescriptor,
+	dgst digest.Digest, constructtype string) ([]byte, float64, string) {
 
 	var wg sync.WaitGroup
 	var comprssbuf bytes.Buffer
@@ -705,7 +705,7 @@ func (bs *blobServer) Preconstructlayers(ctx context.Context, reg *registry) err
 		ulgstlst = append(ulgstlst, k)
 	}
 	fmt.Println("NANNAN: PrecontstructionLayer: ulmapentry dgstlst")
-	
+
 	ulset := mapset.NewSetFromSlice(ulgstlst)
 
 	diffset := rlset.Difference(ulset)
@@ -727,7 +727,7 @@ func (bs *blobServer) Preconstructlayers(ctx context.Context, reg *registry) err
 
 	descdgstset := diffset.Union(repullset)
 	context.GetLogger(ctx).Debugf("NANNAN: descdgstlst: %v ", descdgstset)
-	
+
 	if len(descdgstset.ToSlice()) == 0 {
 		return nil
 	}

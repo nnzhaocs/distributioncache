@@ -672,10 +672,10 @@ func (bw *blobWriter) doDedup(ctx context.Context, desc distribution.Descriptor,
 	var maxsize int64 = 0
 	var masterIp string
 	for sip := range slices {
-		sliceSizeMap[sip] > 0{
+		if sliceSizeMap[sip] > 0 {
 			hostserverIps = append(hostserverIps, sip)
 			sliceSizeMapnew[sip] = sliceSizeMap[sip]
-			if maxsize < sliceSizeMapnew[sip]{
+			if maxsize < sliceSizeMapnew[sip] {
 				masterIp = sip
 			}
 		}
@@ -683,7 +683,7 @@ func (bw *blobWriter) doDedup(ctx context.Context, desc distribution.Descriptor,
 
 	des := distribution.LayerRecipeDescriptor{
 		Digest:            desc.Digest,
-		MasterIp:          masterIp, //bw.blobStore.registry.hostserverIp,
+		MasterIp:          masterIp,      //bw.blobStore.registry.hostserverIp,
 		HostServerIps:     hostserverIps, //RemoveDuplicateIpsFromIps(serverIps),
 		SliceSizeMap:      sliceSizeMapnew,
 		UncompressionSize: dirSize,
@@ -696,7 +696,7 @@ func (bw *blobWriter) doDedup(ctx context.Context, desc distribution.Descriptor,
 	}
 
 	for sip, files := range slices {
-		if 0 < len(files) && 0 < sliceSizeMap[sip]{
+		if 0 < len(files) && 0 < sliceSizeMap[sip] {
 			des := distribution.SliceRecipeDescriptor{
 				Digest:       desc.Digest,
 				HostServerIp: sip,
@@ -860,9 +860,9 @@ func (bw *blobWriter) Uniqdistribution(
 		nodistributedfcnt += 1
 	}
 
-	if dirSize <= bw.blobStore.registry.layerslicingdirsizethres || 
-		nodistributedSize <= bw.blobStore.registry.layerslicingdirsizethres || 
-		nodistributedfcnt <= bw.blobStore.registry.layerslicingfcntthres || 
+	if dirSize <= bw.blobStore.registry.layerslicingdirsizethres ||
+		nodistributedSize <= bw.blobStore.registry.layerslicingdirsizethres ||
+		nodistributedfcnt <= bw.blobStore.registry.layerslicingfcntthres ||
 		fcnt <= int64(bw.blobStore.registry.layerslicingfcntthres) {
 		//no need to distribute
 		for _, f := range nodistributedfiles {
@@ -876,13 +876,13 @@ func (bw *blobWriter) Uniqdistribution(
 				//skip
 				continue
 			}
-//			fmt.Printf("NANNAN: Uniqdistribution append to slices %s\n", bw.blobStore.registry.hostserverIp)
-			slices[bw.blobStore.registry.hostserverIp] = append(slices[bw.blobStore.registry.hostserverIp], f)	
+			//			fmt.Printf("NANNAN: Uniqdistribution append to slices %s\n", bw.blobStore.registry.hostserverIp)
+			slices[bw.blobStore.registry.hostserverIp] = append(slices[bw.blobStore.registry.hostserverIp], f)
 		}
 		return true
 	}
-		
-//	fmt.Printf("NANNAN: Uniqdistribution before sort slices \n ")
+
+	//	fmt.Printf("NANNAN: Uniqdistribution before sort slices \n ")
 	sort.Slice(nodistributedfiles, func(i, j int) bool {
 		return nodistributedfiles[i].Size > nodistributedfiles[j].Size
 	})
@@ -894,19 +894,19 @@ func (bw *blobWriter) Uniqdistribution(
 		sss[i] = Pair{sip, int64(size)}
 		i += 1
 	}
-//	fmt.Println("NANNAN: Uniqdistribution print sss !", sss)
+	//	fmt.Println("NANNAN: Uniqdistribution print sss !", sss)
 	for _, f := range nodistributedfiles {
-		
-//		fmt.Printf("NANNAN: Uniqdistribution first sort slices \n ")
-		
+
+		//		fmt.Printf("NANNAN: Uniqdistribution first sort slices \n ")
+
 		sort.Slice(sss, func(i, j int) bool {
 			secondi, _ := sss[i].second.(int64)
 			secondj, _ := sss[j].second.(int64)
 			return secondi < secondj
 			//return int(sss[i].second) < int(sss[j].second)
 		})
-		
-//		fmt.Printf("NANNAN: Uniqdistribution first assign biggest file to smallest slices \n ")
+
+		//		fmt.Printf("NANNAN: Uniqdistribution first assign biggest file to smallest slices \n ")
 
 		HostServerIp, _ := sss[0].first.(string)
 		f.HostServerIp = HostServerIp
@@ -920,21 +920,21 @@ func (bw *blobWriter) Uniqdistribution(
 			//skip
 			continue
 		}
-//		fmt.Printf("NANNAN: Uniqdistribution then assign biggest file to smallest slices \n ")
-		
+		//		fmt.Printf("NANNAN: Uniqdistribution then assign biggest file to smallest slices \n ")
+
 		ssssecond, _ := sss[0].second.(int64)
 		ssssecond += f.Size
 		sssfirst, _ := sss[0].first.(string)
 
 		sss[0].second = ssssecond // smallest file to smallest bucket
-//		fmt.Printf("NANNAN: Uniqdistribution then add biggest file to smallest slices \n ")
+		//		fmt.Printf("NANNAN: Uniqdistribution then add biggest file to smallest slices \n ")
 		slices[sssfirst] = append(slices[sssfirst], f)
 
 		if sssfirst != bw.blobStore.registry.hostserverIp {
 			serverForwardMap[sssfirst] = append(serverForwardMap[sssfirst], f.FilePath)
 		}
 	}
-//	fmt.Printf("NANNAN: Uniqdistribution then set sliceSizeMap \n ")
+	//	fmt.Printf("NANNAN: Uniqdistribution then set sliceSizeMap \n ")
 	for _, pelem := range sss {
 		pelemfirst, _ := pelem.first.(string)
 		pelemsecond, _ := pelem.second.(int64)
