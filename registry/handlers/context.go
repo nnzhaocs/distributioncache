@@ -47,25 +47,57 @@ func getName(ctx context.Context) (name string) {
 	return ctxu.GetStringValue(ctx, "vars.name")
 }
 
-//TYPE XXX USRADDR XXX REPONAME XXX
+//TYPE XXX USRADDR XXX REPONAME XXX lowercases
 //manifest or layer?
-func getType(ctx context.Context) (name string) {
-	varsname := ctxu.GetStringValue(ctx, "vars.name")
-	tmps := strings.Split(varsname, "USRADDR")[0]
-	rtype := strings.Split(tmps, "TYPE")[1]
-	return rtype
+func GetType(ctx Context) (name string) {
+	varsname := GetStringValue(ctx, "vars.name")
+	//forward_repo/forward_repo
+	if ok := strings.Contains(varsname, "forward_repo"); ok{
+		fmt.Println("NANNAN: this is forwarding! ")
+		return strings.ToUpper("forward_repo")
+	}
+//	fmt.Println("NANNAN: varsname input: ", varsname)
+	tmps := strings.Split(varsname, "usraddr")[0]
+	if len(tmps) < 2 {
+		fmt.Println("NANNAN: wrong input: ", tmps)
+		return ""
+	}
+	rtype := strings.Split(tmps, "type")[1]
+	return strings.ToUpper(rtype)
 }
+
 //usraddr
-func getUsrAddr(ctx context.Context) (name string) {
-	varsname := ctxu.GetStringValue(ctx, "vars.name")
-	tmps := strings.Split(varsname, "REPONAME")[0]
-	usraddr := strings.Split(tmps, "USRADDR")[1]
+func GetUsrAddr(ctx Context) (name string) {
+	varsname := GetStringValue(ctx, "vars.name")
+	
+	if ok := strings.Contains(varsname, "forward_repo"); ok{
+		fmt.Println("NANNAN: this is forwarding! ")
+		return strings.ToUpper("forward_repo")
+	}
+	
+	tmps := strings.Split(varsname, "reponame")[0]
+	if len(tmps) < 2 {
+		fmt.Println("NANNAN: wrong input: ", tmps)
+		return ""
+	}
+	usraddr := strings.Split(tmps, "usraddr")[1]
 	return usraddr
 }
+
 //reponame
-func getRepoName(ctx context.Context) (name string) {
-	varsname := ctxu.GetStringValue(ctx, "vars.name")
-	reponame := strings.Split(varsname, "REPONAME")[1]
+func GetRepoName(ctx Context) (name string) {
+	varsname := GetStringValue(ctx, "vars.name")
+	
+	if ok := strings.Contains(varsname, "forward_repo"); ok{
+		fmt.Println("NANNAN: this is forwarding! ")
+		return strings.ToUpper("forward_repo")
+	}
+	tmps := strings.Split(varsname, "reponame")
+	if len(tmps) < 2 {
+		fmt.Println("NANNAN: wrong input: ", varsname)
+		return ""
+	}
+	reponame := strings.Split(varsname, "reponame")[1]
 	return reponame
 }
 

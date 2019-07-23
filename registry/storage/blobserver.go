@@ -685,13 +685,13 @@ func (bs *blobServer) Preconstructlayers(ctx context.Context, reg *registry) err
 		context.GetLogger(ctx).Debugf("NANNAN: Preconstructlayers: cannot get rlmapentry for repo (%s)", reponame)
 		return err
 	}
-	fmt.Println("NANNAN: PrecontstructionLayer: rlmapentry => %v", rlmapentry)
+	fmt.Printf("NANNAN: PrecontstructionLayer: rlmapentry => %v", rlmapentry)
 	ulmapentry, err := bs.reg.metadataService.StatULMapEntry(ctx, usrname)
 	if err != nil {
 		context.GetLogger(ctx).Debugf("NANNAN: Preconstructlayers: cannot get ulentry for usr (%s)", usrname)
 		return err
 	}
-	fmt.Println("NANNAN: PrecontstructionLayer: ulmapentry => %v", ulmapentry)
+	fmt.Printf("NANNAN: PrecontstructionLayer: ulmapentry => %v", ulmapentry)
 
 	var rlgstlst []interface{}
 	for k := range rlmapentry.Dgstmap {
@@ -711,8 +711,8 @@ func (bs *blobServer) Preconstructlayers(ctx context.Context, reg *registry) err
 	diffset := rlset.Difference(ulset)
 	sameset := rlset.Intersect(ulset)
 
-	fmt.Println("NANNAN: PrecontstructionLayer: diffset dgstlst: ", diffset)
-	fmt.Println("NANNAN: PrecontstructionLayer: sameset dgstlst: ", sameset)
+	fmt.Printf("NANNAN: PrecontstructionLayer: diffset dgstlst: ", diffset)
+	fmt.Printf("NANNAN: PrecontstructionLayer: sameset dgstlst: ", sameset)
 
 	var repulldgsts []interface{}
 	it := sameset.Iterator()

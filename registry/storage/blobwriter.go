@@ -289,7 +289,7 @@ func (bw *blobWriter) PrepareForward(ctx context.Context, serverForwardMap map[s
 	}
 	//	mvtarpathall := path.Join("/var/lib/registry", server)
 	for server, fpathlst := range serverForwardMap {
-		context.GetLogger(ctx).Debug("NANNAN: serverForwardMap: [%s]=>%", server, fpathlst)
+		context.GetLogger(ctx).Debugf("NANNAN: serverForwardMap: [%s]=>%", server, fpathlst)
 		for _, fpath := range fpathlst {
 			sftmp := Pair{
 				first:  server,
@@ -300,23 +300,23 @@ func (bw *blobWriter) PrepareForward(ctx context.Context, serverForwardMap map[s
 	}
 
 	tmp_dir := fmt.Sprintf("%f", gid)
-	context.GetLogger(ctx).Debug("NANNAN: PrepareForward: the gid for this goroutine: =>%", tmp_dir)
+	context.GetLogger(ctx).Debugf("NANNAN: PrepareForward: the gid for this goroutine: =>%", tmp_dir)
 
 	for _, sftmp := range serverFiles {
 		<-limChan
 		go func(sftmp Pair) {
 			server, _ := sftmp.first.(string)
-			//			context.GetLogger(ctx).Debug("NANNAN: PrepareForward: cping files to server [%s]", server)
+			//			context.GetLogger(ctx).Debugf("NANNAN: PrepareForward: cping files to server [%s]", server)
 			fpath, _ := sftmp.second.(string)
 			tmpath := path.Join(server, tmp_dir, "NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL")
 			//192.168.210/tmp_dir/NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL/
 			//898c46f3b1a1f39827ed135f020c32e2038c87ae0690a8fe73d94e5df9e6a2d6/
 			//diff/bin/1c48ade64b96409e6773d2c5c771f3b3c5acec65a15980d8dca6b1efd3f95969
 			withtmptarfpath := path.Join(tmpath, strings.TrimPrefix(fpath, "/var/lib/registry"))
-			//			context.GetLogger(ctx).Debug("NANNAN: withtmptarfpath: [%v]", withtmptarfpath)
+			//			context.GetLogger(ctx).Debugf("NANNAN: withtmptarfpath: [%v]", withtmptarfpath)
 
 			destfpath := path.Join("/docker/registry/v2/mv_tmp_serverfiles/", withtmptarfpath)
-			//			context.GetLogger(ctx).Debug("NANNAN: PrepareForward: cping files to server [%s], destfpath: [%s]", server, destfpath)
+			//			context.GetLogger(ctx).Debugf("NANNAN: PrepareForward: cping files to server [%s], destfpath: [%s]", server, destfpath)
 
 			contents, err := bw.driver.GetContent(ctx, strings.TrimPrefix(fpath, "/var/lib/registry"))
 			if err != nil {
@@ -338,7 +338,7 @@ func (bw *blobWriter) PrepareForward(ctx context.Context, serverForwardMap map[s
 	// leave the errChan
 	for i := 0; i < cap(limChan); i++ {
 		<-limChan
-		context.GetLogger(ctx).Debug("NANNAN: FORWARD <copy files> [%d th] goroutine is joined ", i)
+		context.GetLogger(ctx).Debugf("NANNAN: FORWARD <copy files> [%d th] goroutine is joined ", i)
 	}
 	// all goroutines finished here
 
@@ -352,13 +352,13 @@ func (bw *blobWriter) PrepareForward(ctx context.Context, serverForwardMap map[s
 	errChan := make(chan error, len(serverForwardMap))
 	defer close(tarpathChan)
 	defer close(errChan)
-	context.GetLogger(ctx).Debug("NANNAN: PrepareCompress: [len(serverForwardMap)]=>%d", len(serverForwardMap))
+	context.GetLogger(ctx).Debugf("NANNAN: PrepareCompress: [len(serverForwardMap)]=>%d", len(serverForwardMap))
 	for server, _ := range serverForwardMap {
 		<-limChan
-		context.GetLogger(ctx).Debug("NANNAN: PrepareCompress: compress files before sending to server [%s] ", server)
+		context.GetLogger(ctx).Debugf("NANNAN: PrepareCompress: compress files before sending to server [%s] ", server)
 		go func(server string) {
 			packpath := path.Join("/var/lib/registry", "/docker/registry/v2/mv_tmp_serverfiles", server, tmp_dir) //tmp_dir is with gid
-			context.GetLogger(ctx).Debug("NANNAN: PrepareCompress <COMPRESS> packpath: %s", packpath)
+			context.GetLogger(ctx).Debugf("NANNAN: PrepareCompress <COMPRESS> packpath: %s", packpath)
 
 			data, err := archive.Tar(packpath, archive.Gzip)
 			if err != nil {
@@ -441,7 +441,7 @@ func checkNeedDedupOrNot(ctx context.Context, unpackPath string) (bool, error) {
 	for _, f := range files {
 		fmatch, _ := path.Match("NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL", f.Name())
 		if fmatch {
-			context.GetLogger(ctx).Debug("NANNAN: NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL ", f.Name())
+			context.GetLogger(ctx).Debugf("NANNAN: NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL ", f.Name())
 			/*
 			 /home/nannan/dockerimages/layers
 			 /docker/registry/v2/blobs/sha256/07/078bb24d9ee4ddf90f349d0b63004d3ac6897dae28dd37cc8ae97a0306e6aa33/

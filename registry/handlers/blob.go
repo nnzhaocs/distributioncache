@@ -87,7 +87,11 @@ func (bh *blobHandler) GetBlob(w http.ResponseWriter, r *http.Request) {
 		} else {
 			bh.Errors = append(bh.Errors, errcode.ErrorCodeUnknown.WithDetail(err))
 		}
-		return
+		if "PRECONSTRUCTLAYER" == handlers.Gettype(bh) || "PRECONSTRUCTSLICE" == handlers.Gettype(bh){ //type == preconstruct// skip{}
+			context.GetLogger(bh).Debugf("NANNAN: GetBlob: skip the errors for preconstruct layer or slice for dgst", bh.Digest)
+		}else{
+			return
+		}
 	}
 
 	if err := blobs.ServeBlob(bh, w, r, desc.Digest); err != nil {
