@@ -110,6 +110,7 @@ type LayerRecipeDescriptor struct {
 	HostServerIps     []string         //slice hosts
 	SliceSizeMap      map[string]int64 // layer digest.string+"::"+server
 	UncompressionSize int64
+	CompressionSize		int64
 }
 
 // NANNAN: Descriptors for slice recipe

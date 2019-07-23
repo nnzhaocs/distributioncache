@@ -44,7 +44,15 @@ func (ctx *Context) Value(key interface{}) interface{} {
 }
 
 func getName(ctx context.Context) (name string) {
-	return ctxu.GetStringValue(ctx, "vars.name")
+	varsname := ctxu.GetStringValue(ctx, "vars.name")
+//	tp := GetType(ctx)
+//	if ok := strings.Contains(tp, "PRECONSTRUCT"); ok{
+//		mname := strings.ReplaceAll(varsname, "preconstruct", "")
+//		fmt.Printf("NANNAN: this is preconstructing!, removed preconstruct from getName %s: \n", mname)
+//		return mname
+//	}
+	
+	return varsname
 }
 
 //TYPE XXX USRADDR XXX REPONAME XXX lowercases

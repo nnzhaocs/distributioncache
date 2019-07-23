@@ -237,15 +237,29 @@ func (d *driver) Writer(ctx context.Context, subPath string, append bool) (stora
 // Stat retrieves the FileInfo for the given path, including the current size
 // in bytes and the creation time.
 func (d *driver) Stat(ctx context.Context, subPath string) (storagedriver.FileInfo, error) {
+	
 	fullPath := d.fullPath(subPath)
 
 	fi, err := os.Stat(fullPath)
 	if err != nil {
-		if os.IsNotExist(err) {
-			return nil, storagedriver.PathNotFoundError{Path: subPath}
+		//NANNAN
+		if "PRECONSTRUCTLAYER" == context.GetType(ctx) || "PRECONSTRUCTSLICE" == context.Gettype(ctx){ //type == preconstruct// skip{}
+			context.GetLogger(bh).Debugf("NANNAN: driver fs Stat: skip the errors for preconstruct layer or slice for dgst: %v", bh.Digest)
+			var mfi os.FileInfo
+			mfi.Size() = 100
+			mfi.Name() = "Mermaid"
+			mfi.IsDir() = "false"
+			
+			fi = mfi
+			
+		}else{
+		
+			if os.IsNotExist(err) {
+				return nil, storagedriver.PathNotFoundError{Path: subPath}
+			}
+	
+			return nil, err
 		}
-
-		return nil, err
 	}
 
 	return fileInfo{
