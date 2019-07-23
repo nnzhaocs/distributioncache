@@ -762,12 +762,12 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 
 	//compre_level := bs.reg.compr_level
 
-//	start := time.Now()
-//	_desc, err := bs.statter.Stat(ctx, dgst)
-//	if err != nil {
-//		return err
-//	}
-//	DurationML := time.Since(start).Seconds() // bs.driver.Stat
+	start := time.Now()
+	_desc, err := bs.statter.Stat(ctx, dgst)
+	if err != nil {
+		return err
+	}
+	DurationML := time.Since(start).Seconds() // bs.driver.Stat
 
 	reqtype := context.GetType(ctx)
 	context.GetLogger(ctx).Debugf("NANNAN: ServeBlob: type: %s", reqtype)
@@ -778,12 +778,12 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 
 	if reqtype == "MANIFEST" {
 		// Userlru lst change
-		start := time.Now()
-		_desc, err := bs.statter.Stat(ctx, dgst)
-		if err != nil {
-			return err
-		}
-		DurationML := time.Since(start).Seconds()
+		//start := time.Now()
+		//_desc, err := bs.statter.Stat(ctx, dgst)
+		//if err != nil {
+		//	return err
+		//}
+		//DurationML := time.Since(start).Seconds()
 		context.GetLogger(ctx).Debugf("NANNAN: THIS IS A MANIFEST REQUEST, serve and preconstruct layers")
 
 		go bs.Preconstructlayers(ctx, bs.reg) // prefetch window
@@ -825,8 +825,8 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 		}
 		DurationML = time.Since(start).Seconds()
 		Uncompressedsize = desc.UncompressionSize
-		
-		start := time.Now()
+
+		start = time.Now()
 		bss, ok := bs.reg.blobcache.GetLayer(dgst.String())
 		if ok {
 			cachehit = true
@@ -852,7 +852,7 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 	}
 
 	if reqtype == "SLICE" || reqtype == "PRECONSTRUCTSLICE" {
-		
+
 		start := time.Now()
 		desc, err := bs.reg.metadataService.StatSliceRecipe(ctx, dgst)
 		if err != nil || (err == nil && len(desc.Files) == 0) {
@@ -861,8 +861,8 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 		}
 		DurationML = time.Since(start).Seconds()
 		Uncompressedsize = desc.SliceSize
-		
-		start := time.Now()
+
+		start = time.Now()
 		bss, ok := bs.reg.blobcache.GetSlice(dgst.String())
 		if ok {
 			cachehit = true
@@ -889,29 +889,39 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 
 	if reqtype != "SLICE" && reqtype != "PRECONSTRUCTSLICE" && reqtype != "LAYER" && reqtype != "PRECONSTRUCTLAYER" && reqtype != "MANIFEST" {
 		context.GetLogger(ctx).Errorf("NANNAN: ServeBlob: No type found")
-		return err
+		return errors.New("type wrong")
 	}
 
 Sendasmanifest:
-//	if reqtype == "LAYER" || reqtype == "SLICE" {
-//		DurationNTT, err := bs.serveManifest(ctx, _desc, w, r)
-//		if err != nil {
-//			return err
-//		}
-//		if reqtype == "LAYER" {
-//			context.GetLogger(ctx).Debugf("NANNAN: No layer recipe found: metadata lookup time: %v, layer transfer time: %v, layer compressed size: %v",
-//				DurationML, DurationNTT, _desc.Size)
-//		} else {
-//			context.GetLogger(ctx).Debugf("NANNAN: No slice recipe found: metadata lookup time: %v, slice transfer time: %v, slice compressed size: %v",
-//				DurationML, DurationNTT, _desc.Size)
-//		}
-//		return nil
-//	} else {
-		bs.TransferBlob(ctx, w, r, _desc, bytes.NewReader([]byte("gotta!")))
-		return nil
-//	}
+	//	if reqtype == "LAYER" || reqtype == "SLICE" {
+	//		DurationNTT, err := bs.serveManifest(ctx, _desc, w, r)
+	//		if err != nil {
+	//			return err
+	//		}
+	//		if reqtype == "LAYER" {
+	//			context.GetLogger(ctx).Debugf("NANNAN: No layer recipe found: metadata lookup time: %v, layer transfer time: %v, layer compressed size: %v",
+	//				DurationML, DurationNTT, _desc.Size)
+	//		} else {
+	//			context.GetLogger(ctx).Debugf("NANNAN: No slice recipe found: metadata lookup time: %v, slice transfer time: %v, slice compressed size: %v",
+	//				DurationML, DurationNTT, _desc.Size)
+	//		}
+	//		return nil
+	//	} else {
+	//	_desc, err := bs.statter.Stat(ctx, dgst)
+	//	if err != nil {
+	//		return err
+	//
+	//	}
+	bs.TransferBlob(ctx, w, r, _desc, bytes.NewReader([]byte("gotta!")))
+	return nil
+	//	}
 
 out:
+	//	_desc, err := bs.statter.Stat(ctx, dgst)
+	//	if err != nil {
+	//		return err
+	//
+	//	}
 	DurationNTT, err = bs.TransferBlob(ctx, w, r, _desc, bytesreader)
 	if err != nil {
 		return err

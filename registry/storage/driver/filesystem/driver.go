@@ -145,7 +145,7 @@ func (d *driver) Name() string {
 // GetContent retrieves the content stored at "path" as a []byte.
 func (d *driver) GetContent(ctx context.Context, path string) ([]byte, error) {
 
-//	log.Warnf("IBM: Get content %s", path)
+	//	log.Warnf("IBM: Get content %s", path)
 	rc, err := d.Reader(ctx, path, 0)
 	if err != nil {
 		return nil, err
@@ -162,7 +162,7 @@ func (d *driver) GetContent(ctx context.Context, path string) ([]byte, error) {
 
 // PutContent stores the []byte content at a location designated by "path".
 func (d *driver) PutContent(ctx context.Context, subPath string, contents []byte) error {
-//	log.Warnf("IBM: Put content %s", subPath)
+	//	log.Warnf("IBM: Put content %s", subPath)
 	writer, err := d.Writer(ctx, subPath, false)
 	if err != nil {
 		return err
@@ -237,27 +237,20 @@ func (d *driver) Writer(ctx context.Context, subPath string, append bool) (stora
 // Stat retrieves the FileInfo for the given path, including the current size
 // in bytes and the creation time.
 func (d *driver) Stat(ctx context.Context, subPath string) (storagedriver.FileInfo, error) {
-	
+
 	fullPath := d.fullPath(subPath)
 
 	fi, err := os.Stat(fullPath)
 	if err != nil {
 		//NANNAN
-		if "PRECONSTRUCTLAYER" == context.GetType(ctx) || "PRECONSTRUCTSLICE" == context.Gettype(ctx){ //type == preconstruct// skip{}
-			context.GetLogger(bh).Debugf("NANNAN: driver fs Stat: skip the errors for preconstruct layer or slice for dgst: %v", bh.Digest)
-			var mfi os.FileInfo
-			mfi.Size() = 100
-			mfi.Name() = "Mermaid"
-			mfi.IsDir() = "false"
-			
-			fi = mfi
-			
-		}else{
-		
+		if "PRECONSTRUCTLAYER" == context.GetType(ctx) || "PRECONSTRUCTSLICE" == context.GetType(ctx) { //type == preconstruct// skip{}
+			context.GetLogger(ctx).Debugf("NANNAN: driver fs Stat: skip the errors for preconstruct layer or slice for path: %v", subPath)
+		} else {
+
 			if os.IsNotExist(err) {
 				return nil, storagedriver.PathNotFoundError{Path: subPath}
 			}
-	
+
 			return nil, err
 		}
 	}
@@ -317,7 +310,7 @@ func (d *driver) Move(ctx context.Context, sourcePath string, destPath string) e
 // Delete recursively deletes all objects stored at "path" and its subpaths.
 func (d *driver) Delete(ctx context.Context, subPath string) error {
 
-//	log.Warnf("IBM: Removing objects %s", subPath)
+	//	log.Warnf("IBM: Removing objects %s", subPath)
 	fullPath := d.fullPath(subPath)
 
 	_, err := os.Stat(fullPath)
