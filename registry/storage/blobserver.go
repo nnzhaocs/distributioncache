@@ -470,7 +470,7 @@ func (bs *blobServer) notifyPeerPreconstructLayer(ctx context.Context, dgst dige
 
 	
 	
-	newdgststring = strings.SplitN(dgststring, "sha256:", 2)[1]
+	newdgststring := strings.SplitN(dgststring, "sha256:", 2)[1]
 	urlbuffer.WriteString(newdgststring)
 	
 	url := urlbuffer.String()

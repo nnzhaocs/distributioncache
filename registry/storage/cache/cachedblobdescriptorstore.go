@@ -71,6 +71,7 @@ func NewCachedBlobStatterWithMetricsWithFileCache(cache distribution.BlobDescrip
 }
 
 func (cbds *cachedBlobStatter) Stat(ctx context.Context, dgst digest.Digest) (distribution.Descriptor, error) {
+	//first check cache
 	desc, err := cbds.cache.Stat(ctx, dgst)
 	if err != nil {
 		if err != distribution.ErrBlobUnknown {
@@ -88,6 +89,9 @@ fallback:
 	if cbds.tracker != nil {
 		cbds.tracker.Miss()
 	}
+	
+	//then check disk
+	
 	desc, err = cbds.backend.Stat(ctx, dgst)
 	if err != nil {
 		return desc, err
