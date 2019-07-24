@@ -559,7 +559,7 @@ func (bs *blobServer) GetSliceFromRegistry(ctx context.Context, dgst digest.Dige
 		return err
 	}
 	
-	context.GetLogger(ctx).Debugf("NANNAN: GetSliceFromRegistry URL %s size: ", url, len(body))
+	context.GetLogger(ctx).Debugf("NANNAN: GetSliceFromRegistry URL %s size: %d", url, len(body))
 	
 	buf := bytes.NewBuffer(body)
 	err = pgzipconcatTarFile(buf, pw)
@@ -805,6 +805,7 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 	DurationLCT := 0.0
 	DurationSCT := 0.0
 	DurationNTT := 0.0
+	compressratio := 0.0
 
 	if reqtype == "LAYER" || reqtype == "PRECONSTRUCTLAYER" {
 		
@@ -817,6 +818,7 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 		DurationML = time.Since(start).Seconds()
 		
 		Uncompressedsize = desc.UncompressionSize
+		compressratio = desc.Compressratio
 
 		start = time.Now()
 		bss, ok := bs.reg.blobcache.GetLayer(dgst.String())
@@ -836,6 +838,7 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 			var wg sync.WaitGroup
 			bss, DurationLCT, tp = bs.constructLayer(ctx, desc, dgst, reqtype, &wg)
 			bytesreader = bytes.NewReader(bss)
+			
 			size = bytesreader.Size()
 			if reqtype == "LAYER" {
 //				bytesreader := bytes.NewReader(bss)
@@ -868,6 +871,7 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 				bytesreader = bytes.NewReader(bss)
 				DurationMAC = time.Since(start).Seconds()
 				size = bytesreader.Size()
+				compressratio = float64(Uncompressedsize)/float64(size)
 //			} else {
 //				bytesreader = bytes.NewReader([]byte("gotta!"))
 //			}
@@ -878,6 +882,7 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 //			if reqtype == "SLICE" {
 				bytesreader = bytes.NewReader(bss)
 				size = bytesreader.Size()
+				compressratio = float64(Uncompressedsize)/float64(size)
 //			} else {
 //				bytesreader = bytes.NewReader([]byte("gotta!"))
 //			}
@@ -951,11 +956,13 @@ out:
 
 	if cachehit {
 		if reqtype == "LAYER" {
-			context.GetLogger(ctx).Debugf("NANNAN: layer cache hit: reqtype: %s, metadata lookup time: %v, layer cache access time: %v, layer transfer time: %v, layer compressed size: %v",
-				reqtype, DurationML, DurationMAC, DurationNTT, size)
+			context.GetLogger(ctx).Debugf(`NANNAN: layer cache hit: reqtype: %s, metadata lookup time: %v, layer cache access time: %v, 
+							layer transfer time: %v, layer compressed size: %v, compressratio: %.3f`,
+				reqtype, DurationML, DurationMAC, DurationNTT, size, compressratio)
 		} else if reqtype == "SLICE" {
-			context.GetLogger(ctx).Debugf("NANNAN: slice cache hit: reqtype: %s, metadata lookup time: %v, slice cache access time: %v, slice transfer time: %v, slice compressed size: %v",
-				reqtype, DurationML, DurationMAC, DurationNTT, size)
+			context.GetLogger(ctx).Debugf(`NANNAN: slice cache hit: reqtype: %s, metadata lookup time: %v, slice cache access time: %v, 
+							slice transfer time: %v, slice compressed size: %v, compressratio: %.3f`,
+				reqtype, DurationML, DurationMAC, DurationNTT, size, compressratio)
 		}
 		return nil
 	} else {
@@ -964,8 +971,8 @@ out:
 				context.GetLogger(ctx).Debug("NANNAN: layer cache miss!")
 			}
 			context.GetLogger(ctx).Debugf(`NANNAN: layer construct: reqtype: %s, %s: metadata lookup time: %v, layer transfer and merge time: %v, 
-																layer transfer time: %v, layer compressed size: %v, layer uncompressed size: %v`,
-				reqtype, tp, DurationML, DurationLCT, DurationNTT, size, Uncompressedsize)
+																layer transfer time: %v, layer compressed size: %v, layer uncompressed size: %v, compressratio: %.3f`,
+				reqtype, tp, DurationML, DurationLCT, DurationNTT, size, Uncompressedsize, compressratio)
 			bs.reg.blobcache.SetLayer(dgst.String(), bss) //, constructtype)
 			
 			//remove
@@ -983,8 +990,8 @@ out:
 				context.GetLogger(ctx).Debug("NANNAN: slice cache miss!")
 			}
 			context.GetLogger(ctx).Debugf(`NANNAN: slice construct: reqtype: %s, %s: metadata lookup time: %v, slice construct time: %v, 
-													layer transfer time: %v, slice compressed size: %v, slice uncompressed size: %v`,
-				reqtype, tp, DurationML, DurationSCT, DurationNTT, size, Uncompressedsize)
+													layer transfer time: %v, slice compressed size: %v, slice uncompressed size: %v, compressratio: %.3f`,
+				reqtype, tp, DurationML, DurationSCT, DurationNTT, size, Uncompressedsize, compressratio)
 			bs.reg.blobcache.SetSlice(dgst.String(), bss) //, constructtype)
 			//remove
 			rsbuf, ok := bs.reg.restoringslicermap.Load(dgst.String())
