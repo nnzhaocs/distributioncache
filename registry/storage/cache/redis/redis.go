@@ -365,7 +365,7 @@ func (rdms *redisDedupMetadataService) SetFileDescriptor(ctx context.Context, dg
 	if set == true {
 		return nil
 	} else {
-		context.GetLogger(ctx).Errorf("NANNAN: key %s already exsist!", dgst.String())
+		context.GetLogger(ctx).Warnf("NANNAN: key %s already exsist!", dgst.String())
 		return errors.New("key already exsits")
 	}
 }
