@@ -724,6 +724,7 @@ func (bw *blobWriter) doDedup(ctx context.Context, desc distribution.Descriptor,
 		HostServerIps:     hostserverIps, //RemoveDuplicateIpsFromIps(serverIps),
 		SliceSizeMap:      sliceSizeMapnew,
 		UncompressionSize: dirSize,
+		Compressratio:     float64(dirSize) / float64(comressSize),
 		CompressionSize:   comressSize,
 	}
 	start = time.Now()
@@ -921,7 +922,7 @@ func (bw *blobWriter) Uniqdistribution(
 				}
 				//remove f from nodistributedfiles
 				//skip
-				continue
+				//				continue
 			}
 
 			slices[bw.blobStore.registry.hostserverIp] = append(slices[bw.blobStore.registry.hostserverIp], f)
@@ -961,7 +962,7 @@ func (bw *blobWriter) Uniqdistribution(
 			}
 			//remove f from nodistributedfiles
 			//skip
-			continue
+			//			continue
 		}
 
 		ssssecond, _ := sss[0].second.(int64)
