@@ -271,7 +271,11 @@ func NewApp(ctx context.Context, config *configuration.Configuration) *App {
 			Ttl, ok4 := ttl.(int)
 			if ok1 && ok2 && ok3 && ok4 {
 				options = append(options, storage.SetCacheParams(fileCacheCap, layerCacheCap, sliceCacheCap, Ttl))
+			}else{
+				panic(fmt.Sprintf("NANNAN: cannot parse cacheparams: %v, %v, %v, %v", ok1, ok2, ok3, ok4))
 			}
+		}else{
+			panic(fmt.Sprintf("NANNAN: cannot parse cacheparams: %v, %v, %v, %v", ok1, ok2, ok3, ok4))
 		}
 	}
 
@@ -287,7 +291,11 @@ func NewApp(ctx context.Context, config *configuration.Configuration) *App {
 			Layerslicingdirsizethres, ok4 := layerslicingdirsizethres.(int64)
 			if ok1 && ok2 && ok3 && ok4 {
 				options = append(options, storage.SetRegistryParams(Repullcntthres, Compr_level, Layerslicingfcntthres, Layerslicingdirsizethres))
+			}else{
+				panic(fmt.Sprintf("NANNAN: cannot parse registryparams: %v, %v, %v, %v", ok1, ok2, ok3, ok4))
 			}
+		}else{
+			panic(fmt.Sprintf("NANNAN: cannot parse registryparams: %v, %v, %v, %v", ok1, ok2, ok3, ok4))
 		}
 	}
 
