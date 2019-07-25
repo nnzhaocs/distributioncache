@@ -3,10 +3,11 @@ package gcache
 import (
 	"fmt"
 	//"gcache/gcache"
+	"io/ioutil"
 	"os"
-	"time"
 	"path"
-	"ioutil"
+	"time"
+
 	"github.com/allegro/bigcache"
 	"github.com/peterbourgon/diskv"
 )
@@ -19,7 +20,7 @@ type BlobCache struct {
 	FileLST  Cache
 	LayerLST Cache
 	SliceLST Cache
-	StageLST	Cache
+	StageLST Cache
 }
 
 var DefaultTTL time.Duration
@@ -105,7 +106,7 @@ func (cache *BlobCache) Init() error {
 		Build()
 
 	cache.SliceLST = SliceLST
-	
+
 	// stage area *****
 	StageLSTCAP := 1 //10gb
 	StageLST := New(StageLSTCAP * 1024 * 1024).LRU().
@@ -139,7 +140,7 @@ func (cache *BlobCache) SetLayer(dgst string, bss []byte) bool {
 		return false
 	}
 
-	if ok := cache.DiskCache.Has(key); ok {	
+	if ok := cache.DiskCache.Has(key); ok {
 		fmt.Printf("NANNAN: BlobCache SetLayer DiskCache set dgst %s size: %v\n", dgst, size)
 		return true
 	}
@@ -159,14 +160,14 @@ func (cache *BlobCache) SetPUTLayer(dgst string, size int64, bpath string) bool 
 		fmt.Printf("NANNAN: BlobCache SetPUTLayer LayerLST cannot set dgst %s: %v\n", dgst, err)
 		return false
 	}
-	
+
 	if err := cache.StageLST.Set(key, path.Join("/var/lib/registry/", bpath)); err != nil {
 		fmt.Printf("NANNAN: BlobCache SetPUTLayer StageLST cannot set dgst %s: %v\n", dgst, err)
 		return false
 	}
-	
+
 	fmt.Printf("NANNAN: BlobCache SetPUTLayer set dgst %s size: %v\n", dgst, size)
-	
+
 	return true
 }
 
@@ -180,17 +181,21 @@ func (cache *BlobCache) GetLayer(dgst string) ([]byte, bool) {
 
 	bss, err := cache.DiskCache.Read(key)
 	if err != nil {
-		fmt.Printf("NANNAN: BlobCache GetLayer DiskCache cannot get dgst %s: %v\n", dgst, err)
-		
-		if bpath, err := cache.StageLST.Get(key); err != nil {
+		fmt.Printf("NANNAN: BlobCache GetLayer DiskCache cannot get dgst %s: %v check stage area ...\n", dgst, err)
+		if bpathval, err := cache.StageLST.Get(key); err != nil {
 			fmt.Printf("NANNAN: BlobCache GetLayer StageLST cannot get dgst %s: %v\n", dgst, err)
 			return nil, false
-		}else{
-			if bss, err := ioutil.ReadFile(bpath); err != nil{
-				fmt.Printf("NANNAN: BlobCache GetLayer ReadFile cannot get dgst %s: %v\n", dgst, err)
+		} else {
+			if bpath, err := bpathval.(string); err != true {
+				fmt.Printf("NANNAN: BlobCache GetLayer StageLST cannot get path string for dgst %s: %v\n", dgst, err)
 				return nil, false
-			}else{
-				return bss, true
+			} else {
+				if bss, err := ioutil.ReadFile(bpath); err != nil {
+					fmt.Printf("NANNAN: BlobCache GetLayer ReadFile cannot get dgst %s: %v, read error\n", dgst, err)
+					return nil, false
+				} else {
+					return bss, true
+				}
 			}
 		}
 	}
@@ -215,9 +220,9 @@ func (cache *BlobCache) SetSlice(dgst string, bss []byte) bool {
 		fmt.Printf("NANNAN: BlobCache SetSlice DiskCache cannot set dgst %s: %v\n", dgst, err)
 		return false
 	}
-	
+
 	fmt.Printf("NANNAN: BlobCache SetSlice set dgst %s size: %v\n", dgst, size)
-	
+
 	return true
 }
 
