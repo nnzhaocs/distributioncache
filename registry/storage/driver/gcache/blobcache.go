@@ -108,7 +108,7 @@ func (cache *BlobCache) Init() error {
 	cache.SliceLST = SliceLST
 
 	// stage area *****
-	StageLSTCAP := 10 * 1024 //10gb
+	StageLSTCAP := 1 //10gb
 	StageLST := New(StageLSTCAP * 1024 * 1024).LRU().
 		Expiration(3600 * time.Minute).
 		Build()
