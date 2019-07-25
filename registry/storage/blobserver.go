@@ -699,7 +699,7 @@ func (bs *blobServer) Preconstructlayers(ctx context.Context, reg *registry) err
 	ulmapentry, err := bs.reg.metadataService.StatULMapEntry(ctx, usrname)
 	if err != nil {
 		context.GetLogger(ctx).Debugf("NANNAN: Preconstructlayers: cannot get ulentry for usr (%s)", usrname)
-		return err
+//		return err
 	}
 	fmt.Printf("NANNAN: PrecontstructionLayer: ulmapentry => %v", ulmapentry)
 
