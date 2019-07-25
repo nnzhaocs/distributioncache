@@ -920,18 +920,18 @@ func (bw *blobWriter) Uniqdistribution(
 				if err1 := os.Remove(f.FilePath); err1 != nil {
 					context.GetLogger(ctx).Errorf("NANNAN: Uniqdistribution: %v", err1)
 				}
-					if des, err := bw.blobStore.registry.metadataService.StatFile(ctx, f.Digest); err != nil{
+				if des, err := bw.blobStore.registry.metadataService.StatFile(ctx, f.Digest); err != nil {
 					slices[des.HostServerIp] = append(slices[des.HostServerIp], des)
-				//			serverStoreCntMap[des.HostServerIp] += 1
-				sliceSizeMap[des.HostServerIp] += fsize
-					}
+					//			serverStoreCntMap[des.HostServerIp] += 1
+					sliceSizeMap[des.HostServerIp] += f.Size
+				}
 				//remove f from nodistributedfiles
 				//skip
 				//				continue
-			}else{
+			} else {
 
-			slices[bw.blobStore.registry.hostserverIp] = append(slices[bw.blobStore.registry.hostserverIp], f)
-			sliceSizeMap[bw.blobStore.registry.hostserverIp] += f.Size
+				slices[bw.blobStore.registry.hostserverIp] = append(slices[bw.blobStore.registry.hostserverIp], f)
+				sliceSizeMap[bw.blobStore.registry.hostserverIp] += f.Size
 			}
 		}
 		return true
@@ -971,43 +971,44 @@ func (bw *blobWriter) Uniqdistribution(
 			if err1 := os.Remove(f.FilePath); err1 != nil {
 				context.GetLogger(ctx).Errorf("NANNAN: Uniqdistribution: %v", err1)
 			}
-			if des, err := bw.blobStore.registry.metadataService.StatFile(ctx, f.Digest); err != nil{
-					slices[des.HostServerIp] = append(slices[des.HostServerIp], des)
+			if des, err := bw.blobStore.registry.metadataService.StatFile(ctx, f.Digest); err != nil {
+				slices[des.HostServerIp] = append(slices[des.HostServerIp], des)
 				//			serverStoreCntMap[des.HostServerIp] += 1
-				sliceSizeMap[des.HostServerIp] += fsize
-				for _, item := range sss{
-				ssssecond, ok1 := item.second.(int64)
-				sssfirst, ok2 := item.first.(string)
-				if !ok1||!ok2{
-					context.GetLogger(ctx).Errorf("NANNAN: Uniqdistribution: cannot covert to int64 and string : %v, %v", ok1, ok2)
-				}else {
-					if sssfirst == des.HostServerIp{
-				ssssecond += f.Size
-				sss[sssfirst].second = ssssecond
+				sliceSizeMap[des.HostServerIp] += f.Size
+				for i, item := range sss {
+					ssssecond, ok1 := item.second.(int64)
+					sssfirst, ok2 := item.first.(string)
+					if !ok1 || !ok2 {
+						context.GetLogger(ctx).Errorf("NANNAN: Uniqdistribution: cannot covert to int64 and string : %v, %v", ok1, ok2)
+					} else {
+						if sssfirst == des.HostServerIp {
+							ssssecond += f.Size
+							sss[i].second = ssssecond
+						}
+					}
+
 				}
-				}
-					
-			}}
-				//remove f from nodistributedfiles
-				//skip
-				//				continue
-			}else{		
-
-		ssssecond, ok1 := sss[0].second.(int64)
-		ssssecond += f.Size
-		sssfirst, ok2 := sss[0].first.(string)
-		if !ok1 || !ok2 {
-			context.GetLogger(ctx).Errorf("NANNAN: Uniqdistribution: cannot covert to int64 and string : %v, %v", ok1, ok2)
-		}
-
-		// biggest file to smallest bucket
-		slices[sssfirst] = append(slices[sssfirst], f)
-		sss[0].second = ssssecond
-
-		if sssfirst != bw.blobStore.registry.hostserverIp {
-			serverForwardMap[sssfirst] = append(serverForwardMap[sssfirst], f.FilePath)
-		}
 			}
+			//remove f from nodistributedfiles
+			//skip
+			//				continue
+		} else {
+
+			ssssecond, ok1 := sss[0].second.(int64)
+			ssssecond += f.Size
+			sssfirst, ok2 := sss[0].first.(string)
+			if !ok1 || !ok2 {
+				context.GetLogger(ctx).Errorf("NANNAN: Uniqdistribution: cannot covert to int64 and string : %v, %v", ok1, ok2)
+			}
+
+			// biggest file to smallest bucket
+			slices[sssfirst] = append(slices[sssfirst], f)
+			sss[0].second = ssssecond
+
+			if sssfirst != bw.blobStore.registry.hostserverIp {
+				serverForwardMap[sssfirst] = append(serverForwardMap[sssfirst], f.FilePath)
+			}
+		}
 	}
 
 	for _, pelem := range sss {
