@@ -827,7 +827,7 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 				if err != nil {
 					return err
 				}
-				
+				context.GetLogger(ctx).Debug("NANNAN: layer cache hit!")
 				context.GetLogger(ctx).Debugf("NANNAN: stage layer: layer lookup time: %v, layer transfer time: %v, layer compressed size: %v",
 					DurationML, DurationNTT, _desc.Size)
 				
