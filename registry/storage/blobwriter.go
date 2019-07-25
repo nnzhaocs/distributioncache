@@ -947,9 +947,13 @@ func (bw *blobWriter) Uniqdistribution(
 	for _, f := range nodistributedfiles {
 		// each time, sort slice from small to big
 		sort.Slice(sss, func(i, j int) bool {
-			secondi, _ := sss[i].second.(int64)
-			secondj, _ := sss[j].second.(int64)
+			secondi, ok1 := sss[i].second.(int64)
+			secondj, ok2 := sss[j].second.(int64)
+			if ok1 && ok2{
 			return secondi < secondj
+		}else{
+			context.GetLogger(ctx).Errorf("NANNAN: Uniqdistribution: cannot covert to int64 : %v, %v", ok1, ok2)
+		}
 		})
 
 		HostServerIp, _ := sss[0].first.(string)
@@ -965,9 +969,12 @@ func (bw *blobWriter) Uniqdistribution(
 			//			continue
 		}
 
-		ssssecond, _ := sss[0].second.(int64)
+		ssssecond, ok1 := sss[0].second.(int64)
 		ssssecond += f.Size
-		sssfirst, _ := sss[0].first.(string)
+		sssfirst, ok2 := sss[0].first.(string)
+		if !ok1 || !ok2{
+			context.GetLogger(ctx).Errorf("NANNAN: Uniqdistribution: cannot covert to int64 and string : %v, %v", ok1, ok2)
+		}
 
 		// biggest file to smallest bucket
 		slices[sssfirst] = append(slices[sssfirst], f)
@@ -979,9 +986,13 @@ func (bw *blobWriter) Uniqdistribution(
 	}
 
 	for _, pelem := range sss {
-		pelemfirst, _ := pelem.first.(string)
-		pelemsecond, _ := pelem.second.(int64)
+		pelemfirst, ok1 := pelem.first.(string)
+		pelemsecond, ok2 := pelem.second.(int64)
+		if ok1 && ok1{
 		sliceSizeMap[pelemfirst] = pelemsecond
+	}else{
+	context.GetLogger(ctx).Errorf("NANNAN: Uniqdistribution: cannot covert to string and int64 : %v, %v", ok1, ok2)
+	}
 	}
 
 	return true
