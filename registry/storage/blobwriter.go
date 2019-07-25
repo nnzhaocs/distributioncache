@@ -631,12 +631,12 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) e
 		return err
 	}
 	if isdedup && isforward {
-		fmt.Printf(`NANNAN: Dodedup: decompression time: %.3f, dedup remove dup file time: %.3f, dedup set recipe time: %.3f, 
-						slice forward time: %.3f, compressed size: %d, uncompression size: %d\n`,
+		fmt.Printf("NANNAN: Dodedup: decompression time: %.3f, dedup remove dup file time: %.3f, dedup set recipe time: %.3f, " 
+						"slice forward time: %.3f, compressed size: %d, uncompression size: %d\n",
 			DurationDCM, DurationRDF, DurationSRM, DurationSFT, comressSize, dirSize)
 	} else if isdedup {
-		fmt.Printf(`NANNAN: Dodedup: decompression time: %.3f, dedup remove dup file time: %.3f, dedup set recipe time: %.3f, 
-						compressed size: %d, uncompression size: %d\n`,
+		fmt.Printf("NANNAN: Dodedup: decompression time: %.3f, dedup remove dup file time: %.3f, dedup set recipe time: %.3f, "
+						"compressed size: %d, uncompression size: %d\n",
 			DurationDCM, DurationRDF, DurationSRM, comressSize, dirSize)
 	}
 	return nil
@@ -718,22 +718,7 @@ func (bw *blobWriter) doDedup(ctx context.Context, desc distribution.Descriptor,
 		}
 	}
 
-	des := distribution.LayerRecipeDescriptor{
-		Digest:            desc.Digest,
-		MasterIp:          masterIp,      //bw.blobStore.registry.hostserverIp,
-		HostServerIps:     hostserverIps, //RemoveDuplicateIpsFromIps(serverIps),
-		SliceSizeMap:      sliceSizeMapnew,
-		UncompressionSize: dirSize,
-		Compressratio:     float64(dirSize) / float64(comressSize),
-		CompressionSize:   comressSize,
-	}
 	start = time.Now()
-	err = bw.blobStore.registry.metadataService.SetLayerRecipe(ctx, desc.Digest, des)
-	if err != nil {
-		//cleanup everything; omitted
-		return DurationRDF, DurationSRM, DurationSFT, dirSize, err, isdedup, isforward
-	}
-
 	for sip, files := range slices {
 		if 0 < len(files) && 0 < sliceSizeMap[sip] {
 			des := distribution.SliceRecipeDescriptor{
@@ -749,6 +734,23 @@ func (bw *blobWriter) doDedup(ctx context.Context, desc distribution.Descriptor,
 			}
 		}
 	}
+	
+	des := distribution.LayerRecipeDescriptor{
+		Digest:            desc.Digest,
+		MasterIp:          masterIp,      //bw.blobStore.registry.hostserverIp,
+		HostServerIps:     hostserverIps, //RemoveDuplicateIpsFromIps(serverIps),
+		SliceSizeMap:      sliceSizeMapnew,
+		UncompressionSize: dirSize,
+		Compressratio:     float64(dirSize) / float64(comressSize),
+		CompressionSize:   comressSize,
+	}
+	
+	err = bw.blobStore.registry.metadataService.SetLayerRecipe(ctx, desc.Digest, des)
+	if err != nil {
+		//cleanup everything; omitted
+		return DurationRDF, DurationSRM, DurationSFT, dirSize, err, isdedup, isforward
+	}
+	
 	DurationSRM = time.Since(start).Seconds()
 
 	if len(serverForwardMap) == 0 {

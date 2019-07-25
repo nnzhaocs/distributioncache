@@ -16,7 +16,7 @@ import (
 	"github.com/klauspost/pgzip"
 
 	//"bytes"
-	"io"
+	"io/ioutil"
 	"os"
 	"path"
 	"regexp"
@@ -37,8 +37,6 @@ type blobServer struct {
 	driver  driver.StorageDriver
 	statter distribution.BlobStatter
 	reg     *registry
-	//ring                        	roundrobin.RoundRobin
-	//metadataService storagecache.DedupMetadataServiceCacheProvider //NANNAN: add a metadataService for restore
 	pathFn   func(dgst digest.Digest) (string, error)
 	redirect bool // allows disabling URLFor redirects
 }
@@ -337,10 +335,6 @@ func (bs *blobServer) packAllFiles(ctx context.Context, desc distribution.SliceR
 		Tw: tw,
 	}
 
-	//	if constructtype == "PRECONSTRUCTSLICE" {
-	//		constructtype == "PREFETCHFILE"
-	//	}
-
 	start := time.Now()
 	for _, sfdescriptor := range desc.Files {
 
@@ -550,7 +544,6 @@ func (bs *blobServer) GetSliceFromRegistry(ctx context.Context, dgst digest.Dige
 
 	context.GetLogger(ctx).Debugf("NANNAN: GetSliceFromRegistry %s returned status code %d", regip, resp.StatusCode)
 	if resp.StatusCode < 200 || resp.StatusCode > 299 {
-		//		context.GetLogger(ctx).Errorf("%s returned status code %d", regip, resp.StatusCode)
 		return errors.New("get slices from other servers, failed")
 	}
 	body, err := ioutil.ReadAll(resp.Body)
@@ -558,15 +551,9 @@ func (bs *blobServer) GetSliceFromRegistry(ctx context.Context, dgst digest.Dige
 		context.GetLogger(ctx).Errorf("NANNAN: cannot read from resp.body: %s", err)
 		return err
 	}
-	//<<<<<<< HEAD
-	//
-	//	context.GetLogger(ctx).Debugf("NANNAN: GetSliceFromRegistry URL %s size: ", url, len(body))
-	//
-	//=======
 
 	context.GetLogger(ctx).Debugf("NANNAN: GetSliceFromRegistry URL %s size: %d", url, len(body))
 
-	//>>>>>>> b49d561e8c9e3c5c06bc5c63d6b90bf75f3ded89
 	buf := bytes.NewBuffer(body)
 	err = pgzipconcatTarFile(buf, pw)
 	return err
@@ -801,7 +788,7 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 	var tp string
 	cachehit := false
 
-	var bytesreader *bytes.Reader
+	var bytesreader *bytes.Reader	
 	var bss []byte
 
 	var size int64 = 0
@@ -814,20 +801,8 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 	compressratio := 0.0
 
 	if reqtype == "LAYER" || reqtype == "PRECONSTRUCTLAYER" {
-
-		start := time.Now()
-		desc, err := bs.reg.metadataService.StatLayerRecipe(ctx, dgst)
-		if err != nil || (err == nil && len(desc.HostServerIps) == 0) {
-			context.GetLogger(ctx).Warnf("NANNAN: COULDN'T FIND LAYER RECIPE: %v or Empty layer ", err)
-			goto Sendasmanifest
-		}
-		DurationML = time.Since(start).Seconds()
-
-		Uncompressedsize = desc.UncompressionSize
-		compressratio = desc.Compressratio
-
 		start = time.Now()
-		bss, ok := bs.reg.blobcache.GetLayer(dgst.String())
+		bss, ok = bs.reg.blobcache.GetLayer(dgst.String())
 		if ok {
 			cachehit = true
 			if reqtype == "LAYER" {
@@ -841,77 +816,81 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 			}
 			goto out
 		} else {
+			
+			start := time.Now()
+			desc, err := bs.reg.metadataService.StatLayerRecipe(ctx, dgst)
+			if err != nil {
+				context.GetLogger(ctx).Warnf("NANNAN: COULDN'T FIND LAYER RECIPE: %v", err)
+				//serve as manifest: read from orginal blob storage;
+				
+				DurationNTT, err := bs.serveManifest(ctx, _desc, w, r)
+				if err != nil {
+					return err
+				}
+				
+				context.GetLogger(ctx).Debugf("NANNAN: stage layer: layer lookup time: %v, layer transfer time: %v, layer compressed size: %v",
+					DurationML, DurationNTT, _desc.Size)
+				
+				bpath, err := bs.pathFn(_desc.Digest)
+				bs.reg.blobcache.SetPUTLayer(dgst.String(), _desc.Size, bpath)
+				
+				return nil
+				
+			}else if (err == nil && len(desc.HostServerIps) == 0){
+				context.GetLogger(ctx).Warnf("NANNAN: Empty layer: %v", dgst)
+				goto Sendasempty
+			}
+			DurationML = time.Since(start).Seconds()
+	
+			Uncompressedsize = desc.UncompressionSize
+			compressratio = desc.Compressratio
+			
 			var wg sync.WaitGroup
 			bss, DurationLCT, tp = bs.constructLayer(ctx, desc, dgst, reqtype, &wg)
 			bytesreader = bytes.NewReader(bss)
 
 			size = bytesreader.Size()
+			
 			if reqtype == "LAYER" {
 				//				bytesreader := bytes.NewReader(bss)
 				//				size = bytesreader.Size()
 			} else {
 				bytesreader = bytes.NewReader([]byte("gotta!"))
 			}
+			
 			goto out
 		}
 	}
 
 	if reqtype == "SLICE" || reqtype == "PRECONSTRUCTSLICE" {
 
-		start := time.Now()
-		desc, err := bs.reg.metadataService.StatSliceRecipe(ctx, dgst)
-		if err != nil || (err == nil && len(desc.Files) == 0) {
-			context.GetLogger(ctx).Warnf("NANNAN: COULDN'T FIND SLICE RECIPE: %v or Empty slice ", err)
-			goto Sendasmanifest
-		}
-		DurationML = time.Since(start).Seconds()
-
-		Uncompressedsize = desc.SliceSize
-
 		start = time.Now()
-		bss, ok := bs.reg.blobcache.GetSlice(dgst.String())
+		bss, ok = bs.reg.blobcache.GetSlice(dgst.String())
 		if ok {
 			cachehit = true
-			//<<<<<<< HEAD
-			//			//			if reqtype == "SLICE" {
-			//			context.GetLogger(ctx).Debug("NANNAN: slice cache hit!")
-			//			bytesreader = bytes.NewReader(bss)
-			//			DurationMAC = time.Since(start).Seconds()
-			//			size = bytesreader.Size()
-			//			//			} else {
-			//			//				bytesreader = bytes.NewReader([]byte("gotta!"))
-			//			//			}
-			//=======
-			//			if reqtype == "SLICE" {
 			context.GetLogger(ctx).Debug("NANNAN: slice cache hit!")
 			bytesreader = bytes.NewReader(bss)
 			DurationMAC = time.Since(start).Seconds()
 			size = bytesreader.Size()
 			compressratio = float64(Uncompressedsize) / float64(size)
-			//			} else {
-			//				bytesreader = bytes.NewReader([]byte("gotta!"))
-			//			}
-			//>>>>>>> b49d561e8c9e3c5c06bc5c63d6b90bf75f3ded89
 			goto out
 		} else {
+			
+			start := time.Now()
+			desc, err := bs.reg.metadataService.StatSliceRecipe(ctx, dgst)
+			if err != nil || (err == nil && len(desc.Files) == 0) {
+				context.GetLogger(ctx).Warnf("NANNAN: COULDN'T FIND SLICE RECIPE: %v or Empty slice ", err)
+				goto Sendasempty
+			}
+			DurationML = time.Since(start).Seconds()
+	
+			Uncompressedsize = desc.SliceSize
+			
 			var wg sync.WaitGroup
 			bss, DurationSCT, tp = bs.constructSlice(ctx, desc, dgst, bs.reg, reqtype, &wg)
-			//<<<<<<< HEAD
-			//			//			if reqtype == "SLICE" {
-			//			bytesreader = bytes.NewReader(bss)
-			//			size = bytesreader.Size()
-			//			//			} else {
-			//			//				bytesreader = bytes.NewReader([]byte("gotta!"))
-			//			//			}
-			//=======
-			//			if reqtype == "SLICE" {
 			bytesreader = bytes.NewReader(bss)
 			size = bytesreader.Size()
 			compressratio = float64(Uncompressedsize) / float64(size)
-			//			} else {
-			//				bytesreader = bytes.NewReader([]byte("gotta!"))
-			//			}
-			//>>>>>>> b49d561e8c9e3c5c06bc5c63d6b90bf75f3ded89
 			goto out
 		}
 	}
@@ -921,7 +900,7 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 		return errors.New("type wrong")
 	}
 
-Sendasmanifest:
+Sendasempty:
 	bs.TransferBlob(ctx, w, r, _desc, bytes.NewReader([]byte("gotta!")))
 	return nil
 
@@ -982,13 +961,13 @@ out:
 
 	if cachehit {
 		if reqtype == "LAYER" {
-			context.GetLogger(ctx).Debugf(`NANNAN: layer cache hit: reqtype: %s, metadata lookup time: %v, layer cache access time: %v, 
-							layer transfer time: %v, layer compressed size: %v, compressratio: %.3f`,
-				reqtype, DurationML, DurationMAC, DurationNTT, size, compressratio)
+			context.GetLogger(ctx).Debugf("NANNAN: layer cache hit: reqtype: %s, metadata lookup time: %v, layer cache access time: %v, "+ 
+							"layer transfer time: %v, layer compressed size: %v",
+				reqtype, DurationML, DurationMAC, DurationNTT, size)
 		} else if reqtype == "SLICE" {
-			context.GetLogger(ctx).Debugf(`NANNAN: slice cache hit: reqtype: %s, metadata lookup time: %v, slice cache access time: %v, 
-							slice transfer time: %v, slice compressed size: %v, compressratio: %.3f`,
-				reqtype, DurationML, DurationMAC, DurationNTT, size, compressratio)
+			context.GetLogger(ctx).Debugf("NANNAN: slice cache hit: reqtype: %s, metadata lookup time: %v, slice cache access time: %v, "+
+							"slice transfer time: %v, slice compressed size: %v",
+				reqtype, DurationML, DurationMAC, DurationNTT, size)
 		}
 		return nil
 	} else {
@@ -996,8 +975,8 @@ out:
 			if reqtype == "LAYER" {
 				context.GetLogger(ctx).Debug("NANNAN: layer cache miss!")
 			}
-			context.GetLogger(ctx).Debugf(`NANNAN: layer construct: reqtype: %s, %s: metadata lookup time: %v, layer transfer and merge time: %v, 
-																layer transfer time: %v, layer compressed size: %v, layer uncompressed size: %v, compressratio: %.3f`,
+			context.GetLogger(ctx).Debugf("NANNAN: layer construct: reqtype: %s, %s: metadata lookup time: %v, layer transfer and merge time: %v, "+ 
+																"layer transfer time: %v, layer compressed size: %v, layer uncompressed size: %v, compressratio: %.3f",
 				reqtype, tp, DurationML, DurationLCT, DurationNTT, size, Uncompressedsize, compressratio)
 			bs.reg.blobcache.SetLayer(dgst.String(), bss) //, constructtype)
 
@@ -1017,8 +996,8 @@ out:
 			if reqtype == "SLICE" {
 				context.GetLogger(ctx).Debug("NANNAN: slice cache miss!")
 			}
-			context.GetLogger(ctx).Debugf(`NANNAN: slice construct: reqtype: %s, %s: metadata lookup time: %v, slice construct time: %v, 
-													layer transfer time: %v, slice compressed size: %v, slice uncompressed size: %v, compressratio: %.3f`,
+			context.GetLogger(ctx).Debugf("NANNAN: slice construct: reqtype: %s, %s: metadata lookup time: %v, slice construct time: %v, "+ 
+													"layer transfer time: %v, slice compressed size: %v, slice uncompressed size: %v, compressratio: %.3f",
 				reqtype, tp, DurationML, DurationSCT, DurationNTT, size, Uncompressedsize, compressratio)
 			bs.reg.blobcache.SetSlice(dgst.String(), bss) //, constructtype)
 			//remove

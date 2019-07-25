@@ -5,7 +5,8 @@ import (
 	//"gcache/gcache"
 	"os"
 	"time"
-
+	"path"
+	"ioutil"
 	"github.com/allegro/bigcache"
 	"github.com/peterbourgon/diskv"
 )
@@ -18,6 +19,7 @@ type BlobCache struct {
 	FileLST  Cache
 	LayerLST Cache
 	SliceLST Cache
+	StageLST	Cache
 }
 
 var DefaultTTL time.Duration
@@ -88,11 +90,8 @@ func (cache *BlobCache) Init() error {
 		}
 		fmt.Println("NANNAN: evicted key:", key)
 	}).
-		Expiration(DefaultTTL * 2).
+		Expiration(DefaultTTL * 1).
 		Build()
-	//if err := LayerLST.Set("key", 1000); err != nil {
-	//	fmt.Println("NANNAN: ERROR cannot set for LayerLST ", err)
-	//}
 
 	cache.LayerLST = LayerLST
 
@@ -102,13 +101,21 @@ func (cache *BlobCache) Init() error {
 		}
 		fmt.Println("NANNAN: evicted key:", key)
 	}).
-		Expiration(DefaultTTL * 1).
+		Expiration(DefaultTTL * 2).
 		Build()
 
 	cache.SliceLST = SliceLST
+	
+	// stage area *****
+	StageLSTCAP := 10*1024 //10gb
+	StageLST := New(StageLSTCAP * 1024 * 1024).LRU().
+		Expiration(3600 * time.Minute).
+		Build()
 
-	fmt.Printf("NANNAN: FileCacheCap: %d MB, LayerCacheCap: %d MB, SliceCacheCap: %d MB\n\n",
-		FileCacheCap, LayerCacheCap, SliceCacheCap)
+	cache.StageLST = StageLST
+
+	fmt.Printf("NANNAN: FileCacheCap: %d MB, LayerCacheCap: %d MB, SliceCacheCap: %d MB, StageLSTCAP: %d MB\n\n",
+		FileCacheCap, LayerCacheCap, SliceCacheCap, StageLSTCAP)
 	return err
 }
 
@@ -127,25 +134,39 @@ func (cache *BlobCache) SetLayer(dgst string, bss []byte) bool {
 	key := LayerHashKey(dgst)
 	size := len(bss)
 
-//	fmt.Printf("NANNAN: BlobCache LayerLST setting dgst %s\n", dgst)
-
 	if err := cache.LayerLST.Set(key, size); err != nil {
-		fmt.Printf("NANNAN: BlobCache LayerLST cannot set dgst %s: %v\n", dgst, err)
+		fmt.Printf("NANNAN: BlobCache SetLayer LayerLST cannot set dgst %s: %v\n", dgst, err)
 		return false
 	}
 
-//	fmt.Printf("NANNAN: BlobCache LayerLST set dgst %s\n", dgst)
-
-	if ok := cache.DiskCache.Has(key); ok {
+	if ok := cache.DiskCache.Has(key); ok {	
+		fmt.Printf("NANNAN: BlobCache SetLayer DiskCache set dgst %s size: %v\n", dgst, size)
 		return true
 	}
 
-//	fmt.Printf("NANNAN: BlobCache does not have dgst %s\n", dgst)
-
 	if err := cache.DiskCache.Write(key, bss); err != nil {
-		fmt.Printf("NANNAN: BlobCache DiskCache cannot set dgst %s: %v\n", dgst, err)
+		fmt.Printf("NANNAN: BlobCache SetLayer DiskCache cannot set dgst %s: %v\n", dgst, err)
 		return false
 	}
+	fmt.Printf("NANNAN: BlobCache SetLayer set dgst %s size: %v\n", dgst, size)
+	return true
+}
+
+func (cache *BlobCache) SetPUTLayer(dgst string, size int64, bpath string) bool {
+	key := LayerHashKey(dgst)
+
+	if err := cache.LayerLST.Set(key, size); err != nil {
+		fmt.Printf("NANNAN: BlobCache SetPUTLayer LayerLST cannot set dgst %s: %v\n", dgst, err)
+		return false
+	}
+	
+	if err := cache.StageLST.Set(key, path.Join("/var/lib/registry/", bpath)); err != nil {
+		fmt.Printf("NANNAN: BlobCache SetPUTLayer StageLST cannot set dgst %s: %v\n", dgst, err)
+		return false
+	}
+	
+	fmt.Printf("NANNAN: BlobCache SetPUTLayer set dgst %s size: %v\n", dgst, size)
+	
 	return true
 }
 
@@ -153,14 +174,25 @@ func (cache *BlobCache) GetLayer(dgst string) ([]byte, bool) {
 	key := LayerHashKey(dgst)
 
 	if _, err := cache.LayerLST.Get(key); err != nil {
-		fmt.Printf("NANNAN: BlobCache cannot get dgst %s: %v\n", dgst, err)
+		fmt.Printf("NANNAN: BlobCache GetLayer LayerLST cannot get dgst %s: %v\n", dgst, err)
 		return nil, false
 	}
 
 	bss, err := cache.DiskCache.Read(key)
 	if err != nil {
-		fmt.Printf("NANNAN: BlobCache cannot get dgst %s: %v\n", dgst, err)
-		return nil, false
+		fmt.Printf("NANNAN: BlobCache GetLayer DiskCache cannot get dgst %s: %v\n", dgst, err)
+		
+		if bpath, err := cache.StageLST.Get(key); err != nil {
+			fmt.Printf("NANNAN: BlobCache GetLayer StageLST cannot get dgst %s: %v\n", dgst, err)
+			return nil, false
+		}else{
+			if bss, err := ioutil.ReadFile(bpath); err != nil{
+				fmt.Printf("NANNAN: BlobCache GetLayer ReadFile cannot get dgst %s: %v\n", dgst, err)
+				return nil, false
+			}else{
+				return bss, true
+			}
+		}
 	}
 	return bss, true
 }
@@ -170,31 +202,35 @@ func (cache *BlobCache) SetSlice(dgst string, bss []byte) bool {
 	size := len(bss)
 
 	if err := cache.SliceLST.Set(key, size); err != nil {
-		fmt.Printf("NANNAN: BlobCache cannot set dgst %s: %v\n", dgst, err)
+		fmt.Printf("NANNAN: BlobCache SetSlice SliceLST cannot set dgst %s: %v\n", dgst, err)
 		return false
 	}
 
 	if ok := cache.DiskCache.Has(key); ok {
+		fmt.Printf("NANNAN: BlobCache SetSlice DiskCache set dgst %s size: %v\n", dgst, size)
 		return true
 	}
 
 	if err := cache.DiskCache.Write(key, bss); err != nil {
-		fmt.Printf("NANNAN: BlobCache cannot set dgst %s: %v\n", dgst, err)
+		fmt.Printf("NANNAN: BlobCache SetSlice DiskCache cannot set dgst %s: %v\n", dgst, err)
 		return false
 	}
+	
+	fmt.Printf("NANNAN: BlobCache SetSlice set dgst %s size: %v\n", dgst, size)
+	
 	return true
 }
 
 func (cache *BlobCache) GetSlice(dgst string) ([]byte, bool) {
 	key := SliceHashKey(dgst)
 	if _, err := cache.SliceLST.Get(key); err != nil {
-		fmt.Printf("NANNAN: BlobCache cannot get dgst %s: %v\n", dgst, err)
+		fmt.Printf("NANNAN: BlobCache GetSlice SliceLST cannot get dgst %s: %v\n", dgst, err)
 		return nil, false
 	}
 
 	bss, err := cache.DiskCache.Read(key)
 	if err != nil {
-		fmt.Printf("NANNAN: BlobCache cannot get dgst %s: %v\n", dgst, err)
+		fmt.Printf("NANNAN: BlobCache GetSlice DiskCache cannot get dgst %s: %v\n", dgst, err)
 		return nil, false
 	}
 	return bss, true
@@ -205,12 +241,12 @@ func (cache *BlobCache) SetFile(dgst string, bss []byte) bool {
 	size := len(bss)
 
 	if err := cache.FileLST.Set(key, size); err != nil {
-		fmt.Printf("NANNAN: BlobCache cannot set dgst %s: %v\n", dgst, err)
+		fmt.Printf("NANNAN: BlobCache SetFile FileLST cannot set dgst %s: %v\n", dgst, err)
 		return false
 	}
 
 	if err := cache.MemCache.Set(key, bss); err != nil {
-		fmt.Printf("NANNAN: BlobCache cannot set dgst %s: %v\n", dgst, err)
+		fmt.Printf("NANNAN: BlobCache SetFile MemCache cannot set dgst %s: %v\n", dgst, err)
 		return false
 	}
 	return true
@@ -219,13 +255,13 @@ func (cache *BlobCache) SetFile(dgst string, bss []byte) bool {
 func (cache *BlobCache) GetFile(dgst string) ([]byte, bool) {
 	key := FileHashKey(dgst)
 	if _, err := cache.FileLST.Get(key); err != nil {
-		fmt.Printf("NANNAN: BlobCache cannot get dgst %s: %v\n", dgst, err)
+		fmt.Printf("NANNAN: BlobCache GetFile FileLST cannot get dgst %s: %v\n", dgst, err)
 		return nil, false
 	}
 
 	bss, err := cache.MemCache.Get(key)
 	if err != nil {
-		fmt.Printf("NANNAN: BlobCache cannot get dgst %s: %v\n", dgst, err)
+		fmt.Printf("NANNAN: BlobCache GetFile MemCache cannot get dgst %s: %v\n", dgst, err)
 		return nil, false
 	}
 	return bss, true

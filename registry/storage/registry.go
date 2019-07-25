@@ -33,6 +33,7 @@ type registry struct {
 
 	restoringlayermap  sync.Map /* only one uniq layer will be restored, currently restoring layers */
 	restoringslicermap sync.Map /* only one uniq slice will be restored, currently restoring layers */
+	stagelayermap		sync.Map
 
 	repullcntthres int64
 	compr_level    int

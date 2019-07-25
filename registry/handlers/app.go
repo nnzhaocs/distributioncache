@@ -682,12 +682,6 @@ func (app *App) configureRedis(configuration *configuration.Configuration) {
 			"Active": app.redis.ActiveCount(),
 		}
 	}))
-
-//	if _, err := os.Stat("/var/lib/registry/docker/registry/v2/pull_tars/diskcache/"); os.IsNotExist(err) {
-//		if os.MkdirAll("/var/lib/registry/docker/registry/v2/pull_tars/diskcache/", 0666) != nil {
-//			fmt.Printf("NANNAN: app.go cannot create diskcache dir /var/lib/registry/docker/registry/v2/pull_tars/diskcache/: %s", err)
-//		}
-//	}
 }
 
 // configureLogHook prepares logging hook parameters.
