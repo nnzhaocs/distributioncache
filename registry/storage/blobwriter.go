@@ -164,38 +164,31 @@ http.request.uri="/v2/forward_repo/blobs/uploads/d8a15122-8119-4290-a100-bd6ccd4
 http.request.useragent="Go-http-client/1.1" http.response.contenttype="application/json; charset=utf-8" http.response.duration=9.048157ms
 http.response.status=400 http.response.written=131 vars.name="forward_repo" vars.uuid=d8a15122-8119-4290-a100-bd6ccd4ce747
 */
-func (bw *blobWriter) ForwardToRegistry(ctx context.Context, fpath string, wg *sync.WaitGroup) error {
+func (bw *blobWriter) ForwardToRegistry(ctx context.Context, bss []byte, server string) error {
 
 	defer wg.Done()
-	///var/lib/registry/docker/registry/v2/mv_tmp_serverfiles/192.168.0.200/mv_tar.tar.gz
-	regname := filepath.Base(filepath.Dir(fpath))
+
+	regname := server
 
 	var regnamebuffer bytes.Buffer
 	regnamebuffer.WriteString(regname)
 	regnamebuffer.WriteString(":5000")
 	regname = regnamebuffer.String()
-	context.GetLogger(ctx).Debug("NANNAN: ForwardToRegistry forwarding %s to %s", fpath, regname)
+	context.GetLogger(ctx).Debug("NANNAN: ForwardToRegistry forwarding to %s", regname)
 
 	var buffer bytes.Buffer
 	buffer.WriteString("http://")
 	buffer.WriteString(regname)
 	buffer.WriteString("/v2/test_repo/blobs/sha256:")
 
-	fp, err := os.Open(fpath)
-	if err != nil {
-		context.GetLogger(ctx).Errorf("NANNAN: ForwardToRegistry %s", err)
-		return nil
-	}
-
-	defer fp.Close()
-
+	bytesreader := bytes.NewReader(bss)
 	digestFn := algorithm.FromReader
-	dgst, err := digestFn(fp)
+	dgst, err := digestFn(bytesreader)
 	if err != nil {
-		context.GetLogger(ctx).Errorf("NANNAN: ForwardToRegistry %s: %v", fpath, err)
+		context.GetLogger(ctx).Errorf("NANNAN: ForwardToRegistry compute dgst error: %v", err)
 		return err
 	}
-	context.GetLogger(ctx).Debug("NANNAN: ForwardToRegistry File %s dgest %s", fpath, dgst.String())
+	context.GetLogger(ctx).Debug("NANNAN: ForwardToRegistry content dgest %s", dgst.String())
 
 	dgststring := dgst.String()
 	dgststring = strings.SplitN(dgststring, "sha256:", 2)[1]
@@ -203,7 +196,7 @@ func (bw *blobWriter) ForwardToRegistry(ctx context.Context, fpath string, wg *s
 	buffer.WriteString(dgststring)
 	url := buffer.String()
 
-	context.GetLogger(ctx).Debug("NANNAN: ForwardToRegistry URL %s", url)
+	context.GetLogger(ctx).Debug("NANNAN: ForwardToRegistry URL: %s", url)
 
 	//let's skip head request
 
@@ -213,10 +206,10 @@ func (bw *blobWriter) ForwardToRegistry(ctx context.Context, fpath string, wg *s
 	buffer.WriteString("/v2/forward_repo/forward_repo/blobs/uploads/")
 	url = buffer.String()
 
-	context.GetLogger(ctx).Debug("NANNAN: ForwardToRegistry POST URL %s", url)
+//	context.GetLogger(ctx).Debug("NANNAN: ForwardToRegistry POST URL: %s", url)
 	post, err := http.Post(url, "*/*", nil)
 	if err != nil {
-		context.GetLogger(ctx).Errorf("NANNAN: ForwardToRegistry POST URL %s, err %s", url, err)
+		context.GetLogger(ctx).Errorf("NANNAN: ForwardToRegistry POST URL: %s, err %s", url, err)
 		return err
 	}
 	post.Body.Close()
@@ -227,51 +220,115 @@ func (bw *blobWriter) ForwardToRegistry(ctx context.Context, fpath string, wg *s
 	buffer.WriteString("&digest=sha256%3A")
 	buffer.WriteString(dgststring)
 	url = buffer.String()
-	fi, err := os.Stat(fpath)
-	if err != nil {
-		return err
-	}
-	file, err := os.Open(fpath)
 
-	context.GetLogger(ctx).Debug("NANNAN: ForwardToRegistry PUT URL %s", url)
+	bytesreader := bytes.NewReader(bss)
 
-	request, err := http.NewRequest("PUT", url, file)
+//	context.GetLogger(ctx).Debug("NANNAN: ForwardToRegistry PUT URL: %s", url)
+
+	request, err := http.NewRequest("PUT", url, bytesreader)
 	if err != nil {
 		context.GetLogger(ctx).Errorf("NANNAN: ForwardToRegistry PUT URL %s, err %s", url, err)
 		return err
 	}
 
-	request.ContentLength = fi.Size()
+	request.ContentLength = len(bss)
 	client := &http.Client{}
-	context.GetLogger(ctx).Debug("NANNAN: ForwardToRegistry: Do(request) to %v", regname)
+//	context.GetLogger(ctx).Debug("NANNAN: ForwardToRegistry: Do(request) to %v", regname)
 	put, err := client.Do(request)
 	if err != nil {
-		context.GetLogger(ctx).Errorf("NANNAN: ForwardToRegistry PUT URL %s, err %s", url, err)
+		context.GetLogger(ctx).Errorf("NANNAN: ForwardToRegistry PUT URL: %s, err %s", url, err)
 		return err
 	}
 
+	context.GetLogger(ctx).Errorf("%s returned status code %d", regname, put.StatusCode)
 	if put.StatusCode < 200 || put.StatusCode > 299 {
-		context.GetLogger(ctx).Errorf("%s returned status code %d", regname, put.StatusCode)
 		return errors.New("put unique files to other servers, failed")
 	}
 
 	put.Body.Close()
 
-	context.GetLogger(ctx).Debug("NANNAN: ForwardToRegistry remove files %s", url)
-
-	//remove or not to remove? no diff
-	if err = os.Remove(fpath); err != nil {
-		context.GetLogger(ctx).Errorf("NANNAN: cannot remove fpath %s: %s", fpath, err)
-		return err
-	}
-	tmp_dir := filepath.Base(fpath)
-	if err = os.RemoveAll(path.Join("/var/lib/registry", "/docker/registry/v2/mv_tmp_serverfiles", regname, tmp_dir)); err != nil {
-		context.GetLogger(ctx).Errorf("NANNAN: cannot remove all file in NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL: %s: %s",
-			path.Join("/var/lib/registry", "/docker/registry/v2/mv_tmp_serverfiles", regname, tmp_dir), err)
-		return err
-	}
-
 	return nil
+}
+
+type Task struct {
+	Src  string
+	Desc string
+	Reg  *registry
+	Tf   *TarFile
+}
+
+func pgzipTarFile(bufp *bytes.Buffer, compressbufp *bytes.Buffer, compr_level int) []byte {
+	w, _ := pgzip.NewWriterLevel(compressbufp, compr_level)
+	io.Copy(w, bufp)
+	w.Close()
+	return compressbufp.Bytes()
+}
+
+func addToTarFile(tf *TarFile, path string, contents []byte) (int, error) {
+
+	hdr := &tar.Header{
+		Name: path,
+		Mode: 0600,
+		Size: int64(len(contents)),
+	}
+
+	tf.Lm.Lock()
+	if err := tf.Tw.WriteHeader(hdr); err != nil {
+		fmt.Printf("NANNAN: cannot write file header to tar file for %s\n", path)
+		tf.Lm.Unlock()
+		return 0, err
+	}
+
+	size, err := tf.Tw.Write(contents)
+	if err != nil {
+		fmt.Printf("NANNAN: cannot write file contents to tar file for %s\n", path)
+		tf.Lm.Unlock()
+		return 0, err
+	}
+
+	tf.Lm.Unlock()
+	return size, nil
+}
+
+func packFile(i interface{}) {
+
+	task, ok := i.(*Task)
+	if !ok {
+		fmt.Println(ok)
+		return
+	}
+	newsrc := task.Src
+	desc := task.Desc
+	reg := task.Reg
+	tf := task.Tf
+
+	var contents *[]byte
+	
+	start := time.Now()
+
+	var _, err = os.Stat(newsrc)
+	if os.IsNotExist(err) {
+		fmt.Printf("NANNAN: dedup src file %v: %v\n", newsrc, err)
+		return
+	}
+
+	bfss, err := ioutil.ReadFile(newsrc)
+	if err != nil {
+		fmt.Printf("NANNAN: dedup read file %s generated error: %v\n", desc, err)
+		return
+	} else {
+		contents = &bfss
+	}
+
+	size, err := addToTarFile(tf, desc, *contents)
+	if err != nil {
+		fmt.Printf("NANNAN: dedup desc file %s generated error: %v\n", desc, err)
+		return
+	}
+
+	DurationFCP := time.Since(start).Seconds()
+	fmt.Printf("NANNAN: dedup wrote %d bytes to file %s duration: %v\n", size, desc, DurationFCP)
+	return
 }
 
 // prepare forward files to other servers/registries
@@ -283,137 +340,56 @@ func (bw *blobWriter) ForwardToRegistry(ctx context.Context, fpath string, wg *s
 // 1b930d010525941c1d56ec53b97bd057a67ae1865eebf042686d2a2d18271ced/diff/8b6566f585bad55b6fb9efb1dc1b6532fd08bb1796b4b42a3050aacb961f1f3f"
 // THEN, compress as gizp files "/var/lib/registry/docker/registry/v2/mv_tmp_serverfiles/192.168.0.200/mv_tar.tar.gz"
 
-func (bw *blobWriter) PrepareForward(ctx context.Context, serverForwardMap map[string][]string, gid float64) ([]string, error) {
-	var serverFiles []Pair
-	limChan := make(chan bool, len(serverForwardMap))
-	defer close(limChan)
-	context.GetLogger(ctx).Debug("NANNAN: PrepareForward: [len(serverForwardMap)]=>%d", len(serverForwardMap))
-	for i := 0; i < len(serverForwardMap); i++ {
-		limChan <- true
-	}
-	//	mvtarpathall := path.Join("/var/lib/registry", server)
+func (bw *blobWriter) PrepareAndForward(ctx context.Context, serverForwardMap map[string][]string, fwg *sync.WaitGroup) error {
+
+	start := time.Now()
 	for server, fpathlst := range serverForwardMap {
-		context.GetLogger(ctx).Debugf("NANNAN: serverForwardMap: [%s]=>%", server, fpathlst)
-		for _, fpath := range fpathlst {
-			sftmp := Pair{
-				first:  server,
-				second: fpath,
+		fwg.Add(1)
+//		context.GetLogger(ctx).Debugf("NANNAN: serverForwardMap: [%s]=>%", server, fpathlst)
+		go func(server string, fpathlst []string, fwg *sync.WaitGroup) {
+			defer fwg.Done()
+			var wg sync.WaitGroup
+			var buf bytes.Buffer
+			var compressbuf bytes.Buffer
+			
+			fcnt := len(fpathlst)	
+			if fcnt > 100{
+				fcnt = 100
 			}
-			serverFiles = append(serverFiles, sftmp)
-		}
-	}
-
-	tmp_dir := fmt.Sprintf("%f", gid)
-	context.GetLogger(ctx).Debugf("NANNAN: PrepareForward: the gid for this goroutine: =>%", tmp_dir)
-
-	for _, sftmp := range serverFiles {
-		<-limChan
-		go func(sftmp Pair) {
-			server, _ := sftmp.first.(string)
-			//			context.GetLogger(ctx).Debugf("NANNAN: PrepareForward: cping files to server [%s]", server)
-			fpath, _ := sftmp.second.(string)
-
-			tmpath := path.Join(server, tmp_dir, "NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL")
-			//192.168.210/tmp_dir/NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL/
-			//898c46f3b1a1f39827ed135f020c32e2038c87ae0690a8fe73d94e5df9e6a2d6/
-			//diff/bin/1c48ade64b96409e6773d2c5c771f3b3c5acec65a15980d8dca6b1efd3f95969
-			withtmptarfpath := path.Join(tmpath, strings.TrimPrefix(fpath, "/var/lib/registry"))
-			//			context.GetLogger(ctx).Debugf("NANNAN: withtmptarfpath: [%v]", withtmptarfpath)
-
-			destfpath := path.Join("/docker/registry/v2/mv_tmp_serverfiles/", withtmptarfpath)
-			//			context.GetLogger(ctx).Debugf("NANNAN: PrepareForward: cping files to server [%s], destfpath: [%s]", server, destfpath)
-
-			contents, err := bw.driver.GetContent(ctx, strings.TrimPrefix(fpath, "/var/lib/registry"))
-			if err != nil {
-				context.GetLogger(ctx).Errorf("NANNAN: CANNOT READ File FOR SENDING TO OTHER SERVER %s, ", err)
-			} else {
-				err = bw.driver.PutContent(ctx, destfpath, contents)
-				if err != nil {
-					context.GetLogger(ctx).Errorf("NANNAN: CANNOT WRITE FILE TO DES DIR FOR SENDING TO OTHER SERVER %s, ", err)
-				}
-				//delete the old one
-				err = bw.driver.Delete(ctx, strings.TrimPrefix(fpath, "/var/lib/registry"))
-				if err != nil {
-					context.GetLogger(ctx).Errorf("NANNAN: CANNOT DELETE THE ORGINIAL File FOR SENDING TO OTHER SERVER %s, ", err)
-				}
+			antp, _ := ants.NewPoolWithFunc(fcnt, func(i interface{}) {
+				packFile(i)
+				wg.Done()
+			})
+			defer antp.Release()
+			
+			tw := tar.NewWriter(&buf)
+			tf := &TarFile{
+				Tw: tw,
 			}
-			limChan <- true
-		}(sftmp)
-	}
-	// leave the errChan
-	for i := 0; i < cap(limChan); i++ {
-		<-limChan
-		context.GetLogger(ctx).Debugf("NANNAN: FORWARD <copy files> [%d th] goroutine is joined ", i)
-	}
-	// all goroutines finished here
-
-	context.GetLogger(ctx).Debug("NANNAN: FORWARD <copy files> all goroutines finished here") // not locally available
-
-	for i := 0; i < len(serverForwardMap); i++ {
-		limChan <- true
-	}
-
-	tarpathChan := make(chan string, len(serverForwardMap))
-	errChan := make(chan error, len(serverForwardMap))
-	defer close(tarpathChan)
-	defer close(errChan)
-	context.GetLogger(ctx).Debugf("NANNAN: PrepareCompress: [len(serverForwardMap)]=>%d", len(serverForwardMap))
-
-	for server, _ := range serverForwardMap {
-		<-limChan
-		context.GetLogger(ctx).Debugf("NANNAN: PrepareCompress: compress files before sending to server [%s] ", server)
-		go func(server string) {
-			packpath := path.Join("/var/lib/registry", "/docker/registry/v2/mv_tmp_serverfiles", server, tmp_dir) //tmp_dir is with gid
-			context.GetLogger(ctx).Debugf("NANNAN: PrepareCompress <COMPRESS> packpath: %s", packpath)
-
-			data, err := archive.Tar(packpath, archive.Gzip)
-			if err != nil {
-				//TODO: process manifest file
-				context.GetLogger(ctx).Errorf("NANNAN: Compress <COMPRESS tar> %s, ", err)
-				errChan <- err
-			} else {
-				defer data.Close()
-				newtardir := path.Join("/var/lib/registry", "/docker/registry/v2/mv_tmp_servertars", server)
-				if os.MkdirAll(newtardir, 0666) != nil {
-					context.GetLogger(ctx).Errorf("NANNAN: PrepareCopy <COMPRESS create dir for tarfile> %s, ", err)
-					errChan <- err
-				} else {
-					packFile, err := os.Create(path.Join("/var/lib/registry", "/docker/registry/v2/mv_tmp_servertars", server, tmp_dir)) // added a tmp_dir
-					if err != nil {
-						context.GetLogger(ctx).Errorf("NANNAN: PrepareCopy <COMPRESS create file> %s, ", err)
-						errChan <- err
-					} else {
-
-						defer packFile.Close()
-
-						_, err := io.Copy(packFile, data)
-						if err != nil {
-							context.GetLogger(ctx).Errorf("NANNAN: Copy compress file <COMPRESS copy to desfile> %s, ", err)
-							errChan <- err
-						} else {
-							tarpathChan <- packFile.Name()
-						}
-					}
-				}
+			
+			for _, fpath := range fpathlst {
+				
+				destfpath := path.Join("NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL", strings.TrimPrefix(fpath, "/var/lib/registry"))
+				wg.Add(1)
+				antp.Invoke(&Task{
+					Src:  fpath, //sfdescriptor.FilePath, //strings.TrimPrefix(bfdescriptor.BlobFilePath, "/var/lib/registry"),
+					Desc: destfpath,
+					Reg:  bw.blobStore.registry,
+					Tf:   tf,
+				})
 			}
-			limChan <- true
-		}(server)
+			wg.Wait()
+			
+			if err := tw.Close(); err != nil {
+				context.GetLogger(ctx).Debugf("NANNAN: cannot close tar file for server: %s", server)
+			}
+			DurationCP := time.Since(start).Seconds()
+			
+			bss := pgzipTarFile(&buf, &compressbuf, bw.blobStore.registry.compr_level)
+			_ = ForwardToRegistry(ctx, bss, server)
+			
+		}(server, fpathlst, fwg)
 	}
-
-	mvtarpaths := []string{}
-	for {
-		select {
-		case err := <-errChan:
-			return []string{}, err
-		case res := <-tarpathChan:
-			mvtarpaths = append(mvtarpaths, res)
-		}
-
-		if len(serverForwardMap) == len(mvtarpaths) {
-			break
-		}
-	}
-	return mvtarpaths, nil
 }
 
 //NANNAN: after finishing commit, start do deduplication
@@ -559,7 +535,7 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) e
 
 	comressSize := stat.Size()
 	context.GetLogger(ctx).Debugf("NANNAN: START DEDUPLICATION FROM PATH :=>%s", layerPath)
-
+	
 	parentDir := path.Dir(layerPath)
 	unpackPath := path.Join(parentDir, "diff")
 
@@ -575,13 +551,57 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) e
 		context.GetLogger(ctx).Errorf("NANNAN: %v", err)
 		return err
 	}
-
-	start := time.Now()
-	err = archiver.UntarPath(layerPath, unpackPath)
-	DurationDCM := time.Since(start).Seconds()
-	if err != nil {
-		context.GetLogger(ctx).Warnf("NANNAN: %s, IGNORE MINOR ERRORS", err)
+		
+	if reqtype == "FORWARD_REPO"{
+		
+		compressbufp := bytes.NewBuffer(bss)
+		rdr, err := pgzip.NewReader(compressbufp)
+		if err != nil{
+			fmt.Printf("NANNAN: dedup: cannot create reader from layer file: %v \n", err)
+		}
+		dbs, err := ioutil.ReadAll(rdr)
+		if err != nil{
+			fmt.Printf("NANNAN: dedup: cannot read from layer file reader: %v \n", err)
+		}
+		decomprssbufp := bytes.NewReader(dbs)
+		
+		err = archiver.Unpack(decomprssbufp, unpackPath, options)
+		DurationDCM := time.Since(start).Seconds()
+		if err != nil {
+			context.GetLogger(ctx).Warnf("NANNAN: %s, IGNORE MINOR ERRORS", err)
+		}
+		needdedup, _ := checkNeedDedupOrNot(ctx, unpackPath)
+		if needdedup == false {
+			context.GetLogger(ctx).Debugf("NANNAN: This layer doesn't need deduplication, sent from othrs nodes during dedup: %s", layerPath)
+			return nil
+		}else{
+			context.GetLogger(ctx).Errorf("NANNAN: dedup: this should not need to be deduped! error ")
+			return nil
+		}
 	}
+
+//	parentDir := path.Dir(layerPath)
+//	unpackPath := path.Join(parentDir, "diff")
+//
+//	archiver := archive.NewDefaultArchiver()
+//	options := &archive.TarOptions{
+//		UIDMaps: archiver.IDMapping.UIDs(),
+//		GIDMaps: archiver.IDMapping.GIDs(),
+//	}
+//	idMapping := idtools.NewIDMappingsFromMaps(options.UIDMaps, options.GIDMaps)
+//	rootIDs := idMapping.RootPair()
+//	err = idtools.MkdirAllAndChownNew(unpackPath, 0777, rootIDs)
+//	if err != nil {
+//		context.GetLogger(ctx).Errorf("NANNAN: %v", err)
+//		return err
+//	}
+//
+//	start := time.Now()
+//	err = archiver.UntarPath(layerPath, unpackPath)
+//	DurationDCM := time.Since(start).Seconds()
+//	if err != nil {
+//		context.GetLogger(ctx).Warnf("NANNAN: %s, IGNORE MINOR ERRORS", err)
+//	}
 
 	// check if it's a empty dir *****
 	isEmpty, _ := IsEmpty(unpackPath)
@@ -591,11 +611,11 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) e
 	}
 
 	// check if we need to dedup this tarball *****
-	needdedup, _ := checkNeedDedupOrNot(ctx, unpackPath)
-	if needdedup == false {
-		context.GetLogger(ctx).Debugf("NANNAN: This layer doesn't need deduplication, sent from othrs nodes during dedup: %s", layerPath)
-		return nil
-	}
+//	needdedup, _ := checkNeedDedupOrNot(ctx, unpackPath)
+//	if needdedup == false {
+//		context.GetLogger(ctx).Debugf("NANNAN: This layer doesn't need deduplication, sent from othrs nodes during dedup: %s", layerPath)
+//		return nil
+//	}
 
 	//start deduplication, first store in cache *****
 	bw.blobStore.registry.blobcache.SetLayer(desc.Digest.String(), bss) //, "PUTLAYER")
@@ -758,22 +778,9 @@ func (bw *blobWriter) doDedup(ctx context.Context, desc distribution.Descriptor,
 	}
 	isforward = true
 	// let's do forwarding *****
-	gid := GetGID()
 	start = time.Now()
-	mvtarpaths, err := bw.PrepareForward(ctx, serverForwardMap, gid)
-	if err != nil {
-		return DurationRDF, DurationSRM, DurationSFT, dirSize, err, isdedup, isforward
-	}
-
-	if len(mvtarpaths) == 0 {
-		return DurationRDF, DurationSRM, DurationSFT, dirSize, errors.New("couldn't find mv tarpaths"), isdedup, isforward
-	}
-
 	var wg sync.WaitGroup
-	for _, path := range mvtarpaths {
-		wg.Add(1)
-		go bw.ForwardToRegistry(ctx, path, &wg)
-	}
+	_ = bw.PrepareAndForward(ctx, serverForwardMap, &wg)
 	wg.Wait()
 	DurationSFT = time.Since(start).Seconds()
 
