@@ -31,10 +31,10 @@ storage:
             enabled: false
     registryparams: 
         repullcntthres: 5
-        compr_level: 4 #1-6
+        compr_level: 6 #1-6
         layerslicingfcntthres: 30 
         layerslicingdirsizethres: 1 # MB 
-    cacheparams: # file cache 
+    cacheparams: 
         filecachecap: 82 # MB
         layercachecap: 164 # MB
         slicecachecap: 164 # MB
