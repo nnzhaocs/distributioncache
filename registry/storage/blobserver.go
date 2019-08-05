@@ -1000,7 +1000,7 @@ out:
 				context.GetLogger(ctx).Debug("NANNAN: slice cache miss!")
 			}
 			context.GetLogger(ctx).Debugf("NANNAN: slice construct: reqtype: %s, %s: metadata lookup time: %v, slice construct time: %v, "+
-				"layer transfer time: %v, slice compressed size: %v, slice uncompressed size: %v, compressratio: %.3f",
+				"slice transfer time: %v, slice compressed size: %v, slice uncompressed size: %v, compressratio: %.3f",
 				reqtype, tp, DurationML, DurationSCT, DurationNTT, size, Uncompressedsize, compressratio)
 			bs.reg.blobcache.SetSlice(dgst.String(), bss) //, constructtype)
 			//remove
