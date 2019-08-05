@@ -65,7 +65,7 @@ func blobUploadDispatcher(ctx *Context, r *http.Request) http.Handler {
 		}
 
 		blobs := ctx.Repository.Blobs(buh)
-		ctxu.GetLogger(ctx).Infof("NANNAN: blobs.Resume")
+//		ctxu.GetLogger(ctx).Infof("NANNAN: blobs.Resume")
 		upload, err := blobs.Resume(buh, buh.UUID)
 		if err != nil {
 			ctxu.GetLogger(ctx).Errorf("error resolving upload: %v", err)

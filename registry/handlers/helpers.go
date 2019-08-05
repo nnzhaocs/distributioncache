@@ -25,7 +25,7 @@ func closeResources(handler http.Handler, closers ...io.Closer) http.Handler {
 // upload, it avoids sending a 400 error to keep the logs cleaner.
 func copyFullPayload(responseWriter http.ResponseWriter, r *http.Request, destWriter io.Writer, context ctxu.Context, action string, errSlice *errcode.Errors) error {
 	// Get a channel that tells us if the client disconnects
-	ctxu.GetLogger(context).Infof("NANNAN: copyFullPayload")
+//	ctxu.GetLogger(context).Infof("NANNAN: copyFullPayload")
 	var clientClosed <-chan bool
 	if notifier, ok := responseWriter.(http.CloseNotifier); ok {
 		clientClosed = notifier.CloseNotify()

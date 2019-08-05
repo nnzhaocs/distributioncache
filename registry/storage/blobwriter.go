@@ -84,7 +84,7 @@ func (bw *blobWriter) StartedAt() time.Time {
 // Commit marks the upload as completed, returning a valid descriptor. The
 // final size and digest are checked against the first descriptor provided.
 func (bw *blobWriter) Commit(ctx context.Context, desc distribution.Descriptor) (distribution.Descriptor, error) {
-	context.GetLogger(ctx).Debug("(*blobWriter).Commit")
+//	context.GetLogger(ctx).Debug("(*blobWriter).Commit")
 
 	if err := bw.fileWriter.Commit(); err != nil {
 		return distribution.Descriptor{}, err
@@ -175,7 +175,7 @@ func (bw *blobWriter) ForwardToRegistry(ctx context.Context, bss []byte, server 
 	regnamebuffer.WriteString(regname)
 	regnamebuffer.WriteString(":5000")
 	regname = regnamebuffer.String()
-	context.GetLogger(ctx).Debug("NANNAN: ForwardToRegistry forwarding to %s", regname)
+	context.GetLogger(ctx).Debugf("NANNAN: ForwardToRegistry forwarding to %s", regname)
 
 	var buffer bytes.Buffer
 	buffer.WriteString("http://")
@@ -491,14 +491,14 @@ func IsEmpty(name string) (bool, error) {
 func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) error {
 
 	reqtype := context.GetType(ctx)
-	context.GetLogger(ctx).Debugf("NANNAN: Dedup: request type: %s\n", reqtype)
+	context.GetLogger(ctx).Debugf("NANNAN: Dedup: request type: %s", reqtype)
 
 	reponame := context.GetRepoName(ctx)
 	usrname := context.GetUsrAddr(ctx)
 	context.GetLogger(ctx).Debugf("NANNAN: Dedup: for repo (%s) and usr (%s) with dgst (%s)", reponame, usrname, desc.Digest.String())
 
 	if reqtype == "MANIFEST" {
-		context.GetLogger(ctx).Debugf("NANNAN: THIS IS A MANIFEST REQUEST, no need to deduplication\n")
+		context.GetLogger(ctx).Debugf("NANNAN: THIS IS A MANIFEST REQUEST, no need to deduplication")
 		//put manifest
 		//skip update
 		return nil
