@@ -311,6 +311,11 @@ func (c *LFUCache) Len(checkExpired bool) int {
 	return length
 }
 
+func (c *LFUCache) Size(checkExpired bool) int {
+	return 0
+
+}
+
 // Completely clear the cache
 func (c *LFUCache) Purge() {
 	c.mu.Lock()

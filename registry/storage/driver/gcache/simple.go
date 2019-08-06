@@ -274,6 +274,10 @@ func (c *SimpleCache) Len(checkExpired bool) int {
 	return length
 }
 
+func (c *SimpleCache) Size(checkExpired bool) int {
+	return 0
+}
+
 // Completely clear the cache
 func (c *SimpleCache) Purge() {
 	c.mu.Lock()
