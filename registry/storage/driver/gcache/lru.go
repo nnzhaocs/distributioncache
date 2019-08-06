@@ -281,6 +281,11 @@ func (c *LRUCache) Len(checkExpired bool) int {
 	return length
 }
 
+func (c *LRUCache) Size(checkExpired bool) int {
+	return 0
+
+}
+
 // Completely clear the cache
 func (c *LRUCache) Purge() {
 	c.mu.Lock()
