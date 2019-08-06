@@ -125,7 +125,8 @@ type TarFile struct {
 
 type PgzipFile struct {
 	Lm sync.Mutex
-	Pw *pgzip.Writer
+//	Pw *pgzip.Writer
+	Compressbufp *bytes.Buffer
 }
 
 type Task struct {
@@ -162,7 +163,7 @@ func addToTarFile(tf *TarFile, path string, contents []byte) (int, error) {
 	return size, nil
 }
 
-func pgzipconcatTarFile(compressbufp *bytes.Buffer, pw *PgzipFile) error {
+func (bs *blobServer) pgzipconcatTarFile(compressbufp *bytes.Buffer, pw *PgzipFile) error {
 	rdr, err := pgzip.NewReader(compressbufp)
 	if err != nil {
 		fmt.Printf("NANNAN: pgzipconcatTarFile: cannot create reader: %v \n", err)
@@ -175,7 +176,10 @@ func pgzipconcatTarFile(compressbufp *bytes.Buffer, pw *PgzipFile) error {
 	}
 
 	pw.Lm.Lock()
-	pw.Pw.Write(bs)
+	//w := pgzip.NewWriter(pw.Compressbufp)
+	w, _ := pgzip.NewWriterLevel(pw.Compressbufp, bs.reg.compr_level)
+	w.Write(bs)
+	w.Close()
 	pw.Lm.Unlock()
 
 	return nil
@@ -556,7 +560,7 @@ func (bs *blobServer) GetSliceFromRegistry(ctx context.Context, dgst digest.Dige
 	context.GetLogger(ctx).Debugf("NANNAN: GetSliceFromRegistry URL %s size: %d", url, len(body))
 
 	buf := bytes.NewBuffer(body)
-	err = pgzipconcatTarFile(buf, pw)
+	err = bs.pgzipconcatTarFile(buf, pw)
 	return err
 }
 
@@ -615,11 +619,11 @@ func (bs *blobServer) constructLayer(ctx context.Context, desc distribution.Laye
 
 	var lwg sync.WaitGroup
 	var comprssbuf bytes.Buffer
-	pw, _ := pgzip.NewWriterLevel(&comprssbuf, bs.reg.compr_level)
+//	pw, _ := pgzip.NewWriterLevel(&comprssbuf, bs.reg.compr_level)
 	pf := &PgzipFile{
-		Pw: pw,
+		Compressbufp: &comprssbuf,
 	}
-
+//
 	rbuf := &Restoringbuffer{
 		bufp: &comprssbuf,
 		wg:   wg,
@@ -866,8 +870,8 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 			size = bytesreader.Size()
 
 			if reqtype == "LAYER" {
-				//				bytesreader := bytes.NewReader(bss)
-				//				size = bytesreader.Size()
+				//	bytesreader := bytes.NewReader(bss)
+				//	size = bytesreader.Size()
 			} else {
 				bytesreader = bytes.NewReader([]byte("gotta!"))
 			}

@@ -171,17 +171,42 @@ func (cache *BlobCache) SetPUTLayer(dgst string, size int64, bpath string) bool 
 	return true
 }
 
-func (cache *BlobCache) RemovePUTLayer(dgst string) bool {
+func (cache *BlobCache) RemovePUTLayer(dgst string, move_tocache bool) bool {
 	key := LayerHashKey(dgst)
 
 //	if err := cache.LayerLST.Set(key, size); err != nil {
 //		fmt.Printf("NANNAN: BlobCache SetPUTLayer LayerLST cannot set dgst %s: %v\n", dgst, err)
 //		return false
 //	}
-
+	//sleep 2 seconds
 	time.Sleep(2 * time.Second)
 	
-	cache.StageLST.Remove(key)
+	if !move_tocache{
+		cache.StageLST.Remove(key)
+		return true
+	}
+	
+	if bpathval, err := cache.StageLST.Get(key); err != nil {
+		fmt.Printf("NANNAN: BlobCache RemovePUTLayer StageLST cannot get dgst %s: %v\n", dgst, err)
+		return nil, false
+	} else {
+		if bpath, err := bpathval.(string); err != true {
+			fmt.Printf("NANNAN: BlobCache RemovePUTLayer StageLST cannot get path string for dgst %s: %v\n", dgst, err)
+			return nil, false
+		} else {
+			if bss, err := ioutil.ReadFile(bpath); err != nil {
+				fmt.Printf("NANNAN: BlobCache RemovePUTLayer ReadFile cannot get dgst %s: %v, read error\n", dgst, err)
+				return nil, false
+			}else {
+				//promote to cache and remove it
+				fmt.Printf("NANNAN: BlobCache RemovePUTLayer dgst %s, StageLST, cache size: %v \n", dgst, cache.StageLST.Len(false))
+				if err := cache.LayerLST.Set(key, len(bss)); err != nil {
+					fmt.Printf("NANNAN: BlobCache RemovePUTLayer LayerLST cannot set dgst %s: %v\n", dgst, err)
+					return false
+				}
+				cache.StageLST.Remove(key)
+//				return bss, true
+		}
 
 	fmt.Printf("NANNAN: BlobCache RemovePUTLayer remove dgst %s, StageLST, cache size: %v \n", dgst, cache.StageLST.Len(false))
 

@@ -636,13 +636,19 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) e
 		fmt.Printf("NANNAN: Dodedup: decompression time: %.3f, dedup remove dup file time: %.3f, dedup set recipe time: %.3f, "+
 			"slice forward time: %.3f, compressed size: %d, uncompression size: %d\n",
 			DurationDCM, DurationRDF, DurationSRM, DurationSFT, comressSize, dirSize)
+		//***** after dedup remove it from stage area *****
+		if "LAYER" == reqtype{
+			bw.blobStore.registry.blobcache.RemovePUTLayer(desc.Digest.String(), true)
+		}
 	} else if isdedup {
 		fmt.Printf("NANNAN: Dodedup: decompression time: %.3f, dedup remove dup file time: %.3f, dedup set recipe time: %.3f, "+
 			"compressed size: %d, uncompression size: %d\n",
 			DurationDCM, DurationRDF, DurationSRM, comressSize, dirSize)
+		//***** after dedup remove it from stage area *****
+		if "LAYER" == reqtype{
+			bw.blobStore.registry.blobcache.RemovePUTLayer(desc.Digest.String(), true)
+		}
 	}
-	//***** after dedup remove it from stage area *****
-	bw.blobStore.registry.blobcache.RemovePUTLayer(desc.Digest.String())
 	
 	return nil
 }
