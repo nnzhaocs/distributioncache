@@ -178,9 +178,9 @@ func (bw *blobWriter) ForwardToRegistry(ctx context.Context, bss []byte, server 
 	context.GetLogger(ctx).Debugf("NANNAN: ForwardToRegistry forwarding to %s", regname)
 
 	var buffer bytes.Buffer
-	buffer.WriteString("http://")
-	buffer.WriteString(regname)
-	buffer.WriteString("/v2/test_repo/blobs/sha256:")
+//	buffer.WriteString("http://")
+//	buffer.WriteString(regname)
+//	buffer.WriteString("/v2/test_repo/blobs/sha256:")
 
 	bytesreader := bytes.NewReader(bss)
 	digestFn := algorithm.FromReader
@@ -189,15 +189,15 @@ func (bw *blobWriter) ForwardToRegistry(ctx context.Context, bss []byte, server 
 		context.GetLogger(ctx).Errorf("NANNAN: ForwardToRegistry compute dgst error: %v", err)
 		return err
 	}
-	context.GetLogger(ctx).Debug("NANNAN: ForwardToRegistry content dgest %s", dgst.String())
+//	context.GetLogger(ctx).Debug("NANNAN: ForwardToRegistry content dgest %s", dgst.String())
 
 	dgststring := dgst.String()
 	dgststring = strings.SplitN(dgststring, "sha256:", 2)[1]
 
-	buffer.WriteString(dgststring)
-	url := buffer.String()
+//	buffer.WriteString(dgststring)
+//	url := buffer.String()
 
-	context.GetLogger(ctx).Debug("NANNAN: ForwardToRegistry URL: %s", url)
+//	context.GetLogger(ctx).Debug("NANNAN: ForwardToRegistry URL: %s", url)
 
 	//let's skip head request
 
@@ -207,7 +207,7 @@ func (bw *blobWriter) ForwardToRegistry(ctx context.Context, bss []byte, server 
 	buffer.WriteString("/v2/forward_repo/forward_repo/blobs/uploads/")
 	url = buffer.String()
 
-	//	context.GetLogger(ctx).Debug("NANNAN: ForwardToRegistry POST URL: %s", url)
+	context.GetLogger(ctx).Debug("NANNAN: ForwardToRegistry POST URL: %s", url)
 	post, err := http.Post(url, "*/*", nil)
 	if err != nil {
 		context.GetLogger(ctx).Errorf("NANNAN: ForwardToRegistry POST URL: %s, err %s", url, err)
@@ -597,7 +597,10 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) e
 	}
 
 	//start deduplication, first store in cache *****
-	bw.blobStore.registry.blobcache.SetLayer(desc.Digest.String(), bss) //, "PUTLAYER")
+	if "LAYER" == reqtype{
+		//skip warmuplayers
+		bw.blobStore.registry.blobcache.SetPUTLayer(desc.Digest.String(), comressSize, layerPath) //, "PUTLAYER")
+	}
 	//then update RLMap ****
 	rlmapentry, err := bw.blobStore.registry.metadataService.StatRLMapEntry(ctx, reponame)
 	if err == nil {
@@ -638,6 +641,9 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) e
 			"compressed size: %d, uncompression size: %d\n",
 			DurationDCM, DurationRDF, DurationSRM, comressSize, dirSize)
 	}
+	//***** after dedup remove it from stage area *****
+	bw.blobStore.registry.blobcache.RemovePUTLayer(desc.Digest.String())
+	
 	return nil
 }
 
@@ -811,7 +817,7 @@ func (bw *blobWriter) CheckDuplicate(ctx context.Context, serverIp string, db ca
 
 		fsize := stat.Size()
 		if fsize <= 0 {
-			context.GetLogger(ctx).Errorf("NANNAN: empty file")
+//			context.GetLogger(ctx).Errorf("NANNAN: empty file")
 			return nil
 		}
 

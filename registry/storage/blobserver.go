@@ -766,11 +766,11 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 	DurationML := time.Since(start).Seconds() // bs.driver.Stat
 
 	reqtype := context.GetType(ctx)
-	context.GetLogger(ctx).Debugf("NANNAN: ServeBlob: type: %s", reqtype)
+//	context.GetLogger(ctx).Debugf("NANNAN: ServeBlob: ", )
 
 	reponame := context.GetRepoName(ctx)
 	usrname := context.GetUsrAddr(ctx)
-	context.GetLogger(ctx).Debugf("NANNAN: Preconstructlayers: for repo (%s) and usr (%s) with dgst (%s)", reponame, usrname, dgst.String())
+	context.GetLogger(ctx).Debugf("NANNAN: ServeBlob: type: %s for repo (%s) and usr (%s) with dgst (%s)", reqtype, reponame, usrname, dgst.String())
 
 	if reqtype == "MANIFEST" {
 		context.GetLogger(ctx).Debugf("NANNAN: THIS IS A MANIFEST REQUEST, serve and preconstruct layers")
@@ -818,24 +818,35 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 			}
 			goto out
 		} else {
-
 			start := time.Now()
 			desc, err := bs.reg.metadataService.StatLayerRecipe(ctx, dgst)
-			if err != nil {
-				context.GetLogger(ctx).Warnf("NANNAN: COULDN'T FIND LAYER RECIPE: %v", err)
+			if err != nil || desc.MasterIp != bs.reg.hostserverIp{
+				//it is deduplicating when usr sends req
+				cachehit = true
+				context.GetLogger(ctx).Warnf("NANNAN: COULDN'T FIND LAYER RECIPE: %v, this layer is deduplicating when usr sends reqs ...", err)
 				//serve as manifest: read from orginal blob storage;
+				if reqtype == "LAYER"{
+					DurationNTT, err := bs.serveManifest(ctx, _desc, w, r)
+					if err != nil {
+						return err
+					}
 
-				DurationNTT, err := bs.serveManifest(ctx, _desc, w, r)
-				if err != nil {
-					return err
+					context.GetLogger(ctx).Debug("NANNAN: layer stage hit!")
+					context.GetLogger(ctx).Debugf("NANNAN: stage layer: layer lookup time: %v, layer transfer time: %v, layer compressed size: %v",
+						DurationML, DurationNTT, _desc.Size)
 				}
-
-				context.GetLogger(ctx).Debug("NANNAN: layer cache hit!")
-				context.GetLogger(ctx).Debugf("NANNAN: stage layer: layer lookup time: %v, layer transfer time: %v, layer compressed size: %v",
-					DurationML, DurationNTT, _desc.Size)
-
+				
 				bpath, err := bs.pathFn(_desc.Digest)
-				bs.reg.blobcache.SetPUTLayer(dgst.String(), _desc.Size, bpath)
+				if bss, err := ioutil.ReadFile(path.Join("/var/lib/registry/", bpath)); err != nil {
+					fmt.Printf("NANNAN: cannot read %s: %v, read error\n", bpath, err)
+//					return err
+				}else{
+					bs.reg.blobcache.SetLayer(dgst.String(), bss)
+				}
+				
+				if reqtype == "PRECONSTRUCTLAYER"{
+					goto Sendasempty
+				}
 
 				return nil
 

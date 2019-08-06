@@ -386,6 +386,11 @@ func (c *ARC) Len(checkExpired bool) int {
 	return length
 }
 
+// Size returns the actually size of total stored items in the cache
+func (c *ARC) Size(checkExpired bool) int {
+	return c.t1.size + c.t2.size
+}
+
 // Purge is used to completely clear the cache
 func (c *ARC) Purge() {
 	c.mu.Lock()
