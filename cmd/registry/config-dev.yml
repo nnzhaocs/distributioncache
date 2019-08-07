@@ -30,7 +30,7 @@ storage:
         uploadpurging:
             enabled: false
     registryparams: 
-        repullcntthres: 5
+        repullcntthres: 1
         compr_level: 6 #1-6
         layerslicingfcntthres: 30 
         layerslicingdirsizethres: 1 # MB 

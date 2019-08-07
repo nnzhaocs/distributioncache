@@ -125,7 +125,7 @@ type TarFile struct {
 
 type PgzipFile struct {
 	Lm sync.Mutex
-//	Pw *pgzip.Writer
+	//	Pw *pgzip.Writer
 	Compressbufp *bytes.Buffer
 }
 
@@ -169,7 +169,7 @@ func (bs *blobServer) pgzipconcatTarFile(compressbufp *bytes.Buffer, pw *PgzipFi
 		fmt.Printf("NANNAN: pgzipconcatTarFile: cannot create reader: %v \n", err)
 		return err
 	}
-	bs, err := ioutil.ReadAll(rdr)
+	bss, err := ioutil.ReadAll(rdr)
 	if err != nil {
 		fmt.Printf("NANNAN: pgzipconcatTarFile: cannot read from reader: %v \n", err)
 		return err
@@ -178,7 +178,7 @@ func (bs *blobServer) pgzipconcatTarFile(compressbufp *bytes.Buffer, pw *PgzipFi
 	pw.Lm.Lock()
 	//w := pgzip.NewWriter(pw.Compressbufp)
 	w, _ := pgzip.NewWriterLevel(pw.Compressbufp, bs.reg.compr_level)
-	w.Write(bs)
+	w.Write(bss)
 	w.Close()
 	pw.Lm.Unlock()
 
@@ -619,11 +619,11 @@ func (bs *blobServer) constructLayer(ctx context.Context, desc distribution.Laye
 
 	var lwg sync.WaitGroup
 	var comprssbuf bytes.Buffer
-//	pw, _ := pgzip.NewWriterLevel(&comprssbuf, bs.reg.compr_level)
+	//	pw, _ := pgzip.NewWriterLevel(&comprssbuf, bs.reg.compr_level)
 	pf := &PgzipFile{
 		Compressbufp: &comprssbuf,
 	}
-//
+	//
 	rbuf := &Restoringbuffer{
 		bufp: &comprssbuf,
 		wg:   wg,
