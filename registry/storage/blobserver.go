@@ -207,7 +207,7 @@ func packFile(i interface{}) {
 
 	var contents *[]byte
 
-	start := time.Now()
+//	start := time.Now()
 	//check if newsrc is in file cache
 	bfss, ok := reg.blobcache.GetFile(newsrc)
 	if ok {
@@ -247,8 +247,8 @@ func packFile(i interface{}) {
 		return
 	}
 
-	DurationFCP := time.Since(start).Seconds()
-	fmt.Printf("NANNAN: wrote %d bytes to file %s duration: %v\n", size, desc, DurationFCP)
+//	DurationFCP := time.Since(start).Seconds()
+//	fmt.Printf("NANNAN: wrote %d bytes to file %s duration: %v\n", size, desc, DurationFCP)
 	return
 }
 
@@ -628,7 +628,7 @@ func (bs *blobServer) constructLayer(ctx context.Context, desc distribution.Laye
 	pf := &PgzipFile{
 		Compressbufp: &comprssbuf,
 	}
-	//
+
 	rbuf := &Restoringbuffer{
 		bufp: &comprssbuf,
 		wg:   wg,
@@ -638,14 +638,14 @@ func (bs *blobServer) constructLayer(ctx context.Context, desc distribution.Laye
 	start := time.Now()
 	rsbufval, ok := bs.reg.restoringlayermap.LoadOrStore(dgst.String(), rbuf)
 	if ok {
-		// load true
+		// loaded true
 		if rsbuf, ok := rsbufval.(*Restoringbuffer); ok {
 			rsbuf.wg.Add(1)
-			rsbuf.Lock()
-			rsbuf.cnd.Wait()
-			rsbuf.Unlock()
 			
 			context.GetLogger(ctx).Debugf("NANNAN: layer construct finish waiting for digest: %v", dgst.String())
+			rsbuf.Lock()
+//			rsbuf.cnd.Wait()
+			rsbuf.Unlock()
 			
 			DurationWLCT := time.Since(start).Seconds()
 
@@ -677,7 +677,7 @@ func (bs *blobServer) constructLayer(ctx context.Context, desc distribution.Laye
 		
 		rbuf.Unlock()
 		
-		rbuf.cnd.Broadcast()
+//		rbuf.cnd.Broadcast()
 		
 		tp := "LAYERCONSTRUCT"
 		bss := comprssbuf.Bytes()
@@ -1016,6 +1016,7 @@ out:
 					rsbuf.wg.Done()
 					if "LAYERCONSTRUCT" == tp {
 						rsbuf.wg.Wait()
+						context.GetLogger(ctx).Debugf("NANNAN: ServeBlob layer construct finish waiting for all threads with digest: %v", dgst.String())
 						bs.reg.restoringlayermap.Delete(dgst.String())
 					}
 				}
@@ -1036,6 +1037,7 @@ out:
 					rsbuf.wg.Done()
 					if "SLICECONSTRUCT" == tp {
 						rsbuf.wg.Wait()
+						context.GetLogger(ctx).Debugf("NANNAN: ServeBlob slice construct finish waiting for all threads with digest: %v", dgst.String())
 						bs.reg.restoringslicermap.Delete(dgst.String())
 					}
 				}

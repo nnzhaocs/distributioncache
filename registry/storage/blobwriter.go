@@ -305,7 +305,7 @@ func packUniqFile(i interface{}) {
 
 	var contents *[]byte
 
-	start := time.Now()
+//	start := time.Now()
 
 	var _, err = os.Stat(newsrc)
 	if os.IsNotExist(err) {
@@ -327,8 +327,8 @@ func packUniqFile(i interface{}) {
 		return
 	}
 
-	DurationFCP := time.Since(start).Seconds()
-	fmt.Printf("NANNAN: dedup wrote %d bytes to file %s duration: %v\n", size, desc, DurationFCP)
+//	DurationFCP := time.Since(start).Seconds()
+//	fmt.Printf("NANNAN: dedup wrote %d bytes to file %s duration: %v\n", size, desc, DurationFCP)
 	return
 }
 
