@@ -30,7 +30,7 @@ storage:
         uploadpurging:
             enabled: false
     registryparams: 
-        repullcntthres: 1
+        repullcntthres: 6
         compr_level: 6 #1-6
         layerslicingfcntthres: 30 
         layerslicingdirsizethres: 1 # MB 
@@ -38,7 +38,7 @@ storage:
         filecachecap: 82 # MB
         layercachecap: 164 # MB
         slicecachecap: 164 # MB
-        ttl: 5000 # 0.001s    
+        ttl: 40000 # 0.001s    
 http:
     addr: :5000
     debug:
