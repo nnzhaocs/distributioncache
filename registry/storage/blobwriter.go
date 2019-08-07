@@ -305,7 +305,7 @@ func packUniqFile(i interface{}) {
 
 	var contents *[]byte
 
-//	start := time.Now()
+	//	start := time.Now()
 
 	var _, err = os.Stat(newsrc)
 	if os.IsNotExist(err) {
@@ -321,14 +321,15 @@ func packUniqFile(i interface{}) {
 		contents = &bfss
 	}
 
-	size, err := addToTarFile(tf, desc, *contents)
+	//size
+	_, err = addToTarFile(tf, desc, *contents)
 	if err != nil {
 		fmt.Printf("NANNAN: dedup desc file %s generated error: %v\n", desc, err)
 		return
 	}
 
-//	DurationFCP := time.Since(start).Seconds()
-//	fmt.Printf("NANNAN: dedup wrote %d bytes to file %s duration: %v\n", size, desc, DurationFCP)
+	//	DurationFCP := time.Since(start).Seconds()
+	//	fmt.Printf("NANNAN: dedup wrote %d bytes to file %s duration: %v\n", size, desc, DurationFCP)
 	return
 }
 
@@ -637,7 +638,7 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) e
 			"slice forward time: %.3f, compressed size: %d, uncompression size: %d\n",
 			DurationDCM, DurationRDF, DurationSRM, DurationSFT, comressSize, dirSize)
 		//***** after dedup remove it from stage area *****
-		if "LAYER" == reqtype{
+		if "LAYER" == reqtype {
 			bw.blobStore.registry.blobcache.RemovePUTLayer(desc.Digest.String(), true)
 		}
 	} else if isdedup {
@@ -645,17 +646,17 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) e
 			"compressed size: %d, uncompression size: %d\n",
 			DurationDCM, DurationRDF, DurationSRM, comressSize, dirSize)
 		//***** after dedup remove it from stage area *****
-		if "LAYER" == reqtype{
+		if "LAYER" == reqtype {
 			bw.blobStore.registry.blobcache.RemovePUTLayer(desc.Digest.String(), true)
 		}
 	}
-//<<<<<<< HEAD
-//	
-//=======
-//	//***** after dedup remove it from stage area *****
-//	bw.blobStore.registry.blobcache.RemovePUTLayer(desc.Digest.String())
-//
-//>>>>>>> 4f28414516a2b7bec6b7f0a05c60ac458b93d779
+	//<<<<<<< HEAD
+	//
+	//=======
+	//	//***** after dedup remove it from stage area *****
+	//	bw.blobStore.registry.blobcache.RemovePUTLayer(desc.Digest.String())
+	//
+	//>>>>>>> 4f28414516a2b7bec6b7f0a05c60ac458b93d779
 	return nil
 }
 

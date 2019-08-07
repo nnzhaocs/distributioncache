@@ -207,7 +207,7 @@ func packFile(i interface{}) {
 
 	var contents *[]byte
 
-//	start := time.Now()
+	//	start := time.Now()
 	//check if newsrc is in file cache
 	bfss, ok := reg.blobcache.GetFile(newsrc)
 	if ok {
@@ -241,14 +241,14 @@ func packFile(i interface{}) {
 		}
 	}
 
-	size, err := addToTarFile(tf, desc, *contents)
+	_, err := addToTarFile(tf, desc, *contents)
 	if err != nil {
 		fmt.Printf("NANNAN: desc file %s generated error: %v\n", desc, err)
 		return
 	}
 
-//	DurationFCP := time.Since(start).Seconds()
-//	fmt.Printf("NANNAN: wrote %d bytes to file %s duration: %v\n", size, desc, DurationFCP)
+	//	DurationFCP := time.Since(start).Seconds()
+	//	fmt.Printf("NANNAN: wrote %d bytes to file %s duration: %v\n", size, desc, DurationFCP)
 	return
 }
 
@@ -582,11 +582,11 @@ func (bs *blobServer) constructSlice(ctx context.Context, desc distribution.Slic
 		// load true
 		if rsbuf, ok := rsbufval.(*Restoringbuffer); ok {
 			rsbuf.wg.Add(1)
-			
+
 			rsbuf.Lock()
 			rsbuf.cnd.Wait()
 			rsbuf.Unlock()
-			
+
 			context.GetLogger(ctx).Debugf("NANNAN: slice construct finish waiting for digest: %v", dgst.String())
 			DurationWSCT := time.Since(start).Seconds()
 
@@ -598,7 +598,7 @@ func (bs *blobServer) constructSlice(ctx context.Context, desc distribution.Slic
 		}
 	} else {
 		rbuf.wg.Add(1)
-		
+
 		rbuf.Lock()
 		start := time.Now()
 		_ = bs.packAllFiles(ctx, desc, &buf, reg, constructtype)
@@ -607,9 +607,9 @@ func (bs *blobServer) constructSlice(ctx context.Context, desc distribution.Slic
 		bss := pgzipTarFile(&buf, &comprssbuf, bs.reg.compr_level)
 		//DurationCMP := time.Since(start).Seconds()
 		rbuf.Unlock()
-		
+
 		rbuf.cnd.Broadcast()
-		
+
 		DurationSCT := time.Since(start).Seconds()
 
 		//bss = compressbufp.Bytes()
@@ -641,12 +641,12 @@ func (bs *blobServer) constructLayer(ctx context.Context, desc distribution.Laye
 		// loaded true
 		if rsbuf, ok := rsbufval.(*Restoringbuffer); ok {
 			rsbuf.wg.Add(1)
-			
+
 			context.GetLogger(ctx).Debugf("NANNAN: layer construct finish waiting for digest: %v", dgst.String())
 			rsbuf.Lock()
-//			rsbuf.cnd.Wait()
+			//			rsbuf.cnd.Wait()
 			rsbuf.Unlock()
-			
+
 			DurationWLCT := time.Since(start).Seconds()
 
 			tp := "WAITLAYERCONSTRUCT"
@@ -657,7 +657,7 @@ func (bs *blobServer) constructLayer(ctx context.Context, desc distribution.Laye
 		}
 	} else {
 		rbuf.wg.Add(1)
-		
+
 		rbuf.Lock()
 		//SLICE
 		constructtypeslice := ""
@@ -674,11 +674,11 @@ func (bs *blobServer) constructLayer(ctx context.Context, desc distribution.Laye
 		lwg.Wait()
 
 		DurationLCT := time.Since(start).Seconds()
-		
+
 		rbuf.Unlock()
-		
-//		rbuf.cnd.Broadcast()
-		
+
+		//		rbuf.cnd.Broadcast()
+
 		tp := "LAYERCONSTRUCT"
 		bss := comprssbuf.Bytes()
 
