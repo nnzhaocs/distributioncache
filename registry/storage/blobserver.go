@@ -1017,8 +1017,8 @@ out:
 				if rsbuf, ok := rsbufval.(*Restoringbuffer); ok {
 					rsbuf.wg.Done()
 					if "LAYERCONSTRUCT" == tp {
-						rsbuf.wg.Wait()
 						time.Sleep(5 * time.Second)
+						rsbuf.wg.Wait()
 						context.GetLogger(ctx).Debugf("NANNAN: ServeBlob layer construct finish waiting for all threads with digest: %v", dgst.String())
 						bs.reg.restoringlayermap.Delete(dgst.String())
 					}
@@ -1042,6 +1042,7 @@ out:
 				if rsbuf, ok := rsbufval.(*Restoringbuffer); ok {
 					rsbuf.wg.Done()
 					if "SLICECONSTRUCT" == tp {
+						time.Sleep(5 * time.Second)
 						rsbuf.wg.Wait()
 						context.GetLogger(ctx).Debugf("NANNAN: ServeBlob slice construct finish waiting for all threads with digest: %v", dgst.String())
 						bs.reg.restoringslicermap.Delete(dgst.String())
