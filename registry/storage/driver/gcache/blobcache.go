@@ -180,7 +180,7 @@ func (cache *BlobCache) RemovePUTLayer(dgst string, move_tocache bool) bool {
 //		return false
 //	}
 	//sleep 2 seconds
-	time.Sleep(2 * time.Second)
+	time.Sleep(5 * time.Second)
 	
 	if !move_tocache{
 		cache.StageLST.Remove(key)

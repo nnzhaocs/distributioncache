@@ -1018,6 +1018,7 @@ out:
 					rsbuf.wg.Done()
 					if "LAYERCONSTRUCT" == tp {
 						rsbuf.wg.Wait()
+						time.Sleep(5 * time.Second)
 						context.GetLogger(ctx).Debugf("NANNAN: ServeBlob layer construct finish waiting for all threads with digest: %v", dgst.String())
 						bs.reg.restoringlayermap.Delete(dgst.String())
 					}
