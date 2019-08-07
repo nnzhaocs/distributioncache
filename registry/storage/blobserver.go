@@ -505,61 +505,84 @@ func (bs *blobServer) GetSliceFromRegistry(ctx context.Context, dgst digest.Dige
 	wg *sync.WaitGroup, constructtype string) error {
 
 	defer wg.Done()
-	dgststring := dgst.String()
-
-	var regipbuffer bytes.Buffer
-	reponame := context.GetRepoName(ctx)
-	usrname := context.GetUsrAddr(ctx)
-
-	regipbuffer.WriteString(regip)
-	regipbuffer.WriteString(":5000")
-	regip = regipbuffer.String()
-	context.GetLogger(ctx).Debugf("NANNAN: GetSliceFromRegistry start! from server %s, dgst: %s ", regip, dgststring)
-
-	//GET /v2/<name>/blobs/<digest>
-	var urlbuffer bytes.Buffer
-	urlbuffer.WriteString("http://")
-	urlbuffer.WriteString(regip)
-	urlbuffer.WriteString("/v2/")
-
-	urlbuffer.WriteString("TYPE" + constructtype + "USRADDR" + usrname + "REPONAME" + reponame)
-	urlbuffer.WriteString("/blobs/sha256:")
-
-	dgststring = strings.SplitN(dgststring, "sha256:", 2)[1]
-	urlbuffer.WriteString(dgststring)
-	url := urlbuffer.String()
-	url = strings.ToLower(url)
-
-	context.GetLogger(ctx).Debugf("NANNAN: GetSliceFromRegistry create URL %s ", url)
-
-	//let's skip head request
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		context.GetLogger(ctx).Errorf("NANNAN: ForwardToRegistry GET URL %s, err %s", url, err)
+	
+	if regip != bs.reg.hostserverIp{
+	
+		dgststring := dgst.String()
+	
+		var regipbuffer bytes.Buffer
+		reponame := context.GetRepoName(ctx)
+		usrname := context.GetUsrAddr(ctx)
+	
+		regipbuffer.WriteString(regip)
+		regipbuffer.WriteString(":5000")
+		regip = regipbuffer.String()
+		context.GetLogger(ctx).Debugf("NANNAN: GetSliceFromRegistry start! from server %s, dgst: %s ", regip, dgststring)
+	
+		//GET /v2/<name>/blobs/<digest>
+		var urlbuffer bytes.Buffer
+		urlbuffer.WriteString("http://")
+		urlbuffer.WriteString(regip)
+		urlbuffer.WriteString("/v2/")
+	
+		urlbuffer.WriteString("TYPE" + constructtype + "USRADDR" + usrname + "REPONAME" + reponame)
+		urlbuffer.WriteString("/blobs/sha256:")
+	
+		dgststring = strings.SplitN(dgststring, "sha256:", 2)[1]
+		urlbuffer.WriteString(dgststring)
+		url := urlbuffer.String()
+		url = strings.ToLower(url)
+	
+		context.GetLogger(ctx).Debugf("NANNAN: GetSliceFromRegistry create URL %s ", url)
+	
+		//let's skip head request
+		req, err := http.NewRequest("GET", url, nil)
+		if err != nil {
+			context.GetLogger(ctx).Errorf("NANNAN: ForwardToRegistry GET URL %s, err %s", url, err)
+			return err
+		}
+	
+		client := &http.Client{}
+		resp, err := client.Do(req)
+		if err != nil {
+			context.GetLogger(ctx).Errorf("NANNAN: GetSliceFromRegistry Do GET URL %s, err %s", url, err)
+			return err
+		}
+		defer resp.Body.Close()
+	
+		context.GetLogger(ctx).Debugf("NANNAN: GetSliceFromRegistry %s returned status code %d", regip, resp.StatusCode)
+		if resp.StatusCode < 200 || resp.StatusCode > 299 {
+			return errors.New("get slices from other servers, failed")
+		}
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			context.GetLogger(ctx).Errorf("NANNAN: cannot read from resp.body: %s", err)
+			return err
+		}
+	
+		context.GetLogger(ctx).Debugf("NANNAN: GetSliceFromRegistry succeed! URL %s size: %d", url, len(body))
+	
+		buf := bytes.NewBuffer(body)
+		err = bs.pgzipconcatTarFile(buf, pw)
 		return err
 	}
-
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		context.GetLogger(ctx).Errorf("NANNAN: GetSliceFromRegistry Do GET URL %s, err %s", url, err)
+	
+		//***** construct locally *****
+	desc, err := bs.reg.metadataService.StatSliceRecipe(ctx, dgst)
+	if err != nil || (err == nil && len(desc.Files) == 0) {
+		context.GetLogger(ctx).Warnf("NANNAN: COULDN'T FIND SLICE RECIPE: %v or Empty slice ", err)
+		//send empty
+		buf := bytes.NewBuffer([]byte("gotta!"))
+		err = bs.pgzipconcatTarFile(buf, pw)
 		return err
 	}
-	defer resp.Body.Close()
-
-	context.GetLogger(ctx).Debugf("NANNAN: GetSliceFromRegistry %s returned status code %d", regip, resp.StatusCode)
-	if resp.StatusCode < 200 || resp.StatusCode > 299 {
-		return errors.New("get slices from other servers, failed")
-	}
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		context.GetLogger(ctx).Errorf("NANNAN: cannot read from resp.body: %s", err)
-		return err
-	}
-
-	context.GetLogger(ctx).Debugf("NANNAN: GetSliceFromRegistry succeed! URL %s size: %d", url, len(body))
-
-	buf := bytes.NewBuffer(body)
+	
+	var wg sync.WaitGroup
+	bss, _, _ = bs.constructSlice(ctx, desc, dgst, bs.reg, constructtype, &wg)
+	
+	context.GetLogger(ctx).Debugf("NANNAN: GetSliceFromRegistry succeed! from local registry %s size: %d", regip, len(bss))
+	
+	buf := bytes.NewBuffer(bss)
 	err = bs.pgzipconcatTarFile(buf, pw)
 	return err
 }
@@ -659,14 +682,42 @@ func (bs *blobServer) constructLayer(ctx context.Context, desc distribution.Laye
 		rbuf.wg.Add(1)
 
 		rbuf.Lock()
-		//SLICE
+		
 		constructtypeslice := ""
 		if "PRECONSTRUCTLAYER" == constructtype {
 			constructtypeslice = "PRECONSTRUCTSLICE"
 		} else if "LAYER" == constructtype {
 			constructtypeslice = "SLICE"
 		}
+		
 		start := time.Now()
+		if len(desc.HostServerIps) == 1 {	
+			//***** construct locally *****
+			desc, err := bs.reg.metadataService.StatSliceRecipe(ctx, dgst)
+			if err != nil || (err == nil && len(desc.Files) == 0) {
+				context.GetLogger(ctx).Warnf("NANNAN: COULDN'T FIND SLICE RECIPE: %v or Empty slice ", err)
+				//send empty
+				rbuf.bufp = bytes.NewBuffer([]byte("gotta!"))
+				rbuf.Unlock()
+				DurationLCT := time.Since(start).Seconds()
+				//	rbuf.cnd.Broadcast()	
+				tp := "LAYERCONSTRUCT"
+	//			bss := rbuf.bufp.Bytes()	
+				return bss, DurationLCT, tp
+			}
+		
+			var wg sync.WaitGroup
+			bss, _, _ := bs.constructSlice(ctx, desc, dgst, bs.reg, constructtype, &wg)
+//			context.GetLogger(ctx).Debugf("NANNAN: GetSliceFromRegistry succeed! from local registry %s size: %d", regip, len(bss))
+			rbuf.bufp = bytes.NewBuffer(bss)
+			rbuf.Unlock()
+			DurationLCT := time.Since(start).Seconds()
+			//	rbuf.cnd.Broadcast()	
+			tp := "LAYERCONSTRUCT"
+//			bss := rbuf.bufp.Bytes()	
+			return bss, DurationLCT, tp
+		}
+		
 		for _, hserver := range desc.HostServerIps {
 			lwg.Add(1)
 			go bs.GetSliceFromRegistry(ctx, dgst, hserver, pf, &lwg, constructtypeslice)
