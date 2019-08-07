@@ -220,7 +220,7 @@ func packFile(i interface{}) {
 		//check src file exists or not
 		var _, err = os.Stat(newsrc)
 		if os.IsNotExist(err) {
-			fmt.Printf("NANNAN: src file %v: %v\n", newsrc, err)
+			fmt.Printf("NANNAN: src file %v: error: %v\n", newsrc, err)
 			return
 		}
 
@@ -514,7 +514,7 @@ func (bs *blobServer) GetSliceFromRegistry(ctx context.Context, dgst digest.Dige
 	regipbuffer.WriteString(regip)
 	regipbuffer.WriteString(":5000")
 	regip = regipbuffer.String()
-	context.GetLogger(ctx).Debugf("NANNAN: GetSliceFromRegistry from %s, dgst: %s ", regip, dgststring)
+	context.GetLogger(ctx).Debugf("NANNAN: GetSliceFromRegistry start! from server %s, dgst: %s ", regip, dgststring)
 
 	//GET /v2/<name>/blobs/<digest>
 	var urlbuffer bytes.Buffer
@@ -530,7 +530,7 @@ func (bs *blobServer) GetSliceFromRegistry(ctx context.Context, dgst digest.Dige
 	url := urlbuffer.String()
 	url = strings.ToLower(url)
 
-	context.GetLogger(ctx).Debugf("NANNAN: GetSliceFromRegistry URL %s ", url)
+	context.GetLogger(ctx).Debugf("NANNAN: GetSliceFromRegistry create URL %s ", url)
 
 	//let's skip head request
 	req, err := http.NewRequest("GET", url, nil)
@@ -557,7 +557,7 @@ func (bs *blobServer) GetSliceFromRegistry(ctx context.Context, dgst digest.Dige
 		return err
 	}
 
-	context.GetLogger(ctx).Debugf("NANNAN: GetSliceFromRegistry URL %s size: %d", url, len(body))
+	context.GetLogger(ctx).Debugf("NANNAN: GetSliceFromRegistry succeed! URL %s size: %d", url, len(body))
 
 	buf := bytes.NewBuffer(body)
 	err = bs.pgzipconcatTarFile(buf, pw)
@@ -581,11 +581,13 @@ func (bs *blobServer) constructSlice(ctx context.Context, desc distribution.Slic
 	if ok {
 		// load true
 		if rsbuf, ok := rsbufval.(*Restoringbuffer); ok {
-			rsbuf.Lock()
 			rsbuf.wg.Add(1)
+			
+			rsbuf.Lock()
 			rsbuf.cnd.Wait()
-			context.GetLogger(ctx).Debugf("NANNAN: slice construct finish waiting for digest: %v", dgst.String())
 			rsbuf.Unlock()
+			
+			context.GetLogger(ctx).Debugf("NANNAN: slice construct finish waiting for digest: %v", dgst.String())
 			DurationWSCT := time.Since(start).Seconds()
 
 			tp := "WAITSLICECONSTRUCT"
@@ -595,6 +597,8 @@ func (bs *blobServer) constructSlice(ctx context.Context, desc distribution.Slic
 			context.GetLogger(ctx).Debugf("NANNAN: bs.reg.restoringslicermap.LoadOrStore wrong digest: %v", dgst.String())
 		}
 	} else {
+		rbuf.wg.Add(1)
+		
 		rbuf.Lock()
 		start := time.Now()
 		_ = bs.packAllFiles(ctx, desc, &buf, reg, constructtype)
@@ -602,9 +606,10 @@ func (bs *blobServer) constructSlice(ctx context.Context, desc distribution.Slic
 		//start = time.Now()
 		bss := pgzipTarFile(&buf, &comprssbuf, bs.reg.compr_level)
 		//DurationCMP := time.Since(start).Seconds()
-		rbuf.wg.Add(1)
-		rbuf.cnd.Broadcast()
 		rbuf.Unlock()
+		
+		rbuf.cnd.Broadcast()
+		
 		DurationSCT := time.Since(start).Seconds()
 
 		//bss = compressbufp.Bytes()
@@ -635,11 +640,13 @@ func (bs *blobServer) constructLayer(ctx context.Context, desc distribution.Laye
 	if ok {
 		// load true
 		if rsbuf, ok := rsbufval.(*Restoringbuffer); ok {
-			rsbuf.Lock()
 			rsbuf.wg.Add(1)
+			rsbuf.Lock()
 			rsbuf.cnd.Wait()
-			context.GetLogger(ctx).Debugf("NANNAN: layer construct finish waiting for digest: %v", dgst.String())
 			rsbuf.Unlock()
+			
+			context.GetLogger(ctx).Debugf("NANNAN: layer construct finish waiting for digest: %v", dgst.String())
+			
 			DurationWLCT := time.Since(start).Seconds()
 
 			tp := "WAITLAYERCONSTRUCT"
@@ -649,6 +656,8 @@ func (bs *blobServer) constructLayer(ctx context.Context, desc distribution.Laye
 			context.GetLogger(ctx).Debugf("NANNAN: bs.reg.restoringslicermap.LoadOrStore wrong digest: %v", dgst.String())
 		}
 	} else {
+		rbuf.wg.Add(1)
+		
 		rbuf.Lock()
 		//SLICE
 		constructtypeslice := ""
@@ -665,10 +674,11 @@ func (bs *blobServer) constructLayer(ctx context.Context, desc distribution.Laye
 		lwg.Wait()
 
 		DurationLCT := time.Since(start).Seconds()
-		rbuf.wg.Add(1)
-		rbuf.cnd.Broadcast()
+		
 		rbuf.Unlock()
-
+		
+		rbuf.cnd.Broadcast()
+		
 		tp := "LAYERCONSTRUCT"
 		bss := comprssbuf.Bytes()
 
@@ -843,7 +853,7 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 				bpath, _ := bs.pathFn(_desc.Digest)
 				if bss, err = ioutil.ReadFile(path.Join("/var/lib/registry/", bpath)); err != nil {
 					fmt.Printf("NANNAN: cannot read %s: %v, read error\n", bpath, err)
-					//					return err
+					// return err
 				} else {
 					bs.reg.blobcache.SetLayer(dgst.String(), bss)
 				}
@@ -858,6 +868,7 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 				context.GetLogger(ctx).Warnf("NANNAN: Empty layer: %v", dgst)
 				goto Sendasempty
 			}
+			//**** construct layer *****
 			DurationML = time.Since(start).Seconds()
 
 			Uncompressedsize = desc.UncompressionSize
