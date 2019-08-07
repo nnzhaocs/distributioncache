@@ -706,8 +706,8 @@ func (bs *blobServer) constructLayer(ctx context.Context, desc distribution.Laye
 				return []byte("gotta!"), DurationLCT, tp
 			}
 
-			var wg sync.WaitGroup
-			bss, _, _ := bs.constructSlice(ctx, desc, dgst, bs.reg, constructtype, &wg)
+			var wgsl sync.WaitGroup
+			bss, _, _ := bs.constructSlice(ctx, desc, dgst, bs.reg, constructtype, &wgsl)
 			//			context.GetLogger(ctx).Debugf("NANNAN: GetSliceFromRegistry succeed! from local registry %s size: %d", regip, len(bss))
 			rbuf.bufp = bytes.NewBuffer(bss)
 			rbuf.Unlock()
