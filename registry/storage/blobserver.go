@@ -604,7 +604,7 @@ func (bs *blobServer) constructSlice(ctx context.Context, desc distribution.Slic
 		_ = bs.packAllFiles(ctx, desc, &buf, reg, constructtype)
 		//DurationCP
 		//start = time.Now()
-		bss := pgzipTarFile(&buf, &comprssbuf, bs.reg.compr_level)
+		bss := pgzipTarFile(&buf, &comprssbuf, 2) // bs.reg.compr_level)
 		//DurationCMP := time.Since(start).Seconds()
 		rbuf.Unlock()
 
