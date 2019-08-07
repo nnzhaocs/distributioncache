@@ -1007,8 +1007,10 @@ out:
 			context.GetLogger(ctx).Debugf("NANNAN: layer construct: reqtype: %s, %s: metadata lookup time: %v, layer transfer and merge time: %v, "+
 				"layer transfer time: %v, layer compressed size: %v, layer uncompressed size: %v, compressratio: %.3f",
 				reqtype, tp, DurationML, DurationLCT, DurationNTT, size, Uncompressedsize, compressratio)
-			bs.reg.blobcache.SetLayer(dgst.String(), bss) //, constructtype)
-
+			
+			if "LAYERCONSTRUCT" == tp { 
+				bs.reg.blobcache.SetLayer(dgst.String(), bss) //, constructtype)
+			}
 			//remove
 			rsbufval, ok := bs.reg.restoringlayermap.Load(dgst.String())
 			if ok {
@@ -1029,7 +1031,10 @@ out:
 			context.GetLogger(ctx).Debugf("NANNAN: slice construct: reqtype: %s, %s: metadata lookup time: %v, slice construct time: %v, "+
 				"slice transfer time: %v, slice compressed size: %v, slice uncompressed size: %v, compressratio: %.3f",
 				reqtype, tp, DurationML, DurationSCT, DurationNTT, size, Uncompressedsize, compressratio)
-			bs.reg.blobcache.SetSlice(dgst.String(), bss) //, constructtype)
+			
+			if "SLICECONSTRUCT" == tp {
+				bs.reg.blobcache.SetSlice(dgst.String(), bss) //, constructtype)
+			}
 			//remove
 			rsbufval, ok := bs.reg.restoringslicermap.Load(dgst.String())
 			if ok {
