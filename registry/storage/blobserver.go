@@ -642,7 +642,7 @@ func (bs *blobServer) constructLayer(ctx context.Context, desc distribution.Laye
 		if rsbuf, ok := rsbufval.(*Restoringbuffer); ok {
 			rsbuf.wg.Add(1)
 
-			context.GetLogger(ctx).Debugf("NANNAN: layer construct finish waiting for digest: %v", dgst.String())
+			context.GetLogger(ctx).Debugf("NANNAN: layer construct waiting for digest: %v", dgst.String())
 			rsbuf.Lock()
 			//			rsbuf.cnd.Wait()
 			rsbuf.Unlock()
@@ -677,7 +677,7 @@ func (bs *blobServer) constructLayer(ctx context.Context, desc distribution.Laye
 
 		rbuf.Unlock()
 
-		//		rbuf.cnd.Broadcast()
+		//	rbuf.cnd.Broadcast()
 
 		tp := "LAYERCONSTRUCT"
 		bss := comprssbuf.Bytes()
@@ -1008,9 +1008,9 @@ out:
 				"layer transfer time: %v, layer compressed size: %v, layer uncompressed size: %v, compressratio: %.3f",
 				reqtype, tp, DurationML, DurationLCT, DurationNTT, size, Uncompressedsize, compressratio)
 			
-			if "LAYERCONSTRUCT" == tp { 
-				bs.reg.blobcache.SetLayer(dgst.String(), bss) //, constructtype)
-			}
+//			if "LAYERCONSTRUCT" == tp || (reqtype == "LAYER" && "LAYERCONSTRUCT" != tp) { 
+			bs.reg.blobcache.SetLayer(dgst.String(), bss) //, constructtype)
+//			}
 			//remove
 			rsbufval, ok := bs.reg.restoringlayermap.Load(dgst.String())
 			if ok {
@@ -1032,9 +1032,9 @@ out:
 				"slice transfer time: %v, slice compressed size: %v, slice uncompressed size: %v, compressratio: %.3f",
 				reqtype, tp, DurationML, DurationSCT, DurationNTT, size, Uncompressedsize, compressratio)
 			
-			if "SLICECONSTRUCT" == tp {
+//			if "SLICECONSTRUCT" == tp {
 				bs.reg.blobcache.SetSlice(dgst.String(), bss) //, constructtype)
-			}
+//			}
 			//remove
 			rsbufval, ok := bs.reg.restoringslicermap.Load(dgst.String())
 			if ok {

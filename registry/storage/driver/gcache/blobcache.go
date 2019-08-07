@@ -322,7 +322,7 @@ func (cache *BlobCache) SetFile(dgst string, bss []byte) bool {
 		return false
 	}
 
-	fmt.Printf("NANNAN: BlobCache SetFile set dgst %s, FileLST, size: %v, cache size: %v\n", dgst, size, cache.FileLST.Size(false))
+//	fmt.Printf("NANNAN: BlobCache SetFile set dgst %s, FileLST, size: %v, cache size: %v\n", dgst, size, cache.FileLST.Size(false))
 
 	return true
 }
@@ -340,7 +340,7 @@ func (cache *BlobCache) GetFile(dgst string) ([]byte, bool) {
 		return nil, false
 	}
 
-	fmt.Printf("NANNAN: BlobCache GetFile get dgst %s, FileLST, cache size: %v\n", dgst, cache.FileLST.Size(false))
+//	fmt.Printf("NANNAN: BlobCache GetFile get dgst %s, FileLST, cache size: %v\n", dgst, cache.FileLST.Size(false))
 
 	return bss, true
 }
