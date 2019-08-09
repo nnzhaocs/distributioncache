@@ -98,9 +98,9 @@ func (c *ARC) set(key interface{}, value interface{}) (interface{}, error) {
 		item.value = value
 	} else {
 		//NANNAN
-		if size, ok := value.(int); ok {
-			c.size += size
-		}
+//		if size, ok := value.(int); ok {
+//			c.size += size
+//		}
 
 		item = &arcItem{
 			clock: c.clock,

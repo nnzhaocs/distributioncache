@@ -36,6 +36,7 @@ type Cache interface {
 type baseCache struct {
 	clock            Clock
 	size             int
+//	cap				 int
 	loaderExpireFunc LoaderExpireFunc
 	evictedFunc      EvictedFunc
 	purgeVisitorFunc PurgeVisitorFunc
@@ -62,6 +63,7 @@ type CacheBuilder struct {
 	clock            Clock
 	tp               string
 	size             int
+//	cap				 int
 	loaderExpireFunc LoaderExpireFunc
 	evictedFunc      EvictedFunc
 	purgeVisitorFunc PurgeVisitorFunc
