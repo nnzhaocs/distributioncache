@@ -52,10 +52,10 @@ func (c *ARC) replace(key interface{}) {
 	item, ok := c.items[old]
 	if ok {
 		//NANNAN
-		value := item.value
-		if size, ok := value.(int); ok {
-			c.size -= size
-		}
+//		value := item.value
+//		if size, ok := value.(int); ok {
+//			c.size -= size
+//		}
 		delete(c.items, old)
 		if c.evictedFunc != nil {
 			c.evictedFunc(item.key, item.value)
@@ -305,10 +305,10 @@ func (c *ARC) Remove(key interface{}) bool {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	//NANNAN
-	value := c.items[key].value
-	if size, ok := value.(int); ok {
-		c.size -= size
-	}
+//	value := c.items[key].value
+//	if size, ok := value.(int); ok {
+//		c.size -= size
+//	}
 	return c.remove(key)
 }
 
