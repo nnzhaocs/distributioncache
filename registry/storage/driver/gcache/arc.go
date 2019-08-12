@@ -140,6 +140,8 @@ func (c *ARC) set(key interface{}, value interface{}) (interface{}, error) {
 		c.t2.PushFront(key, value)
 		return item, nil
 	}
+	
+	c.t1.PushFront(key, value)
 
 	if c.isCacheFull() && c.t1.size+c.b1.size >= c.size {
 		//if c.isCacheFull() && c.t1.Len()+c.b1.Len() == c.size {
@@ -169,7 +171,7 @@ func (c *ARC) set(key interface{}, value interface{}) (interface{}, error) {
 			c.replace(key)
 		}
 	}
-	c.t1.PushFront(key, value)
+	
 	return item, nil
 }
 
