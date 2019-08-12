@@ -39,7 +39,7 @@ func (c *ARC) replace(key interface{}) {
 		return
 	}
 	var old interface{}
-	if c.t1.size > 0 && ((c.b2.Has(key) && c.t1.size == c.part) || (c.t1.size > c.part)) {
+	if c.t1.size > 0 && ((c.b2.Has(key) && c.t1.size >= c.part) || (c.t1.size > c.part)) {
 		old, size := c.t1.RemoveTail()
 		c.b1.PushFront(old, size)
 	} else if c.t2.size > 0 {
@@ -141,7 +141,7 @@ func (c *ARC) set(key interface{}, value interface{}) (interface{}, error) {
 		return item, nil
 	}
 
-	if c.isCacheFull() && c.t1.size+c.b1.size == c.size {
+	if c.isCacheFull() && c.t1.size+c.b1.size >= c.size {
 		//if c.isCacheFull() && c.t1.Len()+c.b1.Len() == c.size {
 		if c.t1.size < c.size {
 			c.b1.RemoveTail()
@@ -159,7 +159,7 @@ func (c *ARC) set(key interface{}, value interface{}) (interface{}, error) {
 	} else {
 		total := c.t1.size + c.b1.size + c.t2.size + c.b2.size
 		if total >= c.size {
-			if total == (2 * c.size) {
+			if total >= (2 * c.size) {
 				if c.b2.size > 0 {
 					c.b2.RemoveTail()
 				} else {
@@ -412,7 +412,7 @@ func (c *ARC) setPart(p int) {
 }
 
 func (c *ARC) isCacheFull() bool {
-	return (c.t1.size + c.t2.size) == c.size
+	return (c.t1.size + c.t2.size) >= c.size
 }
 
 // IsExpired returns boolean value whether this item is expired or not.

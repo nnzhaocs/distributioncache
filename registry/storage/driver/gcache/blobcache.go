@@ -75,10 +75,11 @@ func (cache *BlobCache) Init() error {
 		int(memcap))
 
 	FileLST := New(FileCacheCap * 1024 * 1024).ARC().EvictedFunc(func(key, value interface{}) {
-		if k, ok := key.(string); ok {
-			cache.MemCache.Delete(k)
-		}
-		fmt.Println("NANNAN: evicted key:", key)
+			fmt.Println("NANNAN: evicted key:", key)
+			if k, ok := key.(string); ok {
+				cache.MemCache.Delete(k)
+			}
+		
 	}).
 		Expiration(DefaultTTL * 3).
 		Build()
