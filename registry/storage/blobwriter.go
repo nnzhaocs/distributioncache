@@ -504,40 +504,6 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) e
 		//skip update
 		return nil
 	}
-	//	else if "LAYER" == reqtype {
-	//	 	// first store in cache *****
-	//		//skip warmuplayers
-	//		// put this layer into cache ******
-	//		bw.blobStore.registry.blobcache.SetPUTLayer(desc.Digest.String(), comressSize, layerPath) //, "PUTLAYER")
-	//
-	//		rlmapentry, err := bw.blobStore.registry.metadataService.StatRLMapEntry(ctx, reponame)
-	//		if err == nil {
-	//			// exsist
-	//			if _, ok := rlmapentry.Dgstmap[desc.Digest]; ok {
-	//				//layer already added to this repo
-	//			} else {
-	//				//add layer to repo
-	//				rlmapentry.Dgstmap[desc.Digest] = 1
-	//				err1 := bw.blobStore.registry.metadataService.SetRLMapEntry(ctx, reponame, rlmapentry)
-	//				if err1 != nil {
-	//					return err1
-	//				}
-	//			}
-	//		} else {
-	//			//not exisit
-	//			dgstmap := make(map[digest.Digest]int64)
-	//			dgstmap[desc.Digest] = 1
-	//			rlmapentry = distribution.RLmapEntry{
-	//				Dgstmap: dgstmap,
-	//			}
-	//			err1 := bw.blobStore.registry.metadataService.SetRLMapEntry(ctx, reponame, rlmapentry)
-	//			if err1 != nil {
-	//				return err1
-	//			}
-	//		}
-	//
-	//		return nil
-	//	}
 
 	blobPath, err := PathFor(BlobDataPathSpec{
 		Digest: desc.Digest,
@@ -556,12 +522,6 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) e
 		return err
 	}
 	defer lfile.Close()
-
-	//bss, err := ioutil.ReadFile(layerPath)
-	//if err != nil {
-	//	fmt.Printf("NANNAN: cannot read layer file: err: %v\n", err)
-	//	return err
-	//}
 
 	stat, err := lfile.Stat()
 	if err != nil {
@@ -583,18 +543,14 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) e
 			// exsist
 			if _, ok := rlmapentry.Dgstmap[desc.Digest]; ok {
 				//layer already added to this repo
-
 			} else {
 				//add layer to repo
 				rlmapentry.Dgstmap[desc.Digest] = 1
 				err1 := bw.blobStore.registry.metadataService.SetRLMapEntry(ctx, reponame, rlmapentry)
 				if err1 != nil {
 					return err1
-
 				}
-
 			}
-
 		} else {
 			//not exisit
 			dgstmap := make(map[digest.Digest]int64)
@@ -605,13 +561,9 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) e
 			err1 := bw.blobStore.registry.metadataService.SetRLMapEntry(ctx, reponame, rlmapentry)
 			if err1 != nil {
 				return err1
-
 			}
-
 		}
-
 		return nil
-
 	}
 
 	parentDir := path.Dir(layerPath)
