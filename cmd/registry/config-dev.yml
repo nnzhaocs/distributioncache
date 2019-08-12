@@ -35,9 +35,9 @@ storage:
         layerslicingfcntthres: 30 
         layerslicingdirsizethres: 1 # MB 
     cacheparams: 
-        filecachecap: 82 # MB
-        layercachecap: 164 # MB
-        slicecachecap: 164 # MB
+        filecachecap: 169 # MB
+        layercachecap: 169 # MB
+        slicecachecap: 169 # MB
         ttl: 40000 # 0.001s    
 http:
     addr: :5000

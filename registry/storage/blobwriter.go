@@ -503,40 +503,41 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) e
 		//put manifest
 		//skip update
 		return nil
-	}else if "LAYER" == reqtype {
-	 	// first store in cache *****
-		//skip warmuplayers
-		// put this layer into cache ******
-		bw.blobStore.registry.blobcache.SetPUTLayer(desc.Digest.String(), comressSize, layerPath) //, "PUTLAYER")
-		
-		rlmapentry, err := bw.blobStore.registry.metadataService.StatRLMapEntry(ctx, reponame)
-		if err == nil {
-			// exsist
-			if _, ok := rlmapentry.Dgstmap[desc.Digest]; ok {
-				//layer already added to this repo
-			} else {
-				//add layer to repo
-				rlmapentry.Dgstmap[desc.Digest] = 1
-				err1 := bw.blobStore.registry.metadataService.SetRLMapEntry(ctx, reponame, rlmapentry)
-				if err1 != nil {
-					return err1
-				}
-			}
-		} else {
-			//not exisit
-			dgstmap := make(map[digest.Digest]int64)
-			dgstmap[desc.Digest] = 1
-			rlmapentry = distribution.RLmapEntry{
-				Dgstmap: dgstmap,
-			}
-			err1 := bw.blobStore.registry.metadataService.SetRLMapEntry(ctx, reponame, rlmapentry)
-			if err1 != nil {
-				return err1
-			}
-		}
-		
-		return nil
 	}
+	//	else if "LAYER" == reqtype {
+	//	 	// first store in cache *****
+	//		//skip warmuplayers
+	//		// put this layer into cache ******
+	//		bw.blobStore.registry.blobcache.SetPUTLayer(desc.Digest.String(), comressSize, layerPath) //, "PUTLAYER")
+	//
+	//		rlmapentry, err := bw.blobStore.registry.metadataService.StatRLMapEntry(ctx, reponame)
+	//		if err == nil {
+	//			// exsist
+	//			if _, ok := rlmapentry.Dgstmap[desc.Digest]; ok {
+	//				//layer already added to this repo
+	//			} else {
+	//				//add layer to repo
+	//				rlmapentry.Dgstmap[desc.Digest] = 1
+	//				err1 := bw.blobStore.registry.metadataService.SetRLMapEntry(ctx, reponame, rlmapentry)
+	//				if err1 != nil {
+	//					return err1
+	//				}
+	//			}
+	//		} else {
+	//			//not exisit
+	//			dgstmap := make(map[digest.Digest]int64)
+	//			dgstmap[desc.Digest] = 1
+	//			rlmapentry = distribution.RLmapEntry{
+	//				Dgstmap: dgstmap,
+	//			}
+	//			err1 := bw.blobStore.registry.metadataService.SetRLMapEntry(ctx, reponame, rlmapentry)
+	//			if err1 != nil {
+	//				return err1
+	//			}
+	//		}
+	//
+	//		return nil
+	//	}
 
 	blobPath, err := PathFor(BlobDataPathSpec{
 		Digest: desc.Digest,
@@ -556,11 +557,11 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) e
 	}
 	defer lfile.Close()
 
-	bss, err := ioutil.ReadFile(layerPath)
-	if err != nil {
-		fmt.Printf("NANNAN: cannot read layer file: err: %v\n", err)
-		return err
-	}
+	//bss, err := ioutil.ReadFile(layerPath)
+	//if err != nil {
+	//	fmt.Printf("NANNAN: cannot read layer file: err: %v\n", err)
+	//	return err
+	//}
 
 	stat, err := lfile.Stat()
 	if err != nil {
@@ -570,6 +571,48 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) e
 
 	comressSize := stat.Size()
 	context.GetLogger(ctx).Debugf("NANNAN: START DEDUPLICATION FROM PATH :=>%s", layerPath)
+
+	if "LAYER" == reqtype {
+		// first store in cache *****
+		//skip warmuplayers
+		// put this layer into cache ******
+		bw.blobStore.registry.blobcache.SetPUTLayer(desc.Digest.String(), comressSize, layerPath) //, "PUTLAYER")
+
+		rlmapentry, err := bw.blobStore.registry.metadataService.StatRLMapEntry(ctx, reponame)
+		if err == nil {
+			// exsist
+			if _, ok := rlmapentry.Dgstmap[desc.Digest]; ok {
+				//layer already added to this repo
+
+			} else {
+				//add layer to repo
+				rlmapentry.Dgstmap[desc.Digest] = 1
+				err1 := bw.blobStore.registry.metadataService.SetRLMapEntry(ctx, reponame, rlmapentry)
+				if err1 != nil {
+					return err1
+
+				}
+
+			}
+
+		} else {
+			//not exisit
+			dgstmap := make(map[digest.Digest]int64)
+			dgstmap[desc.Digest] = 1
+			rlmapentry = distribution.RLmapEntry{
+				Dgstmap: dgstmap,
+			}
+			err1 := bw.blobStore.registry.metadataService.SetRLMapEntry(ctx, reponame, rlmapentry)
+			if err1 != nil {
+				return err1
+
+			}
+
+		}
+
+		return nil
+
+	}
 
 	parentDir := path.Dir(layerPath)
 	unpackPath := path.Join(parentDir, "diff")
@@ -589,6 +632,13 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) e
 	DurationDCM := 0.0
 	start := time.Now()
 	if reqtype == "FORWARD_REPO" {
+
+		bss, err := ioutil.ReadFile(layerPath)
+		if err != nil {
+			fmt.Printf("NANNAN: cannot read layer file: err: %v\n", err)
+			return err
+
+		}
 
 		compressbufp := bytes.NewBuffer(bss)
 		rdr, err := pgzip.NewReader(compressbufp)
@@ -628,7 +678,7 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) e
 		context.GetLogger(ctx).Debugf("NANNAN: This unpackpath is empty: %s", unpackPath)
 		return nil
 	}
-	
+
 	//then update RLMap ****
 	//start deduplication,
 	rlmapentry, err := bw.blobStore.registry.metadataService.StatRLMapEntry(ctx, reponame)
@@ -666,17 +716,17 @@ func (bw *blobWriter) Dedup(ctx context.Context, desc distribution.Descriptor) e
 			"slice forward time: %.3f, compressed size: %d, uncompression size: %d\n",
 			DurationDCM, DurationRDF, DurationSRM, DurationSFT, comressSize, dirSize)
 		//***** after dedup remove it from stage area for warmup only *****
-//		if "LAYER" != reqtype {
-//			bw.blobStore.registry.blobcache.RemovePUTLayer(desc.Digest.String(), true)
-//		}
+		//		if "LAYER" != reqtype {
+		//			bw.blobStore.registry.blobcache.RemovePUTLayer(desc.Digest.String(), true)
+		//		}
 	} else if isdedup {
 		fmt.Printf("NANNAN: Dodedup: decompression time: %.3f, dedup remove dup file time: %.3f, dedup set recipe time: %.3f, "+
 			"compressed size: %d, uncompression size: %d\n",
 			DurationDCM, DurationRDF, DurationSRM, comressSize, dirSize)
 		//***** after dedup remove it from stage area *****
-//		if "LAYER" != reqtype {
-//			bw.blobStore.registry.blobcache.RemovePUTLayer(desc.Digest.String(), true)
-//		}
+		//		if "LAYER" != reqtype {
+		//			bw.blobStore.registry.blobcache.RemovePUTLayer(desc.Digest.String(), true)
+		//		}
 	}
 	//	//***** after dedup remove it from stage area *****
 	//	bw.blobStore.registry.blobcache.RemovePUTLayer(desc.Digest.String())
