@@ -851,6 +851,8 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 
 	var tp string
 	cachehit := false
+	//	stagehit := false
+	//	waitingconstruct := false
 
 	var bytesreader *bytes.Reader
 	var bss []byte
@@ -887,7 +889,7 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 				bytesreader = bytes.NewReader(bss)
 
 				size = bytesreader.Size()
-				//				return bss, DurationWLCT, tp
+				//				waitingconstruct = true
 
 				goto out
 
@@ -919,6 +921,7 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 				context.GetLogger(ctx).Warnf("NANNAN: COULDN'T FIND LAYER RECIPE: %v, this layer is deduplicating when usr sends reqs ...", err)
 				//serve as manifest: read from orginal blob storage;
 				if reqtype == "LAYER" {
+
 					DurationNTT, err := bs.serveManifest(ctx, _desc, w, r)
 					if err != nil {
 						return err
@@ -972,19 +975,6 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 	}
 
 	if reqtype == "SLICE" || reqtype == "PRECONSTRUCTSLICE" {
-
-		start = time.Now()
-		//		bss, ok = bs.reg.blobcache.GetSlice(dgst.String())
-		//		if ok {
-		//			cachehit = true
-		//			context.GetLogger(ctx).Debug("NANNAN: slice cache hit!")
-		//			bytesreader = bytes.NewReader(bss)
-		//			DurationMAC = time.Since(start).Seconds()
-		//			size = bytesreader.Size()
-		//			compressratio = float64(Uncompressedsize) / float64(size)
-		//			goto out
-		//		} else {
-
 		start := time.Now()
 		desc, err := bs.reg.metadataService.StatSliceRecipe(ctx, dgst)
 		if err != nil || (err == nil && len(desc.Files) == 0) {
@@ -1001,7 +991,6 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 		size = bytesreader.Size()
 		compressratio = float64(Uncompressedsize) / float64(size)
 		goto out
-		//		}
 	}
 
 	if reqtype != "SLICE" && reqtype != "PRECONSTRUCTSLICE" && reqtype != "LAYER" && reqtype != "PRECONSTRUCTLAYER" && reqtype != "MANIFEST" {
@@ -1080,13 +1069,12 @@ out:
 				context.GetLogger(ctx).Debugf("NANNAN: layer cache hit: reqtype: %s, metadata lookup time: %v, layer cache access time: %v, "+
 					"layer transfer time: %v, layer compressed size: %v",
 					reqtype, DurationML, DurationMAC, DurationNTT, size)
-			} else if reqtype == "SLICE" {
-				context.GetLogger(ctx).Debugf("NANNAN: slice cache hit: reqtype: %s, metadata lookup time: %v, slice cache access time: %v, "+
-					"slice transfer time: %v, slice compressed size: %v",
-					reqtype, DurationML, DurationMAC, DurationNTT, size)
 			}
 			return //nil
 		} else {
+			//			if "WAITLAYERCONSTRUCT" == tp{
+			//				waitingconstruct = true
+			//			}
 			if reqtype == "LAYER" || reqtype == "PRECONSTRUCTLAYER" {
 				if reqtype == "LAYER" {
 					context.GetLogger(ctx).Debug("NANNAN: layer cache miss!")
@@ -1095,10 +1083,8 @@ out:
 					"layer transfer time: %v, layer compressed size: %v, layer uncompressed size: %v, compressratio: %.3f",
 					reqtype, tp, DurationML, DurationLCT, DurationNTT, size, Uncompressedsize, compressratio)
 
-				//			if "LAYERCONSTRUCT" == tp || (reqtype == "LAYER" && "LAYERCONSTRUCT" != tp) {
 				bs.reg.blobcache.SetLayer(dgst.String(), bss) //, constructtype)
-				//			}
-				//remove
+
 				rsbufval, ok := bs.reg.restoringlayermap.Load(dgst.String())
 				if ok {
 					if rsbuf, ok := rsbufval.(*Restoringbuffer); ok {
@@ -1113,29 +1099,9 @@ out:
 				}
 
 			} else if reqtype == "SLICE" || reqtype == "PRECONSTRUCTSLICE" {
-				//				if reqtype == "SLICE" {
-				//					context.GetLogger(ctx).Debug("NANNAN: slice cache miss!")
-				//				}
 				context.GetLogger(ctx).Debugf("NANNAN: slice construct: reqtype: %s, %s: metadata lookup time: %v, slice construct time: %v, "+
 					"slice transfer time: %v, slice compressed size: %v, slice uncompressed size: %v, compressratio: %.3f",
 					reqtype, tp, DurationML, DurationSCT, DurationNTT, size, Uncompressedsize, compressratio)
-
-				//			if "SLICECONSTRUCT" == tp {
-				//				bs.reg.blobcache.SetSlice(dgst.String(), bss) //, constructtype)
-				//			}
-				//remove
-				//				rsbufval, ok := bs.reg.restoringslicermap.Load(dgst.String())
-				//				if ok {
-				//					if rsbuf, ok := rsbufval.(*Restoringbuffer); ok {
-				//						rsbuf.wg.Done()
-				//						if "SLICECONSTRUCT" == tp {
-				//							time.Sleep(1 * time.Second)
-				//							rsbuf.wg.Wait()
-				//							context.GetLogger(ctx).Debugf("NANNAN: ServeBlob slice construct finish waiting for all threads with digest: %v", dgst.String())
-				//							bs.reg.restoringslicermap.Delete(dgst.String())
-				//						}
-				//					}
-				//				}
 			}
 			return //nil
 		}

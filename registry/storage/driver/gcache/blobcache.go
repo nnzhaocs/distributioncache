@@ -25,15 +25,23 @@ type BlobCache struct {
 
 var DefaultTTL time.Duration
 var FileCacheCap, LayerCacheCap, SliceCacheCap int
+var FFileCacheCap float32 = 0.0
+var Stype string
 
-func (cache *BlobCache) SetCapTTL(fileCacheCap, layerCacheCap, sliceCacheCap, ttl int) error {
+func (cache *BlobCache) SetCapTTL(fileCacheCap, layerCacheCap, sliceCacheCap, ttl int, stype string) error {
 
 	DefaultTTL = time.Duration(ttl) * time.Millisecond
 	fmt.Printf("NANNAN: DefaultTTL: %d\n\n", DefaultTTL)
-
-	FileCacheCap = fileCacheCap
-	LayerCacheCap = layerCacheCap
-	SliceCacheCap = sliceCacheCap
+	Stype = stype
+	if stype == "MB"{
+		FileCacheCap = fileCacheCap * 1024 * 1024
+		LayerCacheCap = layerCacheCap * 1024 * 1024
+		SliceCacheCap = sliceCacheCap * 1024 * 1024
+	}else{
+		FFileCacheCap = (float32)fileCacheCap / 1024 / 1024
+		LayerCacheCap = layerCacheCap 
+		SliceCacheCap = sliceCacheCap 
+	}
 
 	fmt.Printf("NANNAN: FileCacheCap: %d MB, LayerCacheCap: %d MB, SliceCacheCap: %d MB\n\n",
 		FileCacheCap, LayerCacheCap, SliceCacheCap)
@@ -41,7 +49,11 @@ func (cache *BlobCache) SetCapTTL(fileCacheCap, layerCacheCap, sliceCacheCap, tt
 }
 
 func (cache *BlobCache) Init() error {
-	var memcap float32 = float32(FileCacheCap) * 1.2
+	if Stype == "B"{
+		var memcap float32 = FFileCacheCap * 1.2
+	}else{
+		var memcap float32 = float32(FileCacheCap)/1024/1024 * 1.2
+	}
 	config := bigcache.Config{
 		Shards:           2,
 		LifeWindow:       3600 * time.Minute,
@@ -74,7 +86,7 @@ func (cache *BlobCache) Init() error {
 	fmt.Printf("NANNAN: init cache: mem cache capacity: %d MB \n\n",
 		int(memcap))
 
-	FileLST := New(FileCacheCap * 1024 * 1024).ARC().EvictedFunc(func(key, value interface{}) {
+	FileLST := New(FileCacheCap).ARC().EvictedFunc(func(key, value interface{}) {
 			fmt.Println("NANNAN: evicted key:", key)
 			if k, ok := key.(string); ok {
 				cache.MemCache.Delete(k)
@@ -86,7 +98,7 @@ func (cache *BlobCache) Init() error {
 
 	cache.FileLST = FileLST
 
-	LayerLST := New(LayerCacheCap * 1024 * 1024).ARC().EvictedFunc(func(key, value interface{}) {
+	LayerLST := New(LayerCacheCap).ARC().EvictedFunc(func(key, value interface{}) {
 		if k, ok := key.(string); ok {
 			cache.DiskCache.Erase(k)
 		}
@@ -97,7 +109,7 @@ func (cache *BlobCache) Init() error {
 
 	cache.LayerLST = LayerLST
 
-	SliceLST := New(SliceCacheCap * 1024 * 1024).ARC().EvictedFunc(func(key, value interface{}) {
+	SliceLST := New(SliceCacheCap).ARC().EvictedFunc(func(key, value interface{}) {
 		if k, ok := key.(string); ok {
 			cache.DiskCache.Erase(k)
 		}

@@ -72,14 +72,15 @@ func SetRegistryParams(repullcntthres int64,
 		registry.compr_level = compr_level
 		registry.layerslicingfcntthres = layerslicingfcntthres
 		registry.layerslicingdirsizethres = layerslicingdirsizethres * 1024 * 1024 //MB
-		fmt.Printf("Registry config: repullcntthres: %d, compr_level: %d, layerslicingfcntthres: %d, layerslicingdirsizethres: %d\n", repullcntthres, compr_level, layerslicingfcntthres, layerslicingdirsizethres)
+		fmt.Printf("Registry config: repullcntthres: %d, compr_level: %d, layerslicingfcntthres: %d, layerslicingdirsizethres: %d\n", 
+			repullcntthres, compr_level, layerslicingfcntthres, layerslicingdirsizethres)
 		return nil
 	}
 }
 
-func SetCacheParams(FileCacheCap, LayerCacheCap, SliceCacheCap, ttl int) RegistryOption {
+func SetCacheParams(FileCacheCap, LayerCacheCap, SliceCacheCap, ttl int, stype string) RegistryOption {
 	return func(registry *registry) error {
-		registry.blobcache.SetCapTTL(FileCacheCap, LayerCacheCap, SliceCacheCap, ttl)
+		registry.blobcache.SetCapTTL(FileCacheCap, LayerCacheCap, SliceCacheCap, ttl, stype string)
 		return nil
 	}
 }
