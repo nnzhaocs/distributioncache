@@ -283,7 +283,20 @@ func (buh *blobUploadHandler) PutBlobUploadComplete(w http.ResponseWriter, r *ht
 	// desc distribution.Descriptor
 	//spwan a dedup worker for every layer
 	//should be a pool
-	go buh.Upload.Dedup(buh, distribution.Descriptor{
+	
+	reqtype := context.GetType(ctx)
+	ctxu.GetLogger(buh).Debugf("NANNAN: Dedup: request type: %s", reqtype)
+
+	reponame := context.GetRepoName(ctx)
+	usrname := context.GetUsrAddr(ctx)
+	ctxu.GetLogger(buh).Debugf("NANNAN: Dedup: for repo (%s) and usr (%s) with dgst (%s)", reponame, usrname, desc.Digest.String())
+	
+	go buh.Upload.Dedup(
+		reqtype,
+		reponame,
+		usrname,
+		
+		distribution.Descriptor{
 		Digest: dgst,
 
 		// TODO(stevvooe): This isn't wildly important yet, but we should

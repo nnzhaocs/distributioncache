@@ -16,8 +16,6 @@ import (
 	"github.com/docker/distribution/registry/storage/driver"
 	"github.com/klauspost/pgzip"
 
-	//"bytes"
-	//"io/ioutil"
 	"os"
 	"path"
 	"regexp"
@@ -27,6 +25,7 @@ import (
 	mapset "github.com/deckarep/golang-set"
 	digest "github.com/opencontainers/go-digest"
 	"github.com/panjf2000/ants"
+	lz4"github.com/pierrec/lz4/cmd/lz4c"
 )
 
 // TODO(stevvooe): This should configurable in the future.
@@ -185,10 +184,48 @@ func (bs *blobServer) pgzipconcatTarFile(compressbufp *bytes.Buffer, pw *PgzipFi
 	return nil
 }
 
+func (bs *blobServer) lz4concatTarFile(compressbufp *bytes.Buffer, pw *PgzipFile) error {
+	zr := pgzip.NewReader(compressbufp)
+//	if err != nil {
+//		fmt.Printf("NANNAN: lz4: cannot create reader: %v \n", err)
+//		return err
+//	}
+	bss, err := ioutil.ReadAll(rdr)
+	if err != nil {
+		fmt.Printf("NANNAN: lz4: cannot read from reader: %v \n", err)
+		return err
+	}
+
+	pw.Lm.Lock()
+	header := lz4.Header{CompressionLevel: bs.reg.compr_level}
+	zw := lz4.NewWriter(pw.Compressbufp)
+	w.Write(bss)
+	w.Close()
+	pw.Lm.Unlock()
+
+	return nil
+}
+
 func pgzipTarFile(bufp *bytes.Buffer, compressbufp *bytes.Buffer, compr_level int) []byte {
 	w, _ := pgzip.NewWriterLevel(compressbufp, compr_level)
 	io.Copy(w, bufp)
 	w.Close()
+	return compressbufp.Bytes()
+}
+
+func lz4TarFile(bufp *bytes.Buffer, compressbufp *bytes.Buffer, compr_level int) []byte {
+	header := lz4.Header{CompressionLevel: compr_level}
+	zw := lz4.NewWriter(compressbufp)
+	_, err := io.Copy(zw, bufp)
+	if err != nil {
+		fmt.Printf("NANNAN: LZ4 cannot compress. error: %v\n", err)
+		return nil
+	}
+	err = zw.Close()
+	if err != nil {
+		fmt.Printf("NANNAN: LZ4 cannot close. error: %v\n", err)
+		return nil
+	}
 	return compressbufp.Bytes()
 }
 
@@ -782,6 +819,10 @@ func (bs *blobServer) Preconstructlayers(ctx context.Context, reg *registry) err
 MANIFEST
 LAYER
 SLICE
+
+//NANNAN:
+`compressionLevel` : any value between 1 and LZ4HC_CLEVEL_MAX will work.
+LZ4HC_CLEVEL_MAX        12
 */
 
 func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *http.Request, dgst digest.Digest) error {
