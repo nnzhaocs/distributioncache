@@ -600,7 +600,15 @@ func (bs *blobServer) GetSliceFromRegistry(ctx context.Context, dgst digest.Dige
 		context.GetLogger(ctx).Debugf("NANNAN: GetSliceFromRegistry succeed! URL %s size: %d", url, len(body))
 
 		buf := bytes.NewBuffer(body)
-		err = bs.pgzipconcatTarFile(buf, pw)
+		
+		if bs.reg.compressmethod == "pgzip"{
+			err = bs.pgzipconcatTarFile(buf, pw)
+		}else if bs.reg.compressmethod == "lz4"{
+			err = bs.lz4concatTarFile(buf, pw)
+		}else{
+			fmt.Printf("NANNAN: error. what is the compress method?", bs.reg.compressmethod)
+		}
+		
 		return err
 	}
 
@@ -610,7 +618,7 @@ func (bs *blobServer) GetSliceFromRegistry(ctx context.Context, dgst digest.Dige
 		context.GetLogger(ctx).Warnf("NANNAN: COULDN'T FIND SLICE RECIPE: %v or Empty slice ", err)
 		//send empty
 		buf := bytes.NewBuffer([]byte("gotta!"))
-		err = bs.pgzipconcatTarFile(buf, pw)
+		err = bs.lz4concatTarFile(buf, pw)
 		return err
 	}
 
@@ -620,7 +628,15 @@ func (bs *blobServer) GetSliceFromRegistry(ctx context.Context, dgst digest.Dige
 	context.GetLogger(ctx).Debugf("NANNAN: GetSliceFromRegistry succeed! from local registry %s size: %d", regip, len(bss))
 
 	buf := bytes.NewBuffer(bss)
-	err = bs.pgzipconcatTarFile(buf, pw)
+	
+	if bs.reg.compressmethod == "pgzip"{
+		err = bs.pgzipconcatTarFile(buf, pw)
+	}else if bs.reg.compressmethod == "lz4"{
+		err = bs.lz4concatTarFile(buf, pw)
+	}else{
+		fmt.Printf("NANNAN: error. what is the compress method?", bs.reg.compressmethod)
+	}
+	
 	return err
 }
 
@@ -634,7 +650,13 @@ func (bs *blobServer) constructSlice(ctx context.Context, desc distribution.Slic
 	_ = bs.packAllFiles(ctx, desc, &buf, reg, constructtype)
 	//DurationCP
 	//start = time.Now()
-	bss := pgzipTarFile(&buf, &comprssbuf, 4) // bs.reg.compr_level)
+	if bs.reg.compressmethod == "pgzip"{
+		bss := pgzipTarFile(&buf, &comprssbuf, 4) // bs.reg.compr_level)
+	}else if bs.reg.compressmethod == "lz4"{
+		bss := lz4TarFile(&buf, &comprssbuf, 10)
+	}else{
+		fmt.Printf("NANNAN: error. what is the compress method?", bs.reg.compressmethod)
+	}
 
 	DurationSCT := time.Since(start).Seconds()
 

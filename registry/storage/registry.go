@@ -42,6 +42,7 @@ type registry struct {
 
 	layerslicingfcntthres    int
 	layerslicingdirsizethres int64
+	compressmethod			string
 
 	servers   []string
 	blobcache *regCache.BlobCache
@@ -66,14 +67,16 @@ func EnableRedirect(registry *registry) error {
 func SetRegistryParams(repullcntthres int64,
 	compr_level int,
 	layerslicingfcntthres int,
-	layerslicingdirsizethres int64) RegistryOption {
+	layerslicingdirsizethres int64,
+	compressmethod string) RegistryOption {
 	return func(registry *registry) error {
 		registry.repullcntthres = repullcntthres
 		registry.compr_level = compr_level
 		registry.layerslicingfcntthres = layerslicingfcntthres
 		registry.layerslicingdirsizethres = layerslicingdirsizethres * 1024 * 1024 //MB
-		fmt.Printf("Registry config: repullcntthres: %d, compr_level: %d, layerslicingfcntthres: %d, layerslicingdirsizethres: %d\n",
-			repullcntthres, compr_level, layerslicingfcntthres, layerslicingdirsizethres)
+		registry.compressmethod = compressmethod
+		fmt.Printf("Registry config: repullcntthres: %d, compr_level: %d, layerslicingfcntthres: %d, layerslicingdirsizethres: %d, compressmethod: %s\n",
+			repullcntthres, compr_level, layerslicingfcntthres, layerslicingdirsizethres, compressmethod)
 		return nil
 	}
 }

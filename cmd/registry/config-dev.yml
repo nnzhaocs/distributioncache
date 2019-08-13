@@ -33,7 +33,8 @@ storage:
         repullcntthres: 6
         comprlevel: 6 #1-6
         layerslicingfcntthres: 30 
-        layerslicingdirsizethres: 1 # MB 
+        layerslicingdirsizethres: 1 # MB
+        compressmethod: lz4 
     cacheparams: 
         filecachecap: 169 # MB
         layercachecap: 169 # MB

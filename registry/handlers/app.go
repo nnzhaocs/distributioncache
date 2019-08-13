@@ -286,18 +286,20 @@ func NewApp(ctx context.Context, config *configuration.Configuration) *App {
 		compr_level, ok2 := cc["comprlevel"]
 		layerslicingfcntthres, ok3 := cc["layerslicingfcntthres"]
 		layerslicingdirsizethres, ok4 := cc["layerslicingdirsizethres"]
-		if ok1 && ok2 && ok3 && ok4 {
+		compressmethod, ok5 := cc["compressmethod"]
+		if ok1 && ok2 && ok3 && ok4 && ok5 {
 			Repullcntthres, ok1 := repullcntthres.(int)
 			Compr_level, ok2 := compr_level.(int)
 			Layerslicingfcntthres, ok3 := layerslicingfcntthres.(int)
 			Layerslicingdirsizethres, ok4 := layerslicingdirsizethres.(int)
-			if ok1 && ok2 && ok3 && ok4 {
-				options = append(options, storage.SetRegistryParams(int64(Repullcntthres), Compr_level, Layerslicingfcntthres, int64(Layerslicingdirsizethres)))
+			Compressmethod, ok5 := compressmethod.(string)
+			if ok1 && ok2 && ok3 && ok4 && ok5 {
+				options = append(options, storage.SetRegistryParams(int64(Repullcntthres), Compr_level, Layerslicingfcntthres, int64(Layerslicingdirsizethres), Compressmethod))
 			} else {
-				panic(fmt.Sprintf("NANNAN: cannot parse registryparams: %v, %v, %v, %v", ok1, ok2, ok3, ok4))
+				panic(fmt.Sprintf("NANNAN: cannot parse registryparams: %v, %v, %v, %v, %v", ok1, ok2, ok3, ok4, ok5))
 			}
 		} else {
-			panic(fmt.Sprintf("NANNAN: cannot parse registryparams: %v, %v, %v, %v", ok1, ok2, ok3, ok4))
+			panic(fmt.Sprintf("NANNAN: cannot parse registryparams: %v, %v, %v, %v, %v", ok1, ok2, ok3, ok4, ok5))
 		}
 	}
 
