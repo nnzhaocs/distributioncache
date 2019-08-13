@@ -263,19 +263,21 @@ func NewApp(ctx context.Context, config *configuration.Configuration) *App {
 		FileCacheCap, ok1 := cc["filecachecap"]
 		LayerCacheCap, ok2 := cc["layercachecap"]
 		SliceCacheCap, ok3 := cc["slicecachecap"]
-		ttl, ok4 := cc["ttl"]
-		if ok1 && ok2 && ok3 && ok4 {
+		Type, ok4 := cc["type"]
+		ttl, ok5 := cc["ttl"]
+		if ok1 && ok2 && ok3 && ok4 && ok5 {
 			fileCacheCap, ok1 := FileCacheCap.(int)
 			layerCacheCap, ok2 := LayerCacheCap.(int)
 			sliceCacheCap, ok3 := SliceCacheCap.(int)
-			Ttl, ok4 := ttl.(int)
-			if ok1 && ok2 && ok3 && ok4 {
-				options = append(options, storage.SetCacheParams(fileCacheCap, layerCacheCap, sliceCacheCap, Ttl))
+			stype, ok4 := Type.(string)
+			Ttl, ok5 := ttl.(int)
+			if ok1 && ok2 && ok3 && ok4 & ok5{
+				options = append(options, storage.SetCacheParams(fileCacheCap, layerCacheCap, sliceCacheCap, Ttl, stype))
 			}else{
-				panic(fmt.Sprintf("NANNAN: cannot parse cacheparams: %v, %v, %v, %v", ok1, ok2, ok3, ok4))
+				panic(fmt.Sprintf("NANNAN: cannot parse cacheparams: %v, %v, %v, %v, %v", ok1, ok2, ok3, ok4, ok5))
 			}
 		}else{
-			panic(fmt.Sprintf("NANNAN: cannot parse cacheparams: %v, %v, %v, %v", ok1, ok2, ok3, ok4))
+			panic(fmt.Sprintf("NANNAN: cannot parse cacheparams: %v, %v, %v, %v, %v", ok1, ok2, ok3, ok4, ok5))
 		}
 	}
 
