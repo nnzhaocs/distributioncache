@@ -31,7 +31,7 @@ storage:
             enabled: false
     registryparams: 
         repullcntthres: 6
-        compr_level: 6 #1-6
+        comprlevel: 6 #1-6
         layerslicingfcntthres: 30 
         layerslicingdirsizethres: 1 # MB 
     cacheparams: 
