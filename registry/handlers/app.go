@@ -283,7 +283,7 @@ func NewApp(ctx context.Context, config *configuration.Configuration) *App {
 
 	if cc, ok := config.Storage["registryparams"]; ok {
 		repullcntthres, ok1 := cc["repullcntthres"]
-		compr_level, ok2 := cc["compr_level"]
+		compr_level, ok2 := cc["comprlevel"]
 		layerslicingfcntthres, ok3 := cc["layerslicingfcntthres"]
 		layerslicingdirsizethres, ok4 := cc["layerslicingdirsizethres"]
 		if ok1 && ok2 && ok3 && ok4 {
