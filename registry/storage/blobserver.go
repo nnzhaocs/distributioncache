@@ -593,53 +593,16 @@ func (bs *blobServer) constructSlice(ctx context.Context, desc distribution.Slic
 	var buf bytes.Buffer
 	var comprssbuf bytes.Buffer
 
-	//	rbuf := &Restoringbuffer{
-	//		bufp: &comprssbuf,
-	//		wg:   wg,
-	//	}
-	//	rbuf.cnd = sync.NewCond(rbuf)
-
-	start := time.Now()
-	//	rsbufval, ok := bs.reg.restoringslicermap.LoadOrStore(dgst.String(), rbuf)
-	//	if ok {
-	//		// load true
-	//		if rsbuf, ok := rsbufval.(*Restoringbuffer); ok {
-	//			rsbuf.wg.Add(1)
-	//
-	//			rsbuf.Lock()
-	//			rsbuf.cnd.Wait()
-	//			rsbuf.Unlock()
-	//
-	//			context.GetLogger(ctx).Debugf("NANNAN: slice construct finish waiting for digest: %v", dgst.String())
-	//			DurationWSCT := time.Since(start).Seconds()
-	//
-	//			tp := "WAITSLICECONSTRUCT"
-	//			bss := rsbuf.bufp.Bytes()
-	//			return bss, DurationWSCT, tp
-	//		} else {
-	//			context.GetLogger(ctx).Debugf("NANNAN: bs.reg.restoringslicermap.LoadOrStore wrong digest: %v", dgst.String())
-	//		}
-	//	} else {
-	//		rbuf.wg.Add(1)
-
-	//		rbuf.Lock()
 	start = time.Now()
 	_ = bs.packAllFiles(ctx, desc, &buf, reg, constructtype)
 	//DurationCP
 	//start = time.Now()
-	bss := pgzipTarFile(&buf, &comprssbuf, 2) // bs.reg.compr_level)
-	//DurationCMP := time.Since(start).Seconds()
-	//		rbuf.Unlock()
-	//
-	//		rbuf.cnd.Broadcast()
+	bss := pgzipTarFile(&buf, &comprssbuf, 4) // bs.reg.compr_level)
 
 	DurationSCT := time.Since(start).Seconds()
 
-	//bss = compressbufp.Bytes()
 	tp := "SLICECONSTRUCT"
 	return bss, DurationSCT, tp
-	//	}
-	return nil, 0.0, ""
 }
 
 func (bs *blobServer) constructLayer(ctx context.Context, desc distribution.LayerRecipeDescriptor,
@@ -647,7 +610,7 @@ func (bs *blobServer) constructLayer(ctx context.Context, desc distribution.Laye
 
 	var lwg sync.WaitGroup
 	var comprssbuf bytes.Buffer
-	//	pw, _ := pgzip.NewWriterLevel(&comprssbuf, bs.reg.compr_level)
+	
 	pf := &PgzipFile{
 		Compressbufp: &comprssbuf,
 	}
@@ -916,12 +879,13 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 			start := time.Now()
 			desc, err := bs.reg.metadataService.StatLayerRecipe(ctx, dgst)
 			if err != nil || desc.MasterIp != bs.reg.hostserverIp {
-				//it is deduplicating when usr sends req
+				
 				cachehit = true
+				//it is deduplicating when usr sends req
 				context.GetLogger(ctx).Warnf("NANNAN: COULDN'T FIND LAYER RECIPE: %v, this layer is deduplicating when usr sends reqs ...", err)
 				//serve as manifest: read from orginal blob storage;
 				if reqtype == "LAYER" {
-
+					
 					DurationNTT, err := bs.serveManifest(ctx, _desc, w, r)
 					if err != nil {
 						return err
@@ -1070,11 +1034,8 @@ out:
 					"layer transfer time: %v, layer compressed size: %v",
 					reqtype, DurationML, DurationMAC, DurationNTT, size)
 			}
-			return //nil
+			return 
 		} else {
-			//			if "WAITLAYERCONSTRUCT" == tp{
-			//				waitingconstruct = true
-			//			}
 			if reqtype == "LAYER" || reqtype == "PRECONSTRUCTLAYER" {
 				if reqtype == "LAYER" {
 					context.GetLogger(ctx).Debug("NANNAN: layer cache miss!")
