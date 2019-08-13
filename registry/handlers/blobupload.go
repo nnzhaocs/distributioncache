@@ -290,6 +290,7 @@ func (buh *blobUploadHandler) PutBlobUploadComplete(w http.ResponseWriter, r *ht
 		// really set the mediatype. For now, we can let the backend take care
 		// of this.
 	})
+	return
 }
 
 // CancelBlobUpload cancels an in-progress upload of a blob.

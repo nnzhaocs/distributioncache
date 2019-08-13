@@ -119,25 +119,6 @@ func (bw *blobWriter) Commit(ctx context.Context, desc distribution.Descriptor) 
 	return canonical, nil
 }
 
-//NANNAN: utility function. to remove duplicate ips from serverips
-//func RemoveDuplicateIpsFromIps(s []string) []string {
-//	m := make(map[string]bool)
-//	for _, item := range s {
-//		if _, ok := m[item]; ok {
-//			// duplicate item
-//			fmt.Println(item, "is a duplicate")
-//		} else {
-//			m[item] = true
-//		}
-//	}
-//
-//	var result []string
-//	for item, _ := range m {
-//		result = append(result, item)
-//	}
-//	return result
-//}
-
 func GetGID() float64 {
 	s1 := rand.NewSource(time.Now().UnixNano())
 	r1 := rand.New(s1)
@@ -250,46 +231,6 @@ func (bw *blobWriter) ForwardToRegistry(ctx context.Context, bss []byte, server 
 
 	return nil
 }
-
-//type Task struct {
-//	Src  string
-//	Desc string
-//	Reg  *registry
-//	Tf   *TarFile
-//}
-
-//func pgzipTarFile(bufp *bytes.Buffer, compressbufp *bytes.Buffer, compr_level int) []byte {
-//	w, _ := pgzip.NewWriterLevel(compressbufp, compr_level)
-//	io.Copy(w, bufp)
-//	w.Close()
-//	return compressbufp.Bytes()
-//}
-
-//func addToTarFile(tf *TarFile, path string, contents []byte) (int, error) {
-//
-//	hdr := &tar.Header{
-//		Name: path,
-//		Mode: 0600,
-//		Size: int64(len(contents)),
-//	}
-//
-//	tf.Lm.Lock()
-//	if err := tf.Tw.WriteHeader(hdr); err != nil {
-//		fmt.Printf("NANNAN: cannot write file header to tar file for %s\n", path)
-//		tf.Lm.Unlock()
-//		return 0, err
-//	}
-//
-//	size, err := tf.Tw.Write(contents)
-//	if err != nil {
-//		fmt.Printf("NANNAN: cannot write file contents to tar file for %s\n", path)
-//		tf.Lm.Unlock()
-//		return 0, err
-//	}
-//
-//	tf.Lm.Unlock()
-//	return size, nil
-//}
 
 func packUniqFile(i interface{}) {
 

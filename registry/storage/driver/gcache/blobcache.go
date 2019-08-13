@@ -43,8 +43,8 @@ func (cache *BlobCache) SetCapTTL(fileCacheCap, layerCacheCap, sliceCacheCap, tt
 		SliceCacheCap = sliceCacheCap 
 	}
 
-	fmt.Printf("NANNAN: FileCacheCap: %d MB, LayerCacheCap: %d MB, SliceCacheCap: %d MB\n\n",
-		FileCacheCap, LayerCacheCap, SliceCacheCap)
+	fmt.Printf("NANNAN: FileCacheCap: %d %s, LayerCacheCap: %d %s, SliceCacheCap: %d %s\n\n",
+		FileCacheCap, Stype, LayerCacheCap, Stype, SliceCacheCap, Stype)
 	return nil
 }
 
@@ -128,8 +128,8 @@ func (cache *BlobCache) Init() error {
 
 	cache.StageLST = StageLST
 
-	fmt.Printf("NANNAN: FileCacheCap: %d MB, LayerCacheCap: %d MB, SliceCacheCap: %d MB, StageLSTCAP: %d MB\n\n",
-		FileCacheCap, LayerCacheCap, SliceCacheCap, StageLSTCAP)
+	fmt.Printf("NANNAN: FileCacheCap: %d %s, LayerCacheCap: %d %s, SliceCacheCap: %d %s, StageLSTCAP: %d MB\n\n",
+		FileCacheCap, Stype, LayerCacheCap, Stype, SliceCacheCap, Stype, StageLSTCAP)
 	return err
 }
 
