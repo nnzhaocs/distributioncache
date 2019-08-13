@@ -593,7 +593,7 @@ func (bs *blobServer) constructSlice(ctx context.Context, desc distribution.Slic
 	var buf bytes.Buffer
 	var comprssbuf bytes.Buffer
 
-	start = time.Now()
+	start := time.Now()
 	_ = bs.packAllFiles(ctx, desc, &buf, reg, constructtype)
 	//DurationCP
 	//start = time.Now()
@@ -610,7 +610,7 @@ func (bs *blobServer) constructLayer(ctx context.Context, desc distribution.Laye
 
 	var lwg sync.WaitGroup
 	var comprssbuf bytes.Buffer
-	
+
 	pf := &PgzipFile{
 		Compressbufp: &comprssbuf,
 	}
@@ -879,13 +879,13 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 			start := time.Now()
 			desc, err := bs.reg.metadataService.StatLayerRecipe(ctx, dgst)
 			if err != nil || desc.MasterIp != bs.reg.hostserverIp {
-				
+
 				cachehit = true
 				//it is deduplicating when usr sends req
 				context.GetLogger(ctx).Warnf("NANNAN: COULDN'T FIND LAYER RECIPE: %v, this layer is deduplicating when usr sends reqs ...", err)
 				//serve as manifest: read from orginal blob storage;
 				if reqtype == "LAYER" {
-					
+
 					DurationNTT, err := bs.serveManifest(ctx, _desc, w, r)
 					if err != nil {
 						return err
@@ -1034,7 +1034,7 @@ out:
 					"layer transfer time: %v, layer compressed size: %v",
 					reqtype, DurationML, DurationMAC, DurationNTT, size)
 			}
-			return 
+			return
 		} else {
 			if reqtype == "LAYER" || reqtype == "PRECONSTRUCTLAYER" {
 				if reqtype == "LAYER" {

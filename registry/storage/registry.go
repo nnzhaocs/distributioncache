@@ -33,8 +33,8 @@ type registry struct {
 
 	restoringlayermap  sync.Map /* only one uniq layer will be restored, currently restoring layers */
 	restoringslicermap sync.Map /* only one uniq slice will be restored, currently restoring layers */
-	stagelayermap		sync.Map
-	deduplayermap		sync.Map
+	stagelayermap      sync.Map
+	deduplayermap      sync.Map
 
 	repullcntthres int64
 	compr_level    int
@@ -72,7 +72,7 @@ func SetRegistryParams(repullcntthres int64,
 		registry.compr_level = compr_level
 		registry.layerslicingfcntthres = layerslicingfcntthres
 		registry.layerslicingdirsizethres = layerslicingdirsizethres * 1024 * 1024 //MB
-		fmt.Printf("Registry config: repullcntthres: %d, compr_level: %d, layerslicingfcntthres: %d, layerslicingdirsizethres: %d\n", 
+		fmt.Printf("Registry config: repullcntthres: %d, compr_level: %d, layerslicingfcntthres: %d, layerslicingdirsizethres: %d\n",
 			repullcntthres, compr_level, layerslicingfcntthres, layerslicingdirsizethres)
 		return nil
 	}
@@ -80,7 +80,7 @@ func SetRegistryParams(repullcntthres int64,
 
 func SetCacheParams(FileCacheCap, LayerCacheCap, SliceCacheCap, ttl int, stype string) RegistryOption {
 	return func(registry *registry) error {
-		registry.blobcache.SetCapTTL(FileCacheCap, LayerCacheCap, SliceCacheCap, ttl, stype string)
+		registry.blobcache.SetCapTTL(FileCacheCap, LayerCacheCap, SliceCacheCap, ttl, stype)
 		return nil
 	}
 }
@@ -203,7 +203,7 @@ func NewRegistry(ctx context.Context, serverIp string, servers []string, driver 
 		statter:                statter,
 		resumableDigestEnabled: true,
 		hostserverIp:           serverIp,
-		servers:  				servers,
+		servers:                servers,
 	}
 
 	for _, option := range options {
