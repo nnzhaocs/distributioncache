@@ -287,17 +287,15 @@ func (buh *blobUploadHandler) PutBlobUploadComplete(w http.ResponseWriter, r *ht
 	//should be a pool
 
 	reqtype := context.GetType(buh)
-	ctxu.GetLogger(buh).Debugf("NANNAN: Dedup: request type: %s", reqtype)
-
 	reponame := context.GetRepoName(buh)
 	usrname := context.GetUsrAddr(buh)
-	ctxu.GetLogger(buh).Debugf("NANNAN: Dedup: for repo (%s) and usr (%s) with dgst (%s)", reponame, usrname, desc.Digest.String())
+	
+	ctxu.GetLogger(buh).Debugf("NANNAN: PutBlobUploadComplete: request type: %s, for repo (%s) and usr (%s) with dgst (%s)", reqtype, reponame, usrname, dgst.Digest.String())
 
 	go buh.Upload.Dedup(
 		reqtype,
 		reponame,
 		usrname,
-
 		distribution.Descriptor{
 			Digest: dgst,
 
