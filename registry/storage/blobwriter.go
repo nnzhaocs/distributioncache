@@ -352,10 +352,11 @@ func checkNeedDedupOrNot(unpackPath string) (bool, error) {
 	files, err := ioutil.ReadDir(unpackPath)
 	if err != nil {
 		fmt.Printf("NANNAN: %s, cannot read this tar file, error: %v \n", err)
+		return true, nil
 	}
 
 	for _, f := range files {
-		fmatch, _ := path.Match("NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL \n", f.Name())
+		fmatch, _ := path.Match("NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL", f.Name())
 		if fmatch {
 			fmt.Printf("NANNAN: NANNAN_NO_NEED_TO_DEDUP_THIS_TARBALL: %s \n", f.Name())
 			/*
