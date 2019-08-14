@@ -79,7 +79,6 @@ func (rbds *redisBlobDescriptorService) Stat(ctx context.Context, dgst digest.Di
 	defer conn.Close()
 	//NANNAN
 	if _, err := conn.Do("SELECT", dbNoBlob); err != nil {
-		//		defer conn.Close()
 		return distribution.Descriptor{}, err
 	}
 
@@ -95,7 +94,6 @@ func (rbds *redisBlobDescriptorService) Clear(ctx context.Context, dgst digest.D
 	defer conn.Close()
 	//NANNAN
 	if _, err := conn.Do("SELECT", dbNoBlob); err != nil {
-		//		defer conn.Close()
 		return err
 	}
 

@@ -59,17 +59,6 @@ func NewCachedBlobStatterWithMetrics(cache distribution.BlobDescriptorService, b
 	}
 }
 
-// NewCachedBlobStatterWithMetrics creates a new statter which prefers a cache and
-// falls back to a backend. Hits and misses will send to the tracker.
-//func NewCachedBlobStatterWithMetricsWithFileCache(cache distribution.BlobDescriptorService, metadatacache distribution.RedisDedupMetadataService, backend distribution.BlobDescriptorService, tracker MetricsTracker) distribution.BlobStatter {
-//	return &cachedBlobStatter{
-//		cache:         cache,
-//		metadatacache: metadatacache,
-//		backend:       backend,
-//		tracker:       tracker,
-//	}
-//}
-
 func (cbds *cachedBlobStatter) Stat(ctx context.Context, dgst digest.Digest) (distribution.Descriptor, error) {
 	//first check cache
 	desc, err := cbds.cache.Stat(ctx, dgst)
@@ -86,24 +75,6 @@ func (cbds *cachedBlobStatter) Stat(ctx context.Context, dgst digest.Digest) (di
 		cbds.tracker.Hit()
 	}
 	return desc, nil
-	//fallback:
-	//	if cbds.tracker != nil {
-	//		cbds.tracker.Miss()
-	//	}
-	//
-	//	//then check disk
-	//
-	//	desc, err = cbds.backend.Stat(ctx, dgst)
-	//	if err != nil {
-	//		return desc, err
-	//	}
-	//
-	//	if err := cbds.cache.SetDescriptor(ctx, dgst, desc); err != nil {
-	//		context.GetLogger(ctx).Errorf("Stat SetDescriptor: error adding descriptor %v to cache: %v", desc.Digest, err)
-	//	}
-	//
-	//	return desc, err
-
 }
 
 func (cbds *cachedBlobStatter) Clear(ctx context.Context, dgst digest.Digest) error {

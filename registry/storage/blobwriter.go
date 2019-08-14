@@ -663,6 +663,7 @@ func (bw *blobWriter) doDedup(ctx context.Context, desc distribution.Descriptor,
 			SliceSizeMap:      map[string]int64{},
 			UncompressionSize: dirSize,
 			CompressionSize:   comressSize,
+			Fcnt:	fcnt,
 		}
 		start = time.Now()
 		err = bw.blobStore.registry.metadataService.SetLayerRecipe(ctx, desc.Digest, des)
@@ -689,6 +690,7 @@ func (bw *blobWriter) doDedup(ctx context.Context, desc distribution.Descriptor,
 			sliceSizeMapnew[sip] = sliceSizeMap[sip]
 			if maxsize < sliceSizeMapnew[sip] {
 				masterIp = sip
+				maxsize = sliceSizeMapnew[sip]
 			}
 		}
 	}
@@ -701,6 +703,7 @@ func (bw *blobWriter) doDedup(ctx context.Context, desc distribution.Descriptor,
 				HostServerIp: sip,
 				Files:        files,
 				SliceSize:    sliceSizeMap[sip],
+				Fcnt:		len(files),
 			}
 			err = bw.blobStore.registry.metadataService.SetSliceRecipe(ctx, desc.Digest, des, sip)
 			if err != nil {
@@ -718,6 +721,7 @@ func (bw *blobWriter) doDedup(ctx context.Context, desc distribution.Descriptor,
 		UncompressionSize: dirSize,
 		Compressratio:     float64(dirSize) / float64(comressSize),
 		CompressionSize:   comressSize,
+		Fcnt:	fcnt,
 	}
 
 	err = bw.blobStore.registry.metadataService.SetLayerRecipe(ctx, desc.Digest, des)
@@ -736,7 +740,9 @@ func (bw *blobWriter) doDedup(ctx context.Context, desc distribution.Descriptor,
 	start = time.Now()
 	var wg sync.WaitGroup
 	_ = bw.PrepareAndForward(ctx, serverForwardMap, &wg)
-	wg.Wait()
+//	go func(){
+//		wg.Wait()
+//	}() 
 	DurationSFT = time.Since(start).Seconds()
 
 	return DurationRDF, DurationSRM, DurationSFT, dirSize, nil, isdedup, isforward
@@ -758,7 +764,6 @@ func (bw *blobWriter) CheckDuplicate(ctx context.Context, serverIp string, db ca
 	nodistributedfiles *[]distribution.FileDescriptor,
 	slices map[string][]distribution.FileDescriptor,
 	sliceSizeMap map[string]int64,
-	//	serverStoreCntMap map[string]int,
 	dirSize *int64,
 	fcnt *int64) filepath.WalkFunc {
 
@@ -813,7 +818,6 @@ func (bw *blobWriter) CheckDuplicate(ctx context.Context, serverIp string, db ca
 			}
 
 			slices[des.HostServerIp] = append(slices[des.HostServerIp], des)
-			//			serverStoreCntMap[des.HostServerIp] += 1
 			sliceSizeMap[des.HostServerIp] += fsize
 
 			return nil
@@ -822,11 +826,11 @@ func (bw *blobWriter) CheckDuplicate(ctx context.Context, serverIp string, db ca
 			return err
 		}
 
-		//to avoid invalid filepath, rename the original file to .../diff/uniquefiles/randomid/digest //tarfpath := strings.SplitN(dgst.String(), ":", 2)[1]
+		//to avoid invalid filepath, rename the original file to .../diff/uniquefiles/randomid/digest 
 		diffpath := strings.SplitN(fpath, "diff", 2)[0]
 		gid := GetGID()
 		tmp_dir := fmt.Sprintf("%f", gid)
-		reFPath := path.Join(diffpath, "/diff/uniquefiles", tmp_dir, strings.SplitN(dgst.String(), ":", 2)[1]) //path.Join(path.Dir(fpath), strings.SplitN(dgst.String(), ":", 2)[1])
+		reFPath := path.Join(diffpath, "/diff/uniquefiles", tmp_dir, strings.SplitN(dgst.String(), ":", 2)[1]) 
 
 		newdir := path.Join(diffpath, "/diff/uniquefiles", tmp_dir)
 		if os.MkdirAll(newdir, 0666) != nil {
