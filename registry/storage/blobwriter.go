@@ -422,8 +422,8 @@ func IsEmpty(name string) (bool, error) {
 }
 
 func (bw *blobWriter) Dedup(
-		reqtype, reponame, usrname string,
-		desc distribution.Descriptor) error {
+	reqtype, reponame, usrname string,
+	desc distribution.Descriptor) error {
 
 	fmt.Printf("NANNAN: Dedup: request type: %s, for repo (%s) and usr (%s) with dgst (%s)\n", reqtype, reponame, usrname, desc.Digest.String())
 	if reqtype == "MANIFEST" {
@@ -452,11 +452,11 @@ func (bw *blobWriter) Dedup(
 		fmt.Printf("NANNAN: error: %v\n", err)
 		return err
 	}
-	
+
 	DurationDCM := 0.0
-	
+
 	start := time.Now()
-	
+
 	if reqtype == "FORWARD_REPO" {
 
 		bss, err := ioutil.ReadFile(layerPath)
@@ -491,7 +491,7 @@ func (bw *blobWriter) Dedup(
 			return nil
 		}
 	}
-	
+
 	lfile, err := os.Open(layerPath)
 	if err != nil {
 		fmt.Printf("NANNAN: cannot open layer file =>%s\n", layerPath)
@@ -507,12 +507,12 @@ func (bw *blobWriter) Dedup(
 
 	comressSize := stat.Size()
 	ctx := context.WithVersion(context.Background(), version.Version)
-	
+
 	if "LAYER" == reqtype {
 		// first store in cache *****
 		//skip warmuplayers
 		// put this layer into cache ******
-		bw.blobStore.registry.blobcache.SetPUTLayer(desc.Digest.String(), comressSize, layerPath) 
+		bw.blobStore.registry.blobcache.SetPUTLayer(desc.Digest.String(), comressSize, layerPath)
 
 		rlmapentry, err := bw.blobStore.registry.metadataService.StatRLMapEntry(ctx, reponame)
 		if err == nil {
@@ -541,14 +541,13 @@ func (bw *blobWriter) Dedup(
 		}
 		return nil
 	}
-		
 
 	_, err = bw.blobStore.registry.metadataService.StatLayerRecipe(ctx, desc.Digest)
 	if err == nil {
 		fmt.Printf("NANNAN: THIS LAYER TARBALL ALREADY DEDUPED =>%v \n", desc.Digest)
 		return nil
 	}
-	
+
 	err = archiver.UntarPath(layerPath, unpackPath)
 	if err != nil {
 		fmt.Printf("NANNAN: error %s, IGNORE MINOR ERRORS \n", err)
@@ -588,7 +587,7 @@ func (bw *blobWriter) Dedup(
 			return err1
 		}
 	}
-	
+
 	fmt.Printf("NANNAN: START DEDUPLICATION FROM PATH :=>%s\n", layerPath)
 
 	DurationRDF, DurationSRM, DurationSFT, dirSize, err, isdedup, isforward := bw.doDedup(ctx, desc, unpackPath, comressSize)
@@ -663,7 +662,7 @@ func (bw *blobWriter) doDedup(ctx context.Context, desc distribution.Descriptor,
 			SliceSizeMap:      map[string]int64{},
 			UncompressionSize: dirSize,
 			CompressionSize:   comressSize,
-			Fcnt:	fcnt,
+			Fcnt:              fcnt,
 		}
 		start = time.Now()
 		err = bw.blobStore.registry.metadataService.SetLayerRecipe(ctx, desc.Digest, des)
@@ -703,7 +702,7 @@ func (bw *blobWriter) doDedup(ctx context.Context, desc distribution.Descriptor,
 				HostServerIp: sip,
 				Files:        files,
 				SliceSize:    sliceSizeMap[sip],
-				Fcnt:		len(files),
+				Fcnt:         int64(len(files)),
 			}
 			err = bw.blobStore.registry.metadataService.SetSliceRecipe(ctx, desc.Digest, des, sip)
 			if err != nil {
@@ -721,7 +720,7 @@ func (bw *blobWriter) doDedup(ctx context.Context, desc distribution.Descriptor,
 		UncompressionSize: dirSize,
 		Compressratio:     float64(dirSize) / float64(comressSize),
 		CompressionSize:   comressSize,
-		Fcnt:	fcnt,
+		Fcnt:              fcnt,
 	}
 
 	err = bw.blobStore.registry.metadataService.SetLayerRecipe(ctx, desc.Digest, des)
@@ -740,9 +739,9 @@ func (bw *blobWriter) doDedup(ctx context.Context, desc distribution.Descriptor,
 	start = time.Now()
 	var wg sync.WaitGroup
 	_ = bw.PrepareAndForward(ctx, serverForwardMap, &wg)
-//	go func(){
-//		wg.Wait()
-//	}() 
+	//	go func(){
+	//		wg.Wait()
+	//	}()
 	DurationSFT = time.Since(start).Seconds()
 
 	return DurationRDF, DurationSRM, DurationSFT, dirSize, nil, isdedup, isforward
@@ -826,11 +825,11 @@ func (bw *blobWriter) CheckDuplicate(ctx context.Context, serverIp string, db ca
 			return err
 		}
 
-		//to avoid invalid filepath, rename the original file to .../diff/uniquefiles/randomid/digest 
+		//to avoid invalid filepath, rename the original file to .../diff/uniquefiles/randomid/digest
 		diffpath := strings.SplitN(fpath, "diff", 2)[0]
 		gid := GetGID()
 		tmp_dir := fmt.Sprintf("%f", gid)
-		reFPath := path.Join(diffpath, "/diff/uniquefiles", tmp_dir, strings.SplitN(dgst.String(), ":", 2)[1]) 
+		reFPath := path.Join(diffpath, "/diff/uniquefiles", tmp_dir, strings.SplitN(dgst.String(), ":", 2)[1])
 
 		newdir := path.Join(diffpath, "/diff/uniquefiles", tmp_dir)
 		if os.MkdirAll(newdir, 0666) != nil {

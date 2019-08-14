@@ -112,6 +112,7 @@ type LayerRecipeDescriptor struct {
 	UncompressionSize int64
 	Compressratio     float64
 	CompressionSize   int64
+	Fcnt              int64
 }
 
 // NANNAN: Descriptors for slice recipe
@@ -120,6 +121,7 @@ type SliceRecipeDescriptor struct {
 	HostServerIp string
 	Files        []FileDescriptor
 	SliceSize    int64
+	Fcnt         int64
 }
 
 func (m *SliceRecipeDescriptor) MarshalBinary() ([]byte, error) {

@@ -654,9 +654,9 @@ func (bs *blobServer) constructSlice(ctx context.Context, desc distribution.Slic
 	//start = time.Now()
 	var bss []byte
 	if bs.reg.compressmethod == "pgzip" {
-		bss = pgzipTarFile(&buf, &comprssbuf, 4) // bs.reg.compr_level)
+		bss = pgzipTarFile(&buf, &comprssbuf, 2) // bs.reg.compr_level)
 	} else if bs.reg.compressmethod == "lz4" {
-		bss = lz4TarFile(&buf, &comprssbuf, 10)
+		bss = lz4TarFile(&buf, &comprssbuf, 8)
 	} else {
 		fmt.Printf("NANNAN: error. what is the compress method?", bs.reg.compressmethod)
 	}
