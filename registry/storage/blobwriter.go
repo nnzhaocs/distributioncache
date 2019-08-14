@@ -14,6 +14,7 @@ import (
 	"github.com/docker/distribution"
 	"github.com/docker/distribution/context"
 	storagedriver "github.com/docker/distribution/registry/storage/driver"
+	"github.com/docker/distribution/version"
 	"github.com/klauspost/pgzip"
 	"github.com/panjf2000/ants"
 	//NANNAN
@@ -159,9 +160,6 @@ func (bw *blobWriter) ForwardToRegistry(ctx context.Context, bss []byte, server 
 	fmt.Printf("NANNAN: ForwardToRegistry forwarding to %s \n", regname)
 
 	var buffer bytes.Buffer
-	//	buffer.WriteString("http://")
-	//	buffer.WriteString(regname)
-	//	buffer.WriteString("/v2/test_repo/blobs/sha256:")
 
 	bytesreader := bytes.NewReader(bss)
 	digestFn := algorithm.FromReader
@@ -170,15 +168,10 @@ func (bw *blobWriter) ForwardToRegistry(ctx context.Context, bss []byte, server 
 		fmt.Printf("NANNAN: ForwardToRegistry compute dgst error: %v \n", err)
 		return err
 	}
-	//	context.GetLogger(ctx).Debug("NANNAN: ForwardToRegistry content dgest %s", dgst.String())
 
 	dgststring := dgst.String()
 	dgststring = strings.SplitN(dgststring, "sha256:", 2)[1]
-
-	//	buffer.WriteString(dgststring)
 	url := buffer.String()
-
-	//	context.GetLogger(ctx).Debug("NANNAN: ForwardToRegistry URL: %s", url)
 
 	//let's skip head request
 
@@ -204,9 +197,6 @@ func (bw *blobWriter) ForwardToRegistry(ctx context.Context, bss []byte, server 
 	url = buffer.String()
 
 	bytesreader = bytes.NewReader(bss)
-
-	//	context.GetLogger(ctx).Debug("NANNAN: ForwardToRegistry PUT URL: %s", url)
-
 	request, err := http.NewRequest("PUT", url, bytesreader)
 	if err != nil {
 		fmt.Printf("NANNAN: ForwardToRegistry PUT URL %s, err %s \n", url, err)
@@ -215,7 +205,7 @@ func (bw *blobWriter) ForwardToRegistry(ctx context.Context, bss []byte, server 
 
 	request.ContentLength = int64(len(bss))
 	client := &http.Client{}
-	//	context.GetLogger(ctx).Debug("NANNAN: ForwardToRegistry: Do(request) to %v", regname)
+
 	put, err := client.Do(request)
 	if err != nil {
 		fmt.Printf("NANNAN: ForwardToRegistry PUT URL: %s, err %s \n", url, err)
@@ -430,15 +420,14 @@ func IsEmpty(name string) (bool, error) {
 	return false, err // Either not empty or error, suits both cases
 }
 
-func (bw *blobWriter) Dedup(reqtype, reponame, usrname string, 
-				desc distribution.Descriptor) error {
-	
+func (bw *blobWriter) Dedup(reqtype, reponame, usrname string,
+	desc distribution.Descriptor) error {
 
-	reqtype := reqtype
+	//reqtype := reqtype
 	fmt.Printf("NANNAN: Dedup: request type: %s \n", reqtype)
 
-	reponame := reponame
-	usrname := usrname
+	//reponame := reponame
+	//usrname := usrname
 	fmt.Printf("NANNAN: Dedup: for repo (%s) and usr (%s) with dgst (%s)\n", reponame, usrname, desc.Digest.String())
 	ctx := context.WithVersion(context.Background(), version.Version)
 
@@ -552,7 +541,7 @@ func (bw *blobWriter) Dedup(reqtype, reponame, usrname string,
 		if err != nil {
 			fmt.Printf("NANNAN: error %s, IGNORE MINOR ERRORS \n", err)
 		}
-		needdedup, _ := checkNeedDedupOrNot(unpackPath)
+		needdedup, _ := checkNeedDedupOrNot(ctx, unpackPath)
 		if needdedup == false {
 			fmt.Printf("NANNAN: This layer doesn't need deduplication, sent from othrs nodes during dedup: %s\n", layerPath)
 			return nil
@@ -630,8 +619,7 @@ func (bw *blobWriter) Dedup(reqtype, reponame, usrname string,
 	return nil
 }
 
-func (bw *blobWriter) doDedup(ctx context.Context, desc distribution.Descriptor, unpackPath string, comressSize int64) 
-								(float64, float64, float64, int64, error, bool, bool) {
+func (bw *blobWriter) doDedup(ctx context.Context, desc distribution.Descriptor, unpackPath string, comressSize int64) (float64, float64, float64, int64, error, bool, bool) {
 
 	var nodistributedfiles []distribution.FileDescriptor
 	slices := make(map[string][]distribution.FileDescriptor)

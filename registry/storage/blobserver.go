@@ -25,7 +25,7 @@ import (
 	mapset "github.com/deckarep/golang-set"
 	digest "github.com/opencontainers/go-digest"
 	"github.com/panjf2000/ants"
-	lz4"github.com/pierrec/lz4/cmd/lz4c"
+	lz4 "github.com/pierrec/lz4"
 )
 
 // TODO(stevvooe): This should configurable in the future.
@@ -185,12 +185,12 @@ func (bs *blobServer) pgzipconcatTarFile(compressbufp *bytes.Buffer, pw *PgzipFi
 }
 
 func (bs *blobServer) lz4concatTarFile(compressbufp *bytes.Buffer, pw *PgzipFile) error {
-	zr := pgzip.NewReader(compressbufp)
-//	if err != nil {
-//		fmt.Printf("NANNAN: lz4: cannot create reader: %v \n", err)
-//		return err
-//	}
-	bss, err := ioutil.ReadAll(rdr)
+	zr := lz4.NewReader(compressbufp)
+	//	if err != nil {
+	//		fmt.Printf("NANNAN: lz4: cannot create reader: %v \n", err)
+	//		return err
+	//	}
+	bss, err := ioutil.ReadAll(zr)
 	if err != nil {
 		fmt.Printf("NANNAN: lz4: cannot read from reader: %v \n", err)
 		return err
@@ -199,8 +199,9 @@ func (bs *blobServer) lz4concatTarFile(compressbufp *bytes.Buffer, pw *PgzipFile
 	pw.Lm.Lock()
 	header := lz4.Header{CompressionLevel: bs.reg.compr_level}
 	zw := lz4.NewWriter(pw.Compressbufp)
-	w.Write(bss)
-	w.Close()
+	zw.Header = header
+	zw.Write(bss)
+	zw.Close()
 	pw.Lm.Unlock()
 
 	return nil
@@ -216,6 +217,7 @@ func pgzipTarFile(bufp *bytes.Buffer, compressbufp *bytes.Buffer, compr_level in
 func lz4TarFile(bufp *bytes.Buffer, compressbufp *bytes.Buffer, compr_level int) []byte {
 	header := lz4.Header{CompressionLevel: compr_level}
 	zw := lz4.NewWriter(compressbufp)
+	zw.Header = header
 	_, err := io.Copy(zw, bufp)
 	if err != nil {
 		fmt.Printf("NANNAN: LZ4 cannot compress. error: %v\n", err)
@@ -600,15 +602,15 @@ func (bs *blobServer) GetSliceFromRegistry(ctx context.Context, dgst digest.Dige
 		context.GetLogger(ctx).Debugf("NANNAN: GetSliceFromRegistry succeed! URL %s size: %d", url, len(body))
 
 		buf := bytes.NewBuffer(body)
-		
-		if bs.reg.compressmethod == "pgzip"{
+
+		if bs.reg.compressmethod == "pgzip" {
 			err = bs.pgzipconcatTarFile(buf, pw)
-		}else if bs.reg.compressmethod == "lz4"{
+		} else if bs.reg.compressmethod == "lz4" {
 			err = bs.lz4concatTarFile(buf, pw)
-		}else{
+		} else {
 			fmt.Printf("NANNAN: error. what is the compress method?", bs.reg.compressmethod)
 		}
-		
+
 		return err
 	}
 
@@ -628,15 +630,15 @@ func (bs *blobServer) GetSliceFromRegistry(ctx context.Context, dgst digest.Dige
 	context.GetLogger(ctx).Debugf("NANNAN: GetSliceFromRegistry succeed! from local registry %s size: %d", regip, len(bss))
 
 	buf := bytes.NewBuffer(bss)
-	
-	if bs.reg.compressmethod == "pgzip"{
+
+	if bs.reg.compressmethod == "pgzip" {
 		err = bs.pgzipconcatTarFile(buf, pw)
-	}else if bs.reg.compressmethod == "lz4"{
+	} else if bs.reg.compressmethod == "lz4" {
 		err = bs.lz4concatTarFile(buf, pw)
-	}else{
+	} else {
 		fmt.Printf("NANNAN: error. what is the compress method?", bs.reg.compressmethod)
 	}
-	
+
 	return err
 }
 
@@ -650,11 +652,12 @@ func (bs *blobServer) constructSlice(ctx context.Context, desc distribution.Slic
 	_ = bs.packAllFiles(ctx, desc, &buf, reg, constructtype)
 	//DurationCP
 	//start = time.Now()
-	if bs.reg.compressmethod == "pgzip"{
-		bss := pgzipTarFile(&buf, &comprssbuf, 4) // bs.reg.compr_level)
-	}else if bs.reg.compressmethod == "lz4"{
-		bss := lz4TarFile(&buf, &comprssbuf, 10)
-	}else{
+	var bss []byte
+	if bs.reg.compressmethod == "pgzip" {
+		bss = pgzipTarFile(&buf, &comprssbuf, 4) // bs.reg.compr_level)
+	} else if bs.reg.compressmethod == "lz4" {
+		bss = lz4TarFile(&buf, &comprssbuf, 10)
+	} else {
 		fmt.Printf("NANNAN: error. what is the compress method?", bs.reg.compressmethod)
 	}
 

@@ -28,7 +28,7 @@ func (hbu *httpBlobUpload) Reader() (io.ReadCloser, error) {
 	panic("Not implemented")
 }
 
-func (hbu *httpBlobUpload) Dedup(ctx context.Context, desc distribution.Descriptor) (error) {
+func (hbu *httpBlobUpload) Dedup(reqtype string, reponame string, usrname string, desc distribution.Descriptor) error {
 	panic("Not implemented")
 }
 

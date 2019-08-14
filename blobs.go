@@ -110,7 +110,7 @@ type LayerRecipeDescriptor struct {
 	HostServerIps     []string         //slice hosts
 	SliceSizeMap      map[string]int64 // layer digest.string+"::"+server
 	UncompressionSize int64
-	Compressratio		float64
+	Compressratio     float64
 	CompressionSize   int64
 }
 
@@ -346,7 +346,7 @@ type BlobWriter interface {
 	// result in a no-op. This allows use of Cancel in a defer statement,
 	// increasing the assurance that it is correctly called.
 	Cancel(ctx context.Context) error
-	Dedup(ctx context.Context, desc Descriptor) error
+	Dedup(reqtype string, reponame string, usrname string, desc Descriptor) error
 }
 
 // BlobService combines the operations to access, read and write blobs. This

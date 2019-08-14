@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"net/url"
 	//log "github.com/Sirupsen/logrus"
-	
+
 	//storagedriver "github.com/docker/distribution/registry/storage/driver"
 	log "github.com/Sirupsen/logrus"
 	"github.com/docker/distribution"
@@ -15,7 +15,9 @@ import (
 	"github.com/docker/distribution/registry/api/v2"
 	"github.com/docker/distribution/registry/storage"
 	"github.com/gorilla/handlers"
-	"github.com/opencontainers/go-digest"
+	digest "github.com/opencontainers/go-digest"
+	//"golang.org/x/net/context"
+	"github.com/docker/distribution/context"
 )
 
 // blobUploadDispatcher constructs and returns the blob upload handler for the
@@ -33,7 +35,7 @@ func blobUploadDispatcher(ctx *Context, r *http.Request) http.Handler {
 	}
 
 	if !ctx.readOnly {
-//		ctxu.GetLogger(ctx).Infof("NANNAN: blobUploadDispatcher")
+		//		ctxu.GetLogger(ctx).Infof("NANNAN: blobUploadDispatcher")
 		handler["POST"] = http.HandlerFunc(buh.StartBlobUpload)
 		handler["PATCH"] = http.HandlerFunc(buh.PatchBlobData)
 		handler["PUT"] = http.HandlerFunc(buh.PutBlobUploadComplete)
@@ -65,7 +67,7 @@ func blobUploadDispatcher(ctx *Context, r *http.Request) http.Handler {
 		}
 
 		blobs := ctx.Repository.Blobs(buh)
-//		ctxu.GetLogger(ctx).Infof("NANNAN: blobs.Resume")
+		//		ctxu.GetLogger(ctx).Infof("NANNAN: blobs.Resume")
 		upload, err := blobs.Resume(buh, buh.UUID)
 		if err != nil {
 			ctxu.GetLogger(ctx).Errorf("error resolving upload: %v", err)
@@ -126,10 +128,10 @@ func (buh *blobUploadHandler) StartBlobUpload(w http.ResponseWriter, r *http.Req
 		}
 	}
 	//context.GetLogger(ctx).Infof("NANNAN: StartBlobUpload: blob object")
-//	log.Warnf("NANNAN: StartBlobUpload: blob object")
+	//	log.Warnf("NANNAN: StartBlobUpload: blob object")
 	blobs := buh.Repository.Blobs(buh)
 	//context.GetLogger(ctx).Infof("NANNAN: StartBlobUpload: create blob object")
-//	log.Warnf("NANNAN: StartBlobUpload: create blob object")
+	//	log.Warnf("NANNAN: StartBlobUpload: create blob object")
 	upload, err := blobs.Create(buh, options...)
 
 	if err != nil {
@@ -191,13 +193,13 @@ func (buh *blobUploadHandler) PatchBlobData(w http.ResponseWriter, r *http.Reque
 	}
 
 	// TODO(dmcgowan): support Content-Range header to seek and write range
-//	log.Warnf("NANNAN: PatchBlobData: copyFullPayload")
+	//	log.Warnf("NANNAN: PatchBlobData: copyFullPayload")
 	//copyFullPayload(responseWriter http.ResponseWriter, r *http.Request, destWriter io.Writer, context ctxu.Context, action string, errSlice *errcode.Errors)
 	if err := copyFullPayload(w, r, buh.Upload, buh, "blob PATCH", &buh.Errors); err != nil {
 		// copyFullPayload reports the error if necessary
 		return
 	}
-//	log.Warnf("NANNAN: PatchBlobData: blobUploadResponse")
+	//	log.Warnf("NANNAN: PatchBlobData: blobUploadResponse")
 	if err := buh.blobUploadResponse(w, r, false); err != nil {
 		buh.Errors = append(buh.Errors, errcode.ErrorCodeUnknown.WithDetail(err))
 		return
@@ -283,26 +285,26 @@ func (buh *blobUploadHandler) PutBlobUploadComplete(w http.ResponseWriter, r *ht
 	// desc distribution.Descriptor
 	//spwan a dedup worker for every layer
 	//should be a pool
-	
-	reqtype := context.GetType(ctx)
+
+	reqtype := context.GetType(buh)
 	ctxu.GetLogger(buh).Debugf("NANNAN: Dedup: request type: %s", reqtype)
 
-	reponame := context.GetRepoName(ctx)
-	usrname := context.GetUsrAddr(ctx)
+	reponame := context.GetRepoName(buh)
+	usrname := context.GetUsrAddr(buh)
 	ctxu.GetLogger(buh).Debugf("NANNAN: Dedup: for repo (%s) and usr (%s) with dgst (%s)", reponame, usrname, desc.Digest.String())
-	
+
 	go buh.Upload.Dedup(
 		reqtype,
 		reponame,
 		usrname,
-		
-		distribution.Descriptor{
-		Digest: dgst,
 
-		// TODO(stevvooe): This isn't wildly important yet, but we should
-		// really set the mediatype. For now, we can let the backend take care
-		// of this.
-	})
+		distribution.Descriptor{
+			Digest: dgst,
+
+			// TODO(stevvooe): This isn't wildly important yet, but we should
+			// really set the mediatype. For now, we can let the backend take care
+			// of this.
+		})
 	return
 }
 
