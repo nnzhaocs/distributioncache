@@ -164,7 +164,7 @@ func (c *ARC) set(key interface{}, value interface{}) (interface{}, error) {
 			if total >= (2 * c.size) {
 				if c.b2.size > 0 {
 					c.b2.RemoveTail()
-				} else {
+				} else if c.b1.size > 0{
 					c.b1.RemoveTail()
 				}
 			}
