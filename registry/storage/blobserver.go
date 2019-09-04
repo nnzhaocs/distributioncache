@@ -356,8 +356,8 @@ func (bs *blobServer) packAllFiles(ctx context.Context, desc distribution.SliceR
 		fcnt += 1
 	}
 
-	if fcnt > 2000 {
-		fcnt = 2000
+	if fcnt > 500 {
+		fcnt = 500
 	}
 
 	var wg sync.WaitGroup
