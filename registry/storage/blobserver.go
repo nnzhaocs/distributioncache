@@ -918,7 +918,7 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 				bytesreader = bytes.NewReader(bss)
 
 				size = bytesreader.Size()
-				//				waitingconstruct = true
+				//waitingconstruct = true
 
 				goto out
 
