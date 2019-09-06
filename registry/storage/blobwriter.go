@@ -490,21 +490,21 @@ func (bw *blobWriter) Dedup(
 		}
 	}
 	
-	des := distribution.LayerRecipeDescriptor{
-		Digest:            desc.Digest,
-		MasterIp:          bw.blobStore.registry.hostserverIp, //bw.blobStore.registry.hostserverIp,
-//		HostServerIps:     []string{},                         //RemoveDuplicateIpsFromIps(serverIps),
-//		SliceSizeMap:      map[string]int64{},
-//		UncompressionSize: dirSize,
-//		CompressionSize:   comressSize,
-//		Fcnt:              fcnt,
-	}
-		
-	err = bw.blobStore.registry.metadataService.SetLayerRecipe(ctx, desc.Digest, des)
-	if err != nil {
-		return err
-		//cleanup everything; omitted
-	}
+//	des := distribution.LayerRecipeDescriptor{
+//		Digest:            desc.Digest,
+//		MasterIp:          bw.blobStore.registry.hostserverIp, //bw.blobStore.registry.hostserverIp,
+////		HostServerIps:     []string{},                         //RemoveDuplicateIpsFromIps(serverIps),
+////		SliceSizeMap:      map[string]int64{},
+////		UncompressionSize: dirSize,
+////		CompressionSize:   comressSize,
+////		Fcnt:              fcnt,
+//	}
+//		
+//	err = bw.blobStore.registry.metadataService.SetLayerRecipe(ctx, desc.Digest, des)
+//	if err != nil {
+//		return err
+//		//cleanup everything; omitted
+//	}
 
 	return nil
 }
