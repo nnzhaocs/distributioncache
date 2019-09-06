@@ -492,44 +492,46 @@ func (bs *blobServer) notifyPeerPreconstructLayer(ctx context.Context, dgst dige
 		context.GetLogger(ctx).Warnf("NANNAN: COULDN'T FIND LAYER RECIPE: %v or Empty layer for dgst", err, dgst)
 		return false
 	}
-	regip := desc.MasterIp
+	
+	for _, regip := range desc.HostServerIps{
 
-	regipbuffer.WriteString(regip)
-	regipbuffer.WriteString(":5000")
-	regip = regipbuffer.String()
-	context.GetLogger(ctx).Debugf("NANNAN: notifyPeerPreconstructLayer for %s, dgst: %s", regip, dgststring)
-
-	//GET /v2/<name>/blobs/<digest>
-	var urlbuffer bytes.Buffer
-	urlbuffer.WriteString("http://")
-	urlbuffer.WriteString(regip)
-	urlbuffer.WriteString("/v2/")
-	urlbuffer.WriteString(tp + "USRADDR" + usrname + "REPONAME" + reponame)
-	urlbuffer.WriteString("/blobs/sha256:")
-
-	newdgststring := strings.SplitN(dgststring, "sha256:", 2)[1]
-	urlbuffer.WriteString(newdgststring)
-
-	url := urlbuffer.String()
-	url = strings.ToLower(url)
-	context.GetLogger(ctx).Debugf("NANNAN: notifyPeerPreconstructLayer URL %s", url)
-
-	//let's skip head request
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		context.GetLogger(ctx).Errorf("NANNAN: notifyPeerPreconstructLayer GET URL %s, err %s", url, err)
-		return false
-	}
-
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		context.GetLogger(ctx).Errorf("NANNAN: notifyPeerPreconstructLayer Do GET URL %s, err %s", url, err)
-		return false
-	}
-	context.GetLogger(ctx).Debugf("NANNAN: notifyPeerPreconstructLayer %s returned status code %d", regip, resp.StatusCode)
-	if resp.StatusCode < 200 || resp.StatusCode > 299 {
-		return false //errors.New("notifyPeerPreconstructLayer to other servers, failed")
+		regipbuffer.WriteString(regip)
+		regipbuffer.WriteString(":5000")
+		regip = regipbuffer.String()
+		context.GetLogger(ctx).Debugf("NANNAN: notifyPeerPreconstructLayer for %s, dgst: %s", regip, dgststring)
+	
+		//GET /v2/<name>/blobs/<digest>
+		var urlbuffer bytes.Buffer
+		urlbuffer.WriteString("http://")
+		urlbuffer.WriteString(regip)
+		urlbuffer.WriteString("/v2/")
+		urlbuffer.WriteString(tp + "USRADDR" + usrname + "REPONAME" + reponame)
+		urlbuffer.WriteString("/blobs/sha256:")
+	
+		newdgststring := strings.SplitN(dgststring, "sha256:", 2)[1]
+		urlbuffer.WriteString(newdgststring)
+	
+		url := urlbuffer.String()
+		url = strings.ToLower(url)
+		context.GetLogger(ctx).Debugf("NANNAN: notifyPeerPreconstructLayer URL %s", url)
+	
+		//let's skip head request
+		req, err := http.NewRequest("GET", url, nil)
+		if err != nil {
+			context.GetLogger(ctx).Errorf("NANNAN: notifyPeerPreconstructLayer GET URL %s, err %s", url, err)
+			return false
+		}
+	
+		client := &http.Client{}
+		resp, err := client.Do(req)
+		if err != nil {
+			context.GetLogger(ctx).Errorf("NANNAN: notifyPeerPreconstructLayer Do GET URL %s, err %s", url, err)
+			return false
+		}
+		context.GetLogger(ctx).Debugf("NANNAN: notifyPeerPreconstructLayer %s returned status code %d", regip, resp.StatusCode)
+		if resp.StatusCode < 200 || resp.StatusCode > 299 {
+			return false //errors.New("notifyPeerPreconstructLayer to other servers, failed")
+		}
 	}
 	return true
 }
