@@ -852,12 +852,12 @@ LZ4HC_CLEVEL_MAX        12
 
 func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *http.Request, dgst digest.Digest) error {
 
-	start := time.Now()
+	//start := time.Now()
 	_desc, err := bs.statter.Stat(ctx, dgst)
 	if err != nil {
 		return err
 	}
-//	DurationML := time.Since(start).Seconds() // bs.driver.Stat
+	//	DurationML := time.Since(start).Seconds() // bs.driver.Stat
 
 	reqtype := context.GetType(ctx)
 	reponame := context.GetRepoName(ctx)
@@ -869,16 +869,16 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 
 		go bs.Preconstructlayers(ctx, bs.reg) // **** prefetch layers ******
 
-		DurationNTT, err := bs.serveManifest(ctx, _desc, w, r)
+		_, err = bs.serveManifest(ctx, _desc, w, r)
 		if err != nil {
 			return err
 		}
-		context.GetLogger(ctx).Debugf("NANNAN: manifest: metadata lookup time: %v, manifest transfer time: %v, manifest compressed size: %v",
-			DurationML, DurationNTT, _desc.Size)
+		//context.GetLogger(ctx).Debugf("NANNAN: manifest: metadata lookup time: %v, manifest transfer time: %v, manifest compressed size: %v",
+		//	DurationML, DurationNTT, _desc.Size)
 		return nil
 	}
 
-	var tp string
+	//var tp string
 	cachehit := false
 	//	stagehit := false
 	//	waitingconstruct := false
@@ -886,26 +886,26 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 	var bytesreader *bytes.Reader
 	var bss []byte
 	//var ok bool = false
-//	var size int64 = 0
-//	var Uncompressedsize int64 = 0
-//	DurationML = 0.0
-//	DurationMAC := 0.0
-//	DurationLCT := 0.0
-//	DurationSCT := 0.0
-//	DurationNTT := 0.0
-//	compressratio := 0.0
+	//	var size int64 = 0
+	//	var Uncompressedsize int64 = 0
+	//	DurationML = 0.0
+	//	DurationMAC := 0.0
+	//	DurationLCT := 0.0
+	//	DurationSCT := 0.0
+	//	DurationNTT := 0.0
+	//	compressratio := 0.0
 	//ok = false
 
 	if reqtype == "LAYER" || reqtype == "PRECONSTRUCTLAYER" {
 		// *** check cache ******
-		bss, ok = bs.reg.blobcache.GetLayer(dgst.String())
+		bss, ok := bs.reg.blobcache.GetLayer(dgst.String())
 		if ok {
 			cachehit = true
 			if reqtype == "LAYER" {
 				context.GetLogger(ctx).Debug("NANNAN: layer cache hit!")
 				bytesreader = bytes.NewReader(bss)
-//				DurationMAC = time.Since(start).Seconds()
-//				size = bytesreader.Size()
+				//				DurationMAC = time.Since(start).Seconds()
+				//				size = bytesreader.Size()
 			} else {
 				bytesreader = bytes.NewReader([]byte("gotta!"))
 			}
@@ -913,16 +913,16 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 			if err != nil {
 				return err
 			}
-	
+
 			goto out
-			
+
 		} else {
 			if reqtype == "LAYER" {
 				_, err := bs.serveManifest(ctx, _desc, w, r)
 				if err != nil {
 					return err
 				}
-			}else{
+			} else {
 				bytesreader = bytes.NewReader([]byte("gotta!"))
 				_, err = bs.TransferBlob(ctx, w, r, _desc, bytesreader)
 				if err != nil {
@@ -991,9 +991,7 @@ out:
 	}(reqtype, bs)
 
 	go func(ctx context.Context, cachehit bool, bs *blobServer,
-		reqtype, //tp string,
-//		DurationML, DurationMAC, DurationLCT, DurationSCT, DurationNTT, compressratio float64,
-//		Uncompressedsize, size int64,
+		reqtype string,
 		dgst digest.Digest) {
 		if cachehit {
 			return
@@ -1006,13 +1004,11 @@ out:
 				bs.reg.blobcache.SetLayer(dgst.String(), bss) //, constructtype)
 
 			} //else if reqtype == "SLICE" || reqtype == "PRECONSTRUCTSLICE" {
-			
+
 		}
-			return //nil
+		return //nil
 	}(ctx, cachehit, bs,
-		reqtype, //tp,
-//		DurationML, DurationMAC, DurationLCT, DurationSCT, DurationNTT, compressratio,
-//		Uncompressedsize, size,
+		reqtype,
 		dgst)
 
 	return nil

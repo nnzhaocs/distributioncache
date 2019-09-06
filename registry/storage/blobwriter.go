@@ -15,7 +15,7 @@ import (
 	"github.com/docker/distribution/context"
 	storagedriver "github.com/docker/distribution/registry/storage/driver"
 	"github.com/docker/distribution/version"
-	"github.com/klauspost/pgzip"
+	//"github.com/klauspost/pgzip"
 	"github.com/panjf2000/ants"
 	//NANNAN
 	"os"
@@ -23,8 +23,8 @@ import (
 	"sync"
 
 	"github.com/docker/distribution/registry/storage/cache"
-	"github.com/docker/docker/pkg/archive"
-	"github.com/docker/docker/pkg/idtools"
+	//"github.com/docker/docker/pkg/archive"
+	//"github.com/docker/docker/pkg/idtools"
 	//"path/filepath"
 	//	"github.com/serialx/hashring"
 	"bytes"
@@ -425,6 +425,27 @@ func (bw *blobWriter) Dedup(
 	reqtype, reponame, usrname string,
 	desc distribution.Descriptor) error {
 
+	blobPath, err := PathFor(BlobDataPathSpec{
+		Digest: desc.Digest,
+	})
+
+	layerPath := path.Join("/var/lib/registry", blobPath)
+	lfile, err := os.Open(layerPath)
+	if err != nil {
+		fmt.Printf("NANNAN: cannot open layer file =>%s\n", layerPath)
+		return err
+
+	}
+	defer lfile.Close()
+
+	stat, err := lfile.Stat()
+	if err != nil {
+		fmt.Printf("NANNAN: cannot get size of layer file :=>%s\n", layerPath)
+		return err
+
+	}
+
+	comressSize := stat.Size()
 
 	ctx := context.WithVersion(context.Background(), version.Version)
 
