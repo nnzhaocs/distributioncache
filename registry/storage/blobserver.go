@@ -480,58 +480,64 @@ PRECONSTRUCTLAYER
 func (bs *blobServer) notifyPeerPreconstructLayer(ctx context.Context, dgst digest.Digest, wg *sync.WaitGroup) bool {
 
 	defer wg.Done()
-	tp := "TYPEPRECONSTRUCTLAYER"
-
-	dgststring := dgst.String()
-	var regipbuffer bytes.Buffer
-	reponame := context.GetRepoName(ctx)
-	usrname := context.GetUsrAddr(ctx)
 
 	desc, err := bs.reg.metadataService.StatLayerRecipe(ctx, dgst)
 	if err != nil {
 		context.GetLogger(ctx).Warnf("NANNAN: COULDN'T FIND LAYER RECIPE: %v or Empty layer for dgst", err, dgst)
 		return false
 	}
-	
-	for _, regip := range desc.HostServerIps{
 
-		regipbuffer.WriteString(regip)
-//		regipbuffer.WriteString(":5000")
-		regip = regipbuffer.String()
-		context.GetLogger(ctx).Debugf("NANNAN: notifyPeerPreconstructLayer for %s, dgst: %s", regip, dgststring)
-	
-		//GET /v2/<name>/blobs/<digest>
-		var urlbuffer bytes.Buffer
-		urlbuffer.WriteString("http://")
-		urlbuffer.WriteString(regip)
-		urlbuffer.WriteString("/v2/")
-		urlbuffer.WriteString(tp + "USRADDR" + usrname + "REPONAME" + reponame)
-		urlbuffer.WriteString("/blobs/sha256:")
-	
-		newdgststring := strings.SplitN(dgststring, "sha256:", 2)[1]
-		urlbuffer.WriteString(newdgststring)
-	
-		url := urlbuffer.String()
-		url = strings.ToLower(url)
-		context.GetLogger(ctx).Debugf("NANNAN: notifyPeerPreconstructLayer URL %s", url)
-	
-		//let's skip head request
-		req, err := http.NewRequest("GET", url, nil)
-		if err != nil {
-			context.GetLogger(ctx).Errorf("NANNAN: notifyPeerPreconstructLayer GET URL %s, err %s", url, err)
-			return false
-		}
-	
-		client := &http.Client{}
-		resp, err := client.Do(req)
-		if err != nil {
-			context.GetLogger(ctx).Errorf("NANNAN: notifyPeerPreconstructLayer Do GET URL %s, err %s", url, err)
-			return false
-		}
-		context.GetLogger(ctx).Debugf("NANNAN: notifyPeerPreconstructLayer %s returned status code %d", regip, resp.StatusCode)
-		if resp.StatusCode < 200 || resp.StatusCode > 299 {
-			return false //errors.New("notifyPeerPreconstructLayer to other servers, failed")
-		}
+	for _, regip := range desc.HostServerIps {
+
+		go func(regip string, ctx context.Context, dgst digest.Digest, wg *sync.WaitGroup) {
+			tp := "TYPEPRECONSTRUCTLAYER"
+
+			dgststring := dgst.String()
+			var regipbuffer bytes.Buffer
+			reponame := context.GetRepoName(ctx)
+			usrname := context.GetUsrAddr(ctx)
+
+			regipbuffer.WriteString(regip)
+			//		regipbuffer.WriteString(":5000")
+			regip = regipbuffer.String()
+			context.GetLogger(ctx).Debugf("NANNAN: notifyPeerPreconstructLayer for %s, dgst: %s", regip, dgststring)
+
+			//GET /v2/<name>/blobs/<digest>
+			var urlbuffer bytes.Buffer
+			urlbuffer.WriteString("http://")
+			urlbuffer.WriteString(regip)
+			urlbuffer.WriteString("/v2/")
+			urlbuffer.WriteString(tp + "USRADDR" + usrname + "REPONAME" + reponame)
+			urlbuffer.WriteString("/blobs/sha256:")
+
+			newdgststring := strings.SplitN(dgststring, "sha256:", 2)[1]
+			urlbuffer.WriteString(newdgststring)
+
+			url := urlbuffer.String()
+			url = strings.ToLower(url)
+			context.GetLogger(ctx).Debugf("NANNAN: notifyPeerPreconstructLayer URL %s", url)
+
+			//let's skip head request
+			req, err := http.NewRequest("GET", url, nil)
+			if err != nil {
+				context.GetLogger(ctx).Errorf("NANNAN: notifyPeerPreconstructLayer GET URL %s, err %s", url, err)
+				return //false
+			}
+
+			client := &http.Client{}
+			resp, err := client.Do(req)
+			if err != nil {
+				context.GetLogger(ctx).Errorf("NANNAN: notifyPeerPreconstructLayer Do GET URL %s, err %s", url, err)
+				return //false
+			}
+			context.GetLogger(ctx).Debugf("NANNAN: notifyPeerPreconstructLayer %s returned status code %d", regip, resp.StatusCode)
+			if resp.StatusCode < 200 || resp.StatusCode > 299 {
+				return //false //errors.New("notifyPeerPreconstructLayer to other servers, failed")
+			}
+			return
+
+		}(regip, ctx, dgst, wg)
+		//return true
 	}
 	return true
 }
@@ -878,10 +884,10 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 	var tp string
 	tp = ""
 
-	if reqtype == "LAYER" || reqtype == "PRECONSTRUCTLAYER" || reqtype == "MANIFEST"{
-		
+	if reqtype == "LAYER" || reqtype == "PRECONSTRUCTLAYER" || reqtype == "MANIFEST" {
+
 		rsbufval, ok := bs.reg.restoringlayermap.Load(dgst.String())
-		if ok{
+		if ok {
 			if rsbuf, ok := rsbufval.(*Restoringbuffer); ok {
 				rsbuf.wg.Add(1)
 
@@ -895,7 +901,7 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 				bytesreader = bytes.NewReader(bss)
 
 				goto out
-			}else{
+			} else {
 				context.GetLogger(ctx).Debugf("NANNAN: ServeBlob: bs.reg.restoringslicermap.LoadOrStore wrong digest: %v", dgst.String())
 			}
 		}
@@ -904,10 +910,10 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 		if ok {
 			cachehit = true
 			if reqtype == "LAYER" || reqtype == "MANIFEST" {
-				if reqtype == "LAYER"{
+				if reqtype == "LAYER" {
 					context.GetLogger(ctx).Debug("NANNAN: layer cache hit!")
 				}
-				
+
 				bytesreader = bytes.NewReader(bss)
 			} else {
 				bytesreader = bytes.NewReader([]byte("gotta!"))
@@ -915,54 +921,54 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 
 			goto out
 
-		} else {		
-				//********* if its loading ************
-				var wg sync.WaitGroup
-				var comprssbuf bytes.Buffer
-				rbuf := &Restoringbuffer{
-					bufp: &comprssbuf,
-					wg:   &wg,
-				}
-				rsbufval, ok := bs.reg.restoringlayermap.LoadOrStore(dgst.String(), rbuf)
-				if ok{
-					if rsbuf, ok := rsbufval.(*Restoringbuffer); ok {
-						rsbuf.wg.Add(1)
-						context.GetLogger(ctx).Debugf("NANNAN: layer construct waiting for digest: %v", dgst.String())
-						rsbuf.Lock()
-						rsbuf.Unlock()
-						
-						bss = rsbuf.bufp.Bytes()
-						bytesreader = bytes.NewReader(bss)
-						
-					}else{
-						context.GetLogger(ctx).Debugf("NANNAN: bs.reg.restoringslicermap.LoadOrStore wrong digest: %v", dgst.String())
-					}
-				}else{
-					rbuf.wg.Add(1)
-					rbuf.Lock()
-					tp = "LAYERCONSTRUCT"
-					blobPath, err := bs.pathFn(_desc.Digest)
-
-					layerPath := path.Join("/var/lib/registry", blobPath)
-					bss, err = ioutil.ReadFile(layerPath)
-					if err != nil {
-						fmt.Printf("NANNAN: cannot open layer file =>%s\n", layerPath)
-						return err
-					}
-					
-					rbuf.bufp = bytes.NewBuffer(bss)
-					rbuf.Unlock()
-					
-					if reqtype == "LAYER" || reqtype == "MANIFEST"{
-					
-						bytesreader = bytes.NewReader(bss)
-					} else {
-						bytesreader = bytes.NewReader([]byte("gotta!"))
-					}
-				}
-				
+		} else {
+			//********* if its loading ************
+			var wg sync.WaitGroup
+			var comprssbuf bytes.Buffer
+			rbuf := &Restoringbuffer{
+				bufp: &comprssbuf,
+				wg:   &wg,
 			}
-			goto out
+			rsbufval, ok := bs.reg.restoringlayermap.LoadOrStore(dgst.String(), rbuf)
+			if ok {
+				if rsbuf, ok := rsbufval.(*Restoringbuffer); ok {
+					rsbuf.wg.Add(1)
+					context.GetLogger(ctx).Debugf("NANNAN: layer construct waiting for digest: %v", dgst.String())
+					rsbuf.Lock()
+					rsbuf.Unlock()
+
+					bss = rsbuf.bufp.Bytes()
+					bytesreader = bytes.NewReader(bss)
+
+				} else {
+					context.GetLogger(ctx).Debugf("NANNAN: bs.reg.restoringslicermap.LoadOrStore wrong digest: %v", dgst.String())
+				}
+			} else {
+				rbuf.wg.Add(1)
+				rbuf.Lock()
+				tp = "LAYERCONSTRUCT"
+				blobPath, err := bs.pathFn(_desc.Digest)
+
+				layerPath := path.Join("/var/lib/registry", blobPath)
+				bss, err = ioutil.ReadFile(layerPath)
+				if err != nil {
+					fmt.Printf("NANNAN: cannot open layer file =>%s\n", layerPath)
+					return err
+				}
+
+				rbuf.bufp = bytes.NewBuffer(bss)
+				rbuf.Unlock()
+
+				if reqtype == "LAYER" || reqtype == "MANIFEST" {
+
+					bytesreader = bytes.NewReader(bss)
+				} else {
+					bytesreader = bytes.NewReader([]byte("gotta!"))
+				}
+			}
+
+		}
+		goto out
 	}
 
 out:
@@ -1031,8 +1037,8 @@ out:
 				if reqtype == "LAYER" {
 					context.GetLogger(ctx).Debug("NANNAN: layer cache miss!")
 				}
-				
-				bs.reg.blobcache.SetLayer(dgst.String(), bss) 
+
+				bs.reg.blobcache.SetLayer(dgst.String(), bss)
 				rsbufval, ok := bs.reg.restoringlayermap.Load(dgst.String())
 				if ok {
 					if rsbuf, ok := rsbufval.(*Restoringbuffer); ok {
@@ -1044,9 +1050,9 @@ out:
 							bs.reg.restoringlayermap.Delete(dgst.String())
 						}
 					}
-				
+
 				}
-			} 
+			}
 
 		}
 		return //nil
