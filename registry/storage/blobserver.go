@@ -496,7 +496,7 @@ func (bs *blobServer) notifyPeerPreconstructLayer(ctx context.Context, dgst dige
 	for _, regip := range desc.HostServerIps{
 
 		regipbuffer.WriteString(regip)
-		regipbuffer.WriteString(":5000")
+//		regipbuffer.WriteString(":5000")
 		regip = regipbuffer.String()
 		context.GetLogger(ctx).Debugf("NANNAN: notifyPeerPreconstructLayer for %s, dgst: %s", regip, dgststring)
 	
