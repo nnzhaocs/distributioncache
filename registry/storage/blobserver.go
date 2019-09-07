@@ -883,24 +883,24 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 		rsbufval, ok := bs.reg.restoringlayermap.Load(dgst.String())
 		if ok{
 			if rsbuf, ok := rsbufval.(*Restoringbuffer); ok {
-					rsbuf.wg.Add(1)
-	
-					context.GetLogger(ctx).Debugf("NANNAN: ServeBlob: layer construct waiting for digest: %v", dgst.String())
-					rsbuf.Lock()
-					//	rsbuf.cnd.Wait()
-					rsbuf.Unlock()
-	
-					bss = rsbuf.bufp.Bytes()
-	
-					bytesreader = bytes.NewReader(bss)
+				rsbuf.wg.Add(1)
 
-					goto out
+				context.GetLogger(ctx).Debugf("NANNAN: ServeBlob: layer construct waiting for digest: %v", dgst.String())
+				rsbuf.Lock()
+				//	rsbuf.cnd.Wait()
+				rsbuf.Unlock()
+
+				bss = rsbuf.bufp.Bytes()
+
+				bytesreader = bytes.NewReader(bss)
+
+				goto out
 			}else{
 				context.GetLogger(ctx).Debugf("NANNAN: ServeBlob: bs.reg.restoringslicermap.LoadOrStore wrong digest: %v", dgst.String())
 			}
 		}
 		// *** check cache ******
-		bss, ok := bs.reg.blobcache.GetLayer(dgst.String())
+		bss, ok = bs.reg.blobcache.GetLayer(dgst.String())
 		if ok {
 			cachehit = true
 			if reqtype == "LAYER" || reqtype == "MANIFEST" {
@@ -962,7 +962,6 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 				}
 				
 			}
-			
 			goto out
 	}
 
