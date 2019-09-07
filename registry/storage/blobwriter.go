@@ -425,6 +425,15 @@ func (bw *blobWriter) Dedup(
 	reqtype, reponame, usrname string,
 	desc distribution.Descriptor) error {
 
+	fmt.Printf("NANNAN: Dedup: request type: %s, for repo (%s) and usr (%s) with dgst (%s)\n", reqtype, reponame, usrname, desc.Digest.String())
+		
+	if reqtype == "MANIFEST" {
+		fmt.Printf("NANNAN: THIS IS A MANIFEST REQUEST, no need to deduplication \n")
+		//put manifest
+		//skip update
+		return nil
+	}
+
 	blobPath, err := PathFor(BlobDataPathSpec{
 		Digest: desc.Digest,
 	})
@@ -442,7 +451,6 @@ func (bw *blobWriter) Dedup(
 	if err != nil {
 		fmt.Printf("NANNAN: cannot get size of layer file :=>%s\n", layerPath)
 		return err
-
 	}
 
 	comressSize := stat.Size()
