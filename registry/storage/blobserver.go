@@ -881,12 +881,12 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 
 	var bytesreader *bytes.Reader
 	var bss []byte
-	var tp string
-	tp = ""
-
+	//var tp string
+	//tp = ""
+	ok := false
 	if reqtype == "LAYER" || reqtype == "PRECONSTRUCTLAYER" || reqtype == "MANIFEST" {
 
-	// *** check cache ******
+		// *** check cache ******
 		bss, ok = bs.reg.blobcache.GetLayer(dgst.String())
 		if ok {
 			cachehit = true
@@ -904,24 +904,24 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 
 		} else {
 
-				blobPath, err := bs.pathFn(_desc.Digest)
+			blobPath, err := bs.pathFn(_desc.Digest)
 
-				layerPath := path.Join("/var/lib/registry", blobPath)
-				bss, err = ioutil.ReadFile(layerPath)
-				if err != nil {
-					fmt.Printf("NANNAN: cannot open layer file =>%s\n", layerPath)
-					return err
-				}
+			layerPath := path.Join("/var/lib/registry", blobPath)
+			bss, err = ioutil.ReadFile(layerPath)
+			if err != nil {
+				fmt.Printf("NANNAN: cannot open layer file =>%s\n", layerPath)
+				return err
+			}
 
-				rbuf.bufp = bytes.NewBuffer(bss)
-				rbuf.Unlock()
+			//rbuf.bufp = bytes.NewBuffer(bss)
+			//rbuf.Unlock()
 
-				if reqtype == "LAYER" || reqtype == "MANIFEST" {
+			if reqtype == "LAYER" || reqtype == "MANIFEST" {
 
-					bytesreader = bytes.NewReader(bss)
-				} else {
-					bytesreader = bytes.NewReader([]byte("gotta!"))
-				}
+				bytesreader = bytes.NewReader(bss)
+			} else {
+				bytesreader = bytes.NewReader([]byte("gotta!"))
+			}
 		}
 		goto out
 	}
@@ -993,10 +993,10 @@ out:
 					context.GetLogger(ctx).Debug("NANNAN: layer cache miss!")
 				}
 
-				bs.reg.blobcache.SetLayer(dgst.String(), bss)	
+				bs.reg.blobcache.SetLayer(dgst.String(), bss)
 			}
 		}
-		return 
+		return
 	}(ctx, cachehit, bs,
 		reqtype,
 		dgst)
