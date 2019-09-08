@@ -54,25 +54,25 @@ func (cache *BlobCache) SetCapTTL(fileCacheCap, layerCacheCap, sliceCacheCap, tt
 }
 
 func (cache *BlobCache) Init() error {
-	var memcap float32
-	if Stype == "B" {
-		memcap = FfileCacheCap * 1.2
-	} else {
-		memcap = float32(FileCacheCap) / 1024 / 1024 * 1.2
-	}
-	config := bigcache.Config{
-		Shards:           2,
-		LifeWindow:       3600 * time.Minute,
-		Verbose:          true,
-		HardMaxCacheSize: int(memcap),
-		OnRemove:         nil,
-	}
-	MemCache, err := bigcache.NewBigCache(config)
-	if err != nil {
-		fmt.Printf("NANNAN: cannot create BlobCache: %s \n", err)
-		return err
-	}
-	cache.MemCache = MemCache
+//	var memcap float32
+//	if Stype == "B" {
+//		memcap = FfileCacheCap * 1.2
+//	} else {
+//		memcap = float32(FileCacheCap) / 1024 / 1024 * 1.2
+//	}
+//	config := bigcache.Config{
+//		Shards:           2,
+//		LifeWindow:       3600 * time.Minute,
+//		Verbose:          true,
+//		HardMaxCacheSize: int(memcap),
+//		OnRemove:         nil,
+//	}
+//	MemCache, err := bigcache.NewBigCache(config)
+//	if err != nil {
+//		fmt.Printf("NANNAN: cannot create BlobCache: %s \n", err)
+//		return err
+//	}
+//	cache.MemCache = MemCache
 
 	pth := "/var/lib/registry/docker/registry/v2/diskcache/"
 	err = os.MkdirAll(pth, 0777)
