@@ -886,26 +886,7 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 
 	if reqtype == "LAYER" || reqtype == "PRECONSTRUCTLAYER" || reqtype == "MANIFEST" {
 
-		rsbufval, ok := bs.reg.restoringlayermap.Load(dgst.String())
-		if ok {
-			if rsbuf, ok := rsbufval.(*Restoringbuffer); ok {
-				rsbuf.wg.Add(1)
-
-				context.GetLogger(ctx).Debugf("NANNAN: ServeBlob: layer construct waiting for digest: %v", dgst.String())
-				rsbuf.Lock()
-				//	rsbuf.cnd.Wait()
-				rsbuf.Unlock()
-
-				bss = rsbuf.bufp.Bytes()
-
-				bytesreader = bytes.NewReader(bss)
-
-				goto out
-			} else {
-				context.GetLogger(ctx).Debugf("NANNAN: ServeBlob: bs.reg.restoringslicermap.LoadOrStore wrong digest: %v", dgst.String())
-			}
-		}
-		// *** check cache ******
+	// *** check cache ******
 		bss, ok = bs.reg.blobcache.GetLayer(dgst.String())
 		if ok {
 			cachehit = true
@@ -922,31 +903,7 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 			goto out
 
 		} else {
-			//********* if its loading ************
-			var wg sync.WaitGroup
-			var comprssbuf bytes.Buffer
-			rbuf := &Restoringbuffer{
-				bufp: &comprssbuf,
-				wg:   &wg,
-			}
-			rsbufval, ok := bs.reg.restoringlayermap.LoadOrStore(dgst.String(), rbuf)
-			if ok {
-				if rsbuf, ok := rsbufval.(*Restoringbuffer); ok {
-					rsbuf.wg.Add(1)
-					context.GetLogger(ctx).Debugf("NANNAN: layer construct waiting for digest: %v", dgst.String())
-					rsbuf.Lock()
-					rsbuf.Unlock()
 
-					bss = rsbuf.bufp.Bytes()
-					bytesreader = bytes.NewReader(bss)
-
-				} else {
-					context.GetLogger(ctx).Debugf("NANNAN: bs.reg.restoringslicermap.LoadOrStore wrong digest: %v", dgst.String())
-				}
-			} else {
-				rbuf.wg.Add(1)
-				rbuf.Lock()
-				tp = "LAYERCONSTRUCT"
 				blobPath, err := bs.pathFn(_desc.Digest)
 
 				layerPath := path.Join("/var/lib/registry", blobPath)
@@ -965,8 +922,6 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 				} else {
 					bytesreader = bytes.NewReader([]byte("gotta!"))
 				}
-			}
-
 		}
 		goto out
 	}
@@ -1038,24 +993,10 @@ out:
 					context.GetLogger(ctx).Debug("NANNAN: layer cache miss!")
 				}
 
-				bs.reg.blobcache.SetLayer(dgst.String(), bss)
-				rsbufval, ok := bs.reg.restoringlayermap.Load(dgst.String())
-				if ok {
-					if rsbuf, ok := rsbufval.(*Restoringbuffer); ok {
-						rsbuf.wg.Done()
-						if "LAYERCONSTRUCT" == tp {
-							time.Sleep(1 * time.Second)
-							rsbuf.wg.Wait()
-							context.GetLogger(ctx).Debugf("NANNAN: ServeBlob layer construct finish waiting for all threads with digest: %v", dgst.String())
-							bs.reg.restoringlayermap.Delete(dgst.String())
-						}
-					}
-
-				}
+				bs.reg.blobcache.SetLayer(dgst.String(), bss)	
 			}
-
 		}
-		return //nil
+		return 
 	}(ctx, cachehit, bs,
 		reqtype,
 		dgst)
