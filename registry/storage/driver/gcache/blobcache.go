@@ -60,6 +60,7 @@ func (cache *BlobCache) Init() error {
 	} else {
 		memcap = float32(FileCacheCap) / 1024 / 1024 * 1.2
 	}
+//<<<<<<< HEAD
 	config := bigcache.Config{
 		Shards:           2,
 		LifeWindow:       3600 * time.Minute,
@@ -73,9 +74,24 @@ func (cache *BlobCache) Init() error {
 		return err
 	}
 	cache.MemCache = MemCache
+//=======
+//	//	config := bigcache.Config{
+//	//		Shards:           2,
+//	//		LifeWindow:       3600 * time.Minute,
+//	//		Verbose:          true,
+//	//		HardMaxCacheSize: int(memcap),
+//	//		OnRemove:         nil,
+//	//	}
+//	//	MemCache, err := bigcache.NewBigCache(config)
+//	//	if err != nil {
+//	//		fmt.Printf("NANNAN: cannot create BlobCache: %s \n", err)
+//	//		return err
+//	//	}
+//	//	cache.MemCache = MemCache
+//>>>>>>> ea9164c9e87c00c28e438b3a4b86ab1c0992f3e0
 
 	pth := "/var/lib/registry/docker/registry/v2/diskcache/"
-	err = os.MkdirAll(pth, 0777)
+	err := os.MkdirAll(pth, 0777)
 	if err != nil {
 		fmt.Printf("NANNAN: cannot create DiskCache: %s \n", err)
 		return err
@@ -93,7 +109,7 @@ func (cache *BlobCache) Init() error {
 		int(memcap))
 
 	FileLST := New(FileCacheCap).ARC().EvictedFunc(func(key, value interface{}) {
-//		fmt.Println("NANNAN: evicted key:", key)
+		//		fmt.Println("NANNAN: evicted key:", key)
 		if k, ok := key.(string); ok {
 			cache.MemCache.Delete(k)
 		}
@@ -108,7 +124,7 @@ func (cache *BlobCache) Init() error {
 		if k, ok := key.(string); ok {
 			cache.DiskCache.Erase(k)
 		}
-//		fmt.Println("NANNAN: evicted key:", key)
+		//		fmt.Println("NANNAN: evicted key:", key)
 	}).
 		Expiration(DefaultTTL * 1).
 		Build()
@@ -119,7 +135,7 @@ func (cache *BlobCache) Init() error {
 		if k, ok := key.(string); ok {
 			cache.DiskCache.Erase(k)
 		}
-//		fmt.Println("NANNAN: evicted key:", key)
+		//		fmt.Println("NANNAN: evicted key:", key)
 	}).
 		Expiration(DefaultTTL * 2).
 		Build()
@@ -160,7 +176,7 @@ func (cache *BlobCache) SetLayer(dgst string, bss []byte) bool {
 	}
 
 	if ok := cache.DiskCache.Has(key); ok {
-//		fmt.Printf("NANNAN: BlobCache SetLayer DiskCache set dgst %s size: %v\n", dgst, size)
+		//		fmt.Printf("NANNAN: BlobCache SetLayer DiskCache set dgst %s size: %v\n", dgst, size)
 		return true
 	}
 
@@ -168,7 +184,7 @@ func (cache *BlobCache) SetLayer(dgst string, bss []byte) bool {
 		//		fmt.Printf("NANNAN: BlobCache SetLayer DiskCache cannot set dgst %s: %v\n", dgst, err)
 		return false
 	}
-//	fmt.Printf("NANNAN: BlobCache SetLayer set dgst %s size: %v, LayerLST, cache size: %v\n", dgst, size, cache.LayerLST.Size(false))
+	//	fmt.Printf("NANNAN: BlobCache SetLayer set dgst %s size: %v, LayerLST, cache size: %v\n", dgst, size, cache.LayerLST.Size(false))
 	return true
 }
 
@@ -180,7 +196,7 @@ func (cache *BlobCache) SetPUTLayer(dgst string, size int64, bpath string) bool 
 		return false
 	}
 
-//	fmt.Printf("NANNAN: BlobCache SetPUTLayer set dgst %s size: %v, StageLST, cache size: %v\n", dgst, size, cache.StageLST.Len(false))
+	//	fmt.Printf("NANNAN: BlobCache SetPUTLayer set dgst %s size: %v, StageLST, cache size: %v\n", dgst, size, cache.StageLST.Len(false))
 
 	return true
 }
@@ -208,7 +224,7 @@ func (cache *BlobCache) RemovePUTLayer(dgst string, move_tocache bool) bool {
 				return false
 			} else {
 				//promote to cache and remove it
-//				fmt.Printf("NANNAN: BlobCache RemovePUTLayer dgst %s, StageLST, cache size: %v \n", dgst, cache.StageLST.Len(false))
+				//				fmt.Printf("NANNAN: BlobCache RemovePUTLayer dgst %s, StageLST, cache size: %v \n", dgst, cache.StageLST.Len(false))
 				if err := cache.LayerLST.Set(key, len(bss)); err != nil {
 					//					fmt.Printf("NANNAN: BlobCache RemovePUTLayer LayerLST cannot set dgst %s: %v\n", dgst, err)
 					return false
@@ -219,7 +235,7 @@ func (cache *BlobCache) RemovePUTLayer(dgst string, move_tocache bool) bool {
 		}
 	}
 
-//	fmt.Printf("NANNAN: BlobCache RemovePUTLayer remove dgst %s, StageLST, cache size: %v \n", dgst, cache.StageLST.Len(false))
+	//	fmt.Printf("NANNAN: BlobCache RemovePUTLayer remove dgst %s, StageLST, cache size: %v \n", dgst, cache.StageLST.Len(false))
 
 	return true
 }
@@ -256,7 +272,7 @@ func (cache *BlobCache) GetLayer(dgst string) ([]byte, bool) {
 	}
 
 	if bss, err := cache.DiskCache.Read(key); err == nil {
-//		fmt.Printf("NANNAN: BlobCache GetLayer LayerLST dgst %s, cache size: %v \n", dgst, cache.LayerLST.Size(false))
+		//		fmt.Printf("NANNAN: BlobCache GetLayer LayerLST dgst %s, cache size: %v \n", dgst, cache.LayerLST.Size(false))
 		return bss, true
 	} else {
 		//		fmt.Printf("NANNAN: BlobCache GetLayer DiskCache cannot get dgst %s: %v\n", dgst, err)
@@ -274,7 +290,7 @@ func (cache *BlobCache) SetSlice(dgst string, bss []byte) bool {
 	}
 
 	if ok := cache.DiskCache.Has(key); ok {
-//		fmt.Printf("NANNAN: BlobCache SetSlice DiskCache set dgst %s size: %v\n", dgst, size)
+		//		fmt.Printf("NANNAN: BlobCache SetSlice DiskCache set dgst %s size: %v\n", dgst, size)
 		return true
 	}
 
@@ -283,7 +299,7 @@ func (cache *BlobCache) SetSlice(dgst string, bss []byte) bool {
 		return false
 	}
 
-//	fmt.Printf("NANNAN: BlobCache SetSlice set dgst %s size: %v\n", dgst, size)
+	//	fmt.Printf("NANNAN: BlobCache SetSlice set dgst %s size: %v\n", dgst, size)
 
 	return true
 }
