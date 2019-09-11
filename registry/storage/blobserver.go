@@ -887,7 +887,8 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 	if reqtype == "LAYER" || reqtype == "PRECONSTRUCTLAYER" || reqtype == "MANIFEST" {
 
 	// *** check cache ******
-		bss, ok = bs.reg.blobcache.GetLayer(dgst.String())
+		
+		bss, ok = bs.reg.blobcache.GetFile(dgst.String())
 		if ok {
 			cachehit = true
 			if reqtype == "LAYER" || reqtype == "MANIFEST" {
@@ -993,7 +994,7 @@ out:
 					context.GetLogger(ctx).Debug("NANNAN: layer cache miss!")
 				}
 
-				bs.reg.blobcache.SetLayer(dgst.String(), bss)	
+				bs.reg.blobcache.SetFile(dgst.String(), bss)	
 			}
 		}
 		return 

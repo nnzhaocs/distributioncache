@@ -454,6 +454,12 @@ func (bw *blobWriter) Dedup(
 	}
 
 	comressSize := stat.Size()
+	
+	bss, err = ioutil.ReadFile(layerPath)
+	if err != nil {
+		fmt.Printf("NANNAN: cannot open layer file =>%s\n", layerPath)
+		return err
+	}
 
 	ctx := context.WithVersion(context.Background(), version.Version)
 
@@ -461,7 +467,7 @@ func (bw *blobWriter) Dedup(
 		// first store in cache *****
 		//skip warmuplayers
 		// put this layer into cache ******
-		bw.blobStore.registry.blobcache.SetPUTLayer(desc.Digest.String(), comressSize, layerPath)
+		bw.blobStore.registry.blobcache.SetFile(desc.Digest.String(), bss)
 		
 		if "LAYER" == reqtype{
 
