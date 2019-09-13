@@ -60,9 +60,9 @@ func (cache *BlobCache) Init() error {
 	} else {
 		memcap = float32(FileCacheCap) / 1024 / 1024 * 1.2
 	}
-//<<<<<<< HEAD
+	//<<<<<<< HEAD
 	config := bigcache.Config{
-		Shards:           2,
+		Shards:           1,
 		LifeWindow:       3600 * time.Minute,
 		Verbose:          true,
 		HardMaxCacheSize: int(memcap),
@@ -74,24 +74,9 @@ func (cache *BlobCache) Init() error {
 		return err
 	}
 	cache.MemCache = MemCache
-//=======
-//	//	config := bigcache.Config{
-//	//		Shards:           2,
-//	//		LifeWindow:       3600 * time.Minute,
-//	//		Verbose:          true,
-//	//		HardMaxCacheSize: int(memcap),
-//	//		OnRemove:         nil,
-//	//	}
-//	//	MemCache, err := bigcache.NewBigCache(config)
-//	//	if err != nil {
-//	//		fmt.Printf("NANNAN: cannot create BlobCache: %s \n", err)
-//	//		return err
-//	//	}
-//	//	cache.MemCache = MemCache
-//>>>>>>> ea9164c9e87c00c28e438b3a4b86ab1c0992f3e0
 
 	pth := "/var/lib/registry/docker/registry/v2/diskcache/"
-	err := os.MkdirAll(pth, 0777)
+	err = os.MkdirAll(pth, 0777)
 	if err != nil {
 		fmt.Printf("NANNAN: cannot create DiskCache: %s \n", err)
 		return err

@@ -426,7 +426,7 @@ func (bw *blobWriter) Dedup(
 	desc distribution.Descriptor) error {
 
 	fmt.Printf("NANNAN: Dedup: request type: %s, for repo (%s) and usr (%s) with dgst (%s)\n", reqtype, reponame, usrname, desc.Digest.String())
-		
+
 	if reqtype == "MANIFEST" {
 		fmt.Printf("NANNAN: THIS IS A MANIFEST REQUEST, no need to deduplication \n")
 		//put manifest
@@ -439,23 +439,23 @@ func (bw *blobWriter) Dedup(
 	})
 
 	layerPath := path.Join("/var/lib/registry", blobPath)
-	lfile, err := os.Open(layerPath)
-	if err != nil {
-		fmt.Printf("NANNAN: cannot open layer file =>%s\n", layerPath)
-		return err
+	//lfile, err := os.Open(layerPath)
+	//if err != nil {
+	//	fmt.Printf("NANNAN: cannot open layer file =>%s\n", layerPath)
+	//	return err
 
-	}
-	defer lfile.Close()
+	//}
+	//defer lfile.Close()
 
-	stat, err := lfile.Stat()
-	if err != nil {
-		fmt.Printf("NANNAN: cannot get size of layer file :=>%s\n", layerPath)
-		return err
-	}
+	//stat, err := lfile.Stat()
+	//if err != nil {
+	//	fmt.Printf("NANNAN: cannot get size of layer file :=>%s\n", layerPath)
+	//	return err
+	//}
 
-	comressSize := stat.Size()
-	
-	bss, err = ioutil.ReadFile(layerPath)
+	//comressSize := stat.Size()
+
+	bss, err := ioutil.ReadFile(layerPath)
 	if err != nil {
 		fmt.Printf("NANNAN: cannot open layer file =>%s\n", layerPath)
 		return err
@@ -463,13 +463,13 @@ func (bw *blobWriter) Dedup(
 
 	ctx := context.WithVersion(context.Background(), version.Version)
 
-	if "LAYER" == reqtype || "MANIFEST" == reqtype{
+	if "LAYER" == reqtype || "MANIFEST" == reqtype {
 		// first store in cache *****
 		//skip warmuplayers
 		// put this layer into cache ******
 		bw.blobStore.registry.blobcache.SetFile(desc.Digest.String(), bss)
-		
-		if "LAYER" == reqtype{
+
+		if "LAYER" == reqtype {
 
 			rlmapentry, err := bw.blobStore.registry.metadataService.StatRLMapEntry(ctx, reponame)
 			if err == nil {
@@ -527,22 +527,22 @@ func (bw *blobWriter) Dedup(
 			return err1
 		}
 	}
-	
-//	des := distribution.LayerRecipeDescriptor{
-//		Digest:            desc.Digest,
-//		MasterIp:          bw.blobStore.registry.hostserverIp, //bw.blobStore.registry.hostserverIp,
-////		HostServerIps:     []string{},                         //RemoveDuplicateIpsFromIps(serverIps),
-////		SliceSizeMap:      map[string]int64{},
-////		UncompressionSize: dirSize,
-////		CompressionSize:   comressSize,
-////		Fcnt:              fcnt,
-//	}
-//		
-//	err = bw.blobStore.registry.metadataService.SetLayerRecipe(ctx, desc.Digest, des)
-//	if err != nil {
-//		return err
-//		//cleanup everything; omitted
-//	}
+
+	//	des := distribution.LayerRecipeDescriptor{
+	//		Digest:            desc.Digest,
+	//		MasterIp:          bw.blobStore.registry.hostserverIp, //bw.blobStore.registry.hostserverIp,
+	////		HostServerIps:     []string{},                         //RemoveDuplicateIpsFromIps(serverIps),
+	////		SliceSizeMap:      map[string]int64{},
+	////		UncompressionSize: dirSize,
+	////		CompressionSize:   comressSize,
+	////		Fcnt:              fcnt,
+	//	}
+	//
+	//	err = bw.blobStore.registry.metadataService.SetLayerRecipe(ctx, desc.Digest, des)
+	//	if err != nil {
+	//		return err
+	//		//cleanup everything; omitted
+	//	}
 
 	return nil
 }
