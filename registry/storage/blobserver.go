@@ -248,7 +248,7 @@ func packFile(i interface{}) {
 
 	//	start := time.Now()
 	//check if newsrc is in file cache
-	bfss, ok := reg.blobcache.GetFile(newsrc)
+	bfss, ok, _ := reg.blobcache.GetFile(newsrc)
 	if ok {
 		fmt.Printf("NANNAN: file cache hit\n")
 		contents = &bfss
@@ -884,26 +884,26 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 	//var tp string
 	//tp = ""
 	var size int64 = 0
-//	var Uncompressedsize int64 = 0
-//	DurationML = 0.0
-//	DurationMAC := 0.0
-//	DurationLCT := 0.0
-//	DurationSCT := 0.0
-//	DurationNTT := 0.0
-//	compressratio := 0.0
+	//	var Uncompressedsize int64 = 0
+	//	DurationML = 0.0
+	//	DurationMAC := 0.0
+	//	DurationLCT := 0.0
+	//	DurationSCT := 0.0
+	//	DurationNTT := 0.0
+	//	compressratio := 0.0
 	DurationMEM := 0.0
 	DurationSSD := 0.0
 	DurationNTT := 0.0
-	
+
 	ok := false
 	if reqtype == "LAYER" || reqtype == "PRECONSTRUCTLAYER" || reqtype == "MANIFEST" {
 
-	// *** check cache ******
-		
-//		start := time.Now()
+		// *** check cache ******
+
+		//		start := time.Now()
 		bss, ok, DurationMEM = bs.reg.blobcache.GetFile(dgst.String())
 		if ok {
-//			DurationMEM = time.Since(start).Seconds()
+			//			DurationMEM = time.Since(start).Seconds()
 			cachehit = true
 			if reqtype == "LAYER" || reqtype == "MANIFEST" {
 				if reqtype == "LAYER" {
@@ -912,7 +912,7 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 
 				bytesreader = bytes.NewReader(bss)
 				size = bytesreader.Size()
-				
+
 			} else {
 				bytesreader = bytes.NewReader([]byte("gotta!"))
 			}
@@ -953,11 +953,11 @@ out:
 	if err != nil {
 		return err
 	}
-	
-	context.GetLogger(ctx).Debugf("NANNAN: primary: reqtype: %v, cachehit: %v, mem time: %v, ssd time: %v"+
-					"layer transfer time: %v, total time: %v, layer compressed size: %v",
-					reqtype, cachehit, DurationMEM, DurationSSD, DurationNTT, (DurationMEM+DurationSSD+DurationNTT), size)
-	
+
+	context.GetLogger(ctx).Debugf("NANNAN: primary: reqtype: %v, cachehit: %v, mem time: %v, ssd time: %v, "+
+		"layer transfer time: %v, total time: %v, layer compressed size: %v",
+		reqtype, cachehit, DurationMEM, DurationSSD, DurationNTT, (DurationMEM + DurationSSD + DurationNTT), size)
+
 	//update ulmap
 	go func(reqtype string, bs *blobServer) {
 		if reqtype == "LAYER" {
@@ -1019,7 +1019,7 @@ out:
 				if reqtype == "LAYER" {
 					context.GetLogger(ctx).Debug("NANNAN: layer cache miss!")
 				}
-				bs.reg.blobcache.SetFile(dgst.String(), bss)	
+				bs.reg.blobcache.SetFile(dgst.String(), bss)
 
 			}
 		}

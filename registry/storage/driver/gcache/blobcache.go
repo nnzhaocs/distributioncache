@@ -339,5 +339,5 @@ func (cache *BlobCache) GetFile(dgst string) ([]byte, bool, float64) {
 
 	//	fmt.Printf("NANNAN: BlobCache GetFile get dgst %s, FileLST, cache size: %v\n", dgst, cache.FileLST.Size(false))
 
-	return bss, true, 0.0
+	return bss, true, duration
 }
