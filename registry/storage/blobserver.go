@@ -883,13 +883,27 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 	var bss []byte
 	//var tp string
 	//tp = ""
+	var size int64 = 0
+//	var Uncompressedsize int64 = 0
+//	DurationML = 0.0
+//	DurationMAC := 0.0
+//	DurationLCT := 0.0
+//	DurationSCT := 0.0
+//	DurationNTT := 0.0
+//	compressratio := 0.0
+	DurationMEM := 0.0
+	DurationSSD := 0.0
+	DurationNTT := 0.0
+	
 	ok := false
 	if reqtype == "LAYER" || reqtype == "PRECONSTRUCTLAYER" || reqtype == "MANIFEST" {
 
 	// *** check cache ******
 		
-		bss, ok = bs.reg.blobcache.GetFile(dgst.String())
+//		start := time.Now()
+		bss, ok, DurationMEM = bs.reg.blobcache.GetFile(dgst.String())
 		if ok {
+//			DurationMEM = time.Since(start).Seconds()
 			cachehit = true
 			if reqtype == "LAYER" || reqtype == "MANIFEST" {
 				if reqtype == "LAYER" {
@@ -897,6 +911,8 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 				}
 
 				bytesreader = bytes.NewReader(bss)
+				size = bytesreader.Size()
+				
 			} else {
 				bytesreader = bytes.NewReader([]byte("gotta!"))
 			}
@@ -908,7 +924,9 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 			blobPath, err := bs.pathFn(_desc.Digest)
 
 			layerPath := path.Join("/var/lib/registry", blobPath)
+			start := time.Now()
 			bss, err = ioutil.ReadFile(layerPath)
+			DurationSSD = time.Since(start).Seconds()
 			if err != nil {
 				fmt.Printf("NANNAN: cannot open layer file =>%s\n", layerPath)
 				return err
@@ -920,6 +938,7 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 			if reqtype == "LAYER" || reqtype == "MANIFEST" {
 
 				bytesreader = bytes.NewReader(bss)
+				size = bytesreader.Size()
 			} else {
 				bytesreader = bytes.NewReader([]byte("gotta!"))
 			}
@@ -928,10 +947,17 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 	}
 
 out:
+	start := time.Now()
 	_, err = bs.TransferBlob(ctx, w, r, _desc, bytesreader)
+	DurationNTT = time.Since(start).Seconds()
 	if err != nil {
 		return err
 	}
+	
+	context.GetLogger(ctx).Debugf("NANNAN: primary: reqtype: %v, cachehit: %v, mem time: %v, ssd time: %v"+
+					"layer transfer time: %v, total time: %v, layer compressed size: %v",
+					reqtype, cachehit, DurationMEM, DurationSSD, DurationNTT, (DurationMEM+DurationSSD+DurationNTT), size)
+	
 	//update ulmap
 	go func(reqtype string, bs *blobServer) {
 		if reqtype == "LAYER" {
