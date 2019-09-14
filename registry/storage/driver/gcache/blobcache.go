@@ -338,20 +338,21 @@ func (cache *BlobCache) SetFile(dgst string, bss []byte) bool {
 	return true
 }
 
-func (cache *BlobCache) GetFile(dgst string) ([]byte, bool) {
+func (cache *BlobCache) GetFile(dgst string) ([]byte, bool, float64) {
 	key := FileHashKey(dgst)
 	if _, err := cache.FileLST.Get(key); err != nil {
 		//		fmt.Printf("NANNAN: BlobCache GetFile FileLST cannot get dgst %s: %v\n", dgst, err)
-		return nil, false
+		return nil, false, 0.0
 	}
-
+	start := time.Now()
 	bss, err := cache.MemCache.Get(key)
+	duration := time.Since(start).Seconds()
 	if err != nil {
 		//		fmt.Printf("NANNAN: BlobCache GetFile MemCache cannot get dgst %s: %v\n", dgst, err)
-		return nil, false
+		return nil, false, 0.0
 	}
 
 	//	fmt.Printf("NANNAN: BlobCache GetFile get dgst %s, FileLST, cache size: %v\n", dgst, cache.FileLST.Size(false))
 
-	return bss, true
+	return bss, true, 0.0
 }
