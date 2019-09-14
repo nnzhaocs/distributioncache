@@ -1019,7 +1019,9 @@ out:
 				if reqtype == "LAYER" {
 					context.GetLogger(ctx).Debug("NANNAN: layer cache miss!")
 				}
-				bs.reg.blobcache.SetFile(dgst.String(), bss)
+				if size != 0 && size <= 1024*1024{
+					bs.reg.blobcache.SetFile(dgst.String(), bss)
+				}
 
 			}
 		}
