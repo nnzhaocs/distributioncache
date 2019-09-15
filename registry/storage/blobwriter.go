@@ -15,7 +15,7 @@ import (
 	"github.com/docker/distribution/context"
 	storagedriver "github.com/docker/distribution/registry/storage/driver"
 	"github.com/docker/distribution/version"
-	//"github.com/klauspost/pgzip"
+	"github.com/klauspost/pgzip"
 	"github.com/panjf2000/ants"
 	//NANNAN
 	"os"
@@ -23,8 +23,8 @@ import (
 	"sync"
 
 	"github.com/docker/distribution/registry/storage/cache"
-	//"github.com/docker/docker/pkg/archive"
-	//"github.com/docker/docker/pkg/idtools"
+	"github.com/docker/docker/pkg/archive"
+	"github.com/docker/docker/pkg/idtools"
 	//"path/filepath"
 	//	"github.com/serialx/hashring"
 	"bytes"
@@ -273,9 +273,12 @@ func packUniqFile(i interface{}) {
 // 1b930d010525941c1d56ec53b97bd057a67ae1865eebf042686d2a2d18271ced/diff/8b6566f585bad55b6fb9efb1dc1b6532fd08bb1796b4b42a3050aacb961f1f3f"
 // THEN, compress as gizp files "/var/lib/registry/docker/registry/v2/mv_tmp_serverfiles/192.168.0.200/mv_tar.tar.gz"
 
-func (bw *blobWriter) PrepareAndForward(ctx context.Context, serverForwardMap map[string][]string, fwg *sync.WaitGroup) error {
+func (bw *blobWriter) PrepareAndForward(ctx context.Context, serverForwardMap map[string][]string, fwg *sync.WaitGroup,
+	isdedup, isforward bool,
+	DurationDCM, DurationRDF, DurationSRM float64,
+	comressSize, dirSize int64) error {
 
-	//start := time.Now()
+	start := time.Now()
 	for server, fpathlst := range serverForwardMap {
 		fwg.Add(1)
 		//		context.GetLogger(ctx).Debugf("NANNAN: serverForwardMap: [%s]=>%", server, fpathlst)
@@ -316,10 +319,19 @@ func (bw *blobWriter) PrepareAndForward(ctx context.Context, serverForwardMap ma
 			if err := tw.Close(); err != nil {
 				fmt.Printf("NANNAN: cannot close tar file for server: %s \n", server)
 			}
-			//DurationCP := time.Since(start).Seconds()
-
+			DurationCP := time.Since(start).Seconds()
+			start = time.Now()
 			bss := pgzipTarFile(&buf, &compressbuf, bw.blobStore.registry.compr_level)
+			DurationTAR := time.Since(start).Seconds()
+			start = time.Now()
 			_ = bw.ForwardToRegistry(ctx, bss, server)
+			DurationSTT := time.Since(start).Seconds()
+
+			if isdedup && isforward {
+				fmt.Printf("NANNAN: Dodedup: decompression time: %.3f, dedup remove dup file time: %.3f, dedup set recipe time: %.3f, "+
+					"slice forward time: %.3f, slice archive time: %.3f, slice compress time: %3.f, compressed size: %d, uncompression size: %d\n",
+					DurationDCM, DurationRDF, DurationSRM, DurationSTT, DurationCP, DurationTAR, comressSize, dirSize)
+			}
 
 		}(server, fpathlst, fwg)
 	}
@@ -426,7 +438,6 @@ func (bw *blobWriter) Dedup(
 	desc distribution.Descriptor) error {
 
 	fmt.Printf("NANNAN: Dedup: request type: %s, for repo (%s) and usr (%s) with dgst (%s)\n", reqtype, reponame, usrname, desc.Digest.String())
-
 	if reqtype == "MANIFEST" {
 		fmt.Printf("NANNAN: THIS IS A MANIFEST REQUEST, no need to deduplication \n")
 		//put manifest
@@ -437,80 +448,132 @@ func (bw *blobWriter) Dedup(
 	blobPath, err := PathFor(BlobDataPathSpec{
 		Digest: desc.Digest,
 	})
-
 	layerPath := path.Join("/var/lib/registry", blobPath)
-	//lfile, err := os.Open(layerPath)
-	//if err != nil {
-	//	fmt.Printf("NANNAN: cannot open layer file =>%s\n", layerPath)
-	//	return err
+	parentDir := path.Dir(layerPath)
+	unpackPath := path.Join(parentDir, "diff")
 
-	//}
-	//defer lfile.Close()
+	archiver := archive.NewDefaultArchiver()
+	options := &archive.TarOptions{
+		UIDMaps: archiver.IDMapping.UIDs(),
+		GIDMaps: archiver.IDMapping.GIDs(),
+	}
+	idMapping := idtools.NewIDMappingsFromMaps(options.UIDMaps, options.GIDMaps)
+	rootIDs := idMapping.RootPair()
+	err = idtools.MkdirAllAndChownNew(unpackPath, 0777, rootIDs)
+	if err != nil {
+		fmt.Printf("NANNAN: error: %v\n", err)
+		return err
+	}
 
-	//stat, err := lfile.Stat()
-	//if err != nil {
-	//	fmt.Printf("NANNAN: cannot get size of layer file :=>%s\n", layerPath)
-	//	return err
-	//}
+	DurationDCM := 0.0
 
-	//comressSize := stat.Size()
+	start := time.Now()
 
-	bss, err := ioutil.ReadFile(layerPath)
+	if reqtype == "FORWARD_REPO" {
+
+		bss, err := ioutil.ReadFile(layerPath)
+		if err != nil {
+			fmt.Printf("NANNAN: cannot read layer file: err: %v\n", err)
+			return err
+
+		}
+
+		compressbufp := bytes.NewBuffer(bss)
+		rdr, err := pgzip.NewReader(compressbufp)
+		if err != nil {
+			fmt.Printf("NANNAN: dedup: cannot create reader from layer file: %v \n", err)
+		}
+		dbs, err := ioutil.ReadAll(rdr)
+		if err != nil {
+			fmt.Printf("NANNAN: dedup: cannot read from layer file reader: %v \n", err)
+		}
+		decomprssbufp := bytes.NewReader(dbs)
+
+		err = archiver.Untar(decomprssbufp, unpackPath, options)
+		DurationDCM = time.Since(start).Seconds()
+		if err != nil {
+			fmt.Printf("NANNAN: error %s, IGNORE MINOR ERRORS \n", err)
+		}
+		needdedup, _ := checkNeedDedupOrNot(unpackPath)
+		if needdedup == false {
+			fmt.Printf("NANNAN: This layer doesn't need deduplication, sent from othrs nodes during dedup: %s\n", layerPath)
+			return nil
+		} else {
+			fmt.Printf("NANNAN: dedup: this should not need to be deduped! error %s\n", unpackPath)
+			return nil
+		}
+	}
+
+	lfile, err := os.Open(layerPath)
 	if err != nil {
 		fmt.Printf("NANNAN: cannot open layer file =>%s\n", layerPath)
 		return err
 	}
+	defer lfile.Close()
 
+	stat, err := lfile.Stat()
+	if err != nil {
+		fmt.Printf("NANNAN: cannot get size of layer file :=>%s\n", layerPath)
+		return err
+	}
+
+	comressSize := stat.Size()
 	ctx := context.WithVersion(context.Background(), version.Version)
 
-	if "LAYER" == reqtype || "MANIFEST" == reqtype {
+	if "LAYER" == reqtype {
 		// first store in cache *****
 		//skip warmuplayers
 		// put this layer into cache ******
-		
-		size := len(bss)
-		if size != 0 && size <= 1024*1024{
-			bw.blobStore.registry.blobcache.SetFile(desc.Digest.String(), bss)
-		}
+		bw.blobStore.registry.blobcache.SetPUTLayer(desc.Digest.String(), comressSize, layerPath)
 
-		if "LAYER" == reqtype {
-			
-			rlmapentry, err := bw.blobStore.registry.metadataService.StatRLMapEntry(ctx, reponame)
-			if err == nil {
-				// exsist
-				if _, ok := rlmapentry.Dgstmap[desc.Digest]; ok {
-					//layer already added to this repo
-				} else {
-					//add layer to repo
-					rlmapentry.Dgstmap[desc.Digest] = 1
-					err1 := bw.blobStore.registry.metadataService.SetRLMapEntry(ctx, reponame, rlmapentry)
-					if err1 != nil {
-						return err1
-					}
-				}
+		rlmapentry, err := bw.blobStore.registry.metadataService.StatRLMapEntry(ctx, reponame)
+		if err == nil {
+			// exsist
+			if _, ok := rlmapentry.Dgstmap[desc.Digest]; ok {
+				//layer already added to this repo
 			} else {
-				//not exisit
-				dgstmap := make(map[digest.Digest]int64)
-				dgstmap[desc.Digest] = 1
-				rlmapentry = distribution.RLmapEntry{
-					Dgstmap: dgstmap,
-				}
+				//add layer to repo
+				rlmapentry.Dgstmap[desc.Digest] = 1
 				err1 := bw.blobStore.registry.metadataService.SetRLMapEntry(ctx, reponame, rlmapentry)
 				if err1 != nil {
 					return err1
 				}
 			}
+		} else {
+			//not exisit
+			dgstmap := make(map[digest.Digest]int64)
+			dgstmap[desc.Digest] = 1
+			rlmapentry = distribution.RLmapEntry{
+				Dgstmap: dgstmap,
+			}
+			err1 := bw.blobStore.registry.metadataService.SetRLMapEntry(ctx, reponame, rlmapentry)
+			if err1 != nil {
+				return err1
+			}
 		}
+		return nil
+	}
+
+	_, err = bw.blobStore.registry.metadataService.StatLayerRecipe(ctx, desc.Digest)
+	if err == nil {
+		fmt.Printf("NANNAN: THIS LAYER TARBALL ALREADY DEDUPED =>%v \n", desc.Digest)
+		return nil
+	}
+
+	err = archiver.UntarPath(layerPath, unpackPath)
+	if err != nil {
+		fmt.Printf("NANNAN: error %s, IGNORE MINOR ERRORS \n", err)
+	}
+	DurationDCM = time.Since(start).Seconds()
+	// check if it's a empty dir *****
+	isEmpty, _ := IsEmpty(unpackPath)
+	if isEmpty == true {
+		fmt.Printf("NANNAN: This unpackpath is empty: %s \n", unpackPath)
 		return nil
 	}
 
 	//then update RLMap ****
 	//start deduplication,
-	size := len(bss)
-	if size != 0 && size <= 1024*1024{
-		bw.blobStore.registry.blobcache.SetFile(desc.Digest.String(), bss)
-	}
-	
 	rlmapentry, err := bw.blobStore.registry.metadataService.StatRLMapEntry(ctx, reponame)
 	if err == nil {
 		// exsist
@@ -537,26 +600,38 @@ func (bw *blobWriter) Dedup(
 		}
 	}
 
-	//	des := distribution.LayerRecipeDescriptor{
-	//		Digest:            desc.Digest,
-	//		MasterIp:          bw.blobStore.registry.hostserverIp, //bw.blobStore.registry.hostserverIp,
-	////		HostServerIps:     []string{},                         //RemoveDuplicateIpsFromIps(serverIps),
-	////		SliceSizeMap:      map[string]int64{},
-	////		UncompressionSize: dirSize,
-	////		CompressionSize:   comressSize,
-	////		Fcnt:              fcnt,
-	//	}
-	//
-	//	err = bw.blobStore.registry.metadataService.SetLayerRecipe(ctx, desc.Digest, des)
-	//	if err != nil {
-	//		return err
-	//		//cleanup everything; omitted
-	//	}
+	//	fmt.Printf("NANNAN: START DEDUPLICATION FROM PATH :=>%s\n", layerPath)
+
+	DurationRDF, DurationSRM, DurationSFT, dirSize, err, isdedup, isforward := bw.doDedup(ctx, desc, unpackPath, comressSize, DurationDCM)
+	//bw.doDedup(ctx, desc, unpackPath, comressSize, DurationDCM)
+	if err != nil {
+		return err
+	}
+
+	if isdedup && isforward {
+		fmt.Printf("NANNAN: Dodedup: decompression time: %.3f, dedup remove dup file time: %.3f, dedup set recipe time: %.3f, "+
+			"slice forward time: %.3f, compressed size: %d, uncompression size: %d\n",
+			DurationDCM, DurationRDF, DurationSRM, DurationSFT, comressSize, dirSize)
+		//***** after dedup remove it from stage area for warmup only *****
+		//		if "LAYER" != reqtype {
+		//			bw.blobStore.registry.blobcache.RemovePUTLayer(desc.Digest.String(), true)
+		//		}
+	} else if isdedup {
+		fmt.Printf("NANNAN: Dodedup: decompression time: %.3f, dedup remove dup file time: %.3f, dedup set recipe time: %.3f, "+
+			"compressed size: %d, uncompression size: %d\n",
+			DurationDCM, DurationRDF, DurationSRM, comressSize, dirSize)
+		//***** after dedup remove it from stage area *****
+		//		if "LAYER" != reqtype {
+		//			bw.blobStore.registry.blobcache.RemovePUTLayer(desc.Digest.String(), true)
+		//		}
+	}
+	//	//***** after dedup remove it from stage area *****
+	//	bw.blobStore.registry.blobcache.RemovePUTLayer(desc.Digest.String())
 
 	return nil
 }
 
-func (bw *blobWriter) doDedup(ctx context.Context, desc distribution.Descriptor, unpackPath string, comressSize int64) (float64, float64, float64, int64, error, bool, bool) {
+func (bw *blobWriter) doDedup(ctx context.Context, desc distribution.Descriptor, unpackPath string, comressSize int64, DurationDCM float64) (float64, float64, float64, int64, error, bool, bool) {
 
 	var nodistributedfiles []distribution.FileDescriptor
 	slices := make(map[string][]distribution.FileDescriptor)
@@ -677,7 +752,10 @@ func (bw *blobWriter) doDedup(ctx context.Context, desc distribution.Descriptor,
 	// let's do forwarding *****
 	start = time.Now()
 	var wg sync.WaitGroup
-	_ = bw.PrepareAndForward(ctx, serverForwardMap, &wg)
+	_ = bw.PrepareAndForward(ctx, serverForwardMap, &wg,
+		isdedup, isforward,
+		DurationDCM, DurationRDF, DurationSRM,
+		comressSize, dirSize)
 	//	go func(){
 	//		wg.Wait()
 	//	}()
