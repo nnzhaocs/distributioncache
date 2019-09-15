@@ -1131,7 +1131,7 @@ out:
 						"layer transfer time: %v, layer compressed size: %v, layer uncompressed size: %v, compressratio: %.3f",
 						reqtype, tp, DurationML, DurationLCT, DurationNTT, size, Uncompressedsize, compressratio)
 				}*/
-				bs.reg.blobcache.SetLayer(dgst.String(), bss) //, constructtype)
+				//bs.reg.blobcache.SetLayer(dgst.String(), bss) //, constructtype)
 
 				rsbufval, ok := bs.reg.restoringlayermap.Load(dgst.String())
 				if ok {
