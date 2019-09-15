@@ -524,7 +524,7 @@ func (bw *blobWriter) Dedup(
 		// first store in cache *****
 		//skip warmuplayers
 		// put this layer into cache ******
-		bw.blobStore.registry.blobcache.SetPUTLayer(desc.Digest.String(), comressSize, layerPath)
+		//bw.blobStore.registry.blobcache.SetPUTLayer(desc.Digest.String(), comressSize, layerPath)
 
 		rlmapentry, err := bw.blobStore.registry.metadataService.StatRLMapEntry(ctx, reponame)
 		if err == nil {

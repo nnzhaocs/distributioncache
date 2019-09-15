@@ -867,7 +867,7 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 	if reqtype == "MANIFEST" {
 		context.GetLogger(ctx).Debugf("NANNAN: THIS IS A MANIFEST REQUEST, serve and preconstruct layers")
 
-		go bs.Preconstructlayers(ctx, bs.reg) // **** prefetch layers ******
+		//go bs.Preconstructlayers(ctx, bs.reg) // **** prefetch layers ******
 
 		DurationNTT, err := bs.serveManifest(ctx, _desc, w, r)
 		if err != nil {
