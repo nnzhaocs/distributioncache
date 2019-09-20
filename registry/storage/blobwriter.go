@@ -467,14 +467,14 @@ func (bw *blobWriter) Dedup(
 		// first store in cache *****
 		//skip warmuplayers
 		// put this layer into cache ******
-		
-		size := len(bss)
-		if size != 0 && size <= 1024*1024{
-			bw.blobStore.registry.blobcache.SetFile(desc.Digest.String(), bss)
-		}
+
+		//size := len(bss)
+		//if size != 0 && size <= 4*1024*1024 {
+		bw.blobStore.registry.blobcache.SetFile(desc.Digest.String(), bss)
+		//}
 
 		if "LAYER" == reqtype {
-			
+
 			rlmapentry, err := bw.blobStore.registry.metadataService.StatRLMapEntry(ctx, reponame)
 			if err == nil {
 				// exsist
@@ -506,11 +506,11 @@ func (bw *blobWriter) Dedup(
 
 	//then update RLMap ****
 	//start deduplication,
-	size := len(bss)
-	if size != 0 && size <= 1024*1024{
-		bw.blobStore.registry.blobcache.SetFile(desc.Digest.String(), bss)
-	}
-	
+	//size := len(bss)
+	//if size != 0 && size <= 1024*1024 {
+	bw.blobStore.registry.blobcache.SetFile(desc.Digest.String(), bss)
+	//}
+
 	rlmapentry, err := bw.blobStore.registry.metadataService.StatRLMapEntry(ctx, reponame)
 	if err == nil {
 		// exsist

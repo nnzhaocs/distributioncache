@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"math/rand"
 	"net/http"
 	"strings"
 
@@ -487,58 +488,86 @@ func (bs *blobServer) notifyPeerPreconstructLayer(ctx context.Context, dgst dige
 		return false
 	}
 
-	for _, regip := range desc.HostServerIps {
+	rand.Seed(time.Now().UnixNano())
 
-		go func(regip string, ctx context.Context, dgst digest.Digest, wg *sync.WaitGroup) {
-			tp := "TYPEPRECONSTRUCTLAYER"
+	choosen := desc.HostServerIps[rand.Intn(len(desc.HostServerIps)-1)]
+	regip := choosen
+	//for _, regip := range desc.HostServerIps {
 
-			dgststring := dgst.String()
-			var regipbuffer bytes.Buffer
-			reponame := context.GetRepoName(ctx)
-			usrname := context.GetUsrAddr(ctx)
+	go func(regip string, ctx context.Context, dgst digest.Digest, wg *sync.WaitGroup) {
+		tp := "TYPEPRECONSTRUCTLAYER"
 
-			regipbuffer.WriteString(regip)
-			//		regipbuffer.WriteString(":5000")
-			regip = regipbuffer.String()
-			context.GetLogger(ctx).Debugf("NANNAN: notifyPeerPreconstructLayer for %s, dgst: %s", regip, dgststring)
+		dgststring := dgst.String()
+		var regipbuffer bytes.Buffer
+		reponame := context.GetRepoName(ctx)
+		usrname := context.GetUsrAddr(ctx)
 
-			//GET /v2/<name>/blobs/<digest>
-			var urlbuffer bytes.Buffer
-			urlbuffer.WriteString("http://")
-			urlbuffer.WriteString(regip)
-			urlbuffer.WriteString("/v2/")
-			urlbuffer.WriteString(tp + "USRADDR" + usrname + "REPONAME" + reponame)
-			urlbuffer.WriteString("/blobs/sha256:")
+		regipbuffer.WriteString(regip)
+		//		regipbuffer.WriteString(":5000")
+		regip = regipbuffer.String()
+		context.GetLogger(ctx).Debugf("NANNAN: notifyPeerPreconstructLayer for %s, dgst: %s", regip, dgststring)
 
-			newdgststring := strings.SplitN(dgststring, "sha256:", 2)[1]
-			urlbuffer.WriteString(newdgststring)
+		//GET /v2/<name>/blobs/<digest>
+		var urlbuffer bytes.Buffer
+		urlbuffer.WriteString("http://")
+		urlbuffer.WriteString(regip)
+		urlbuffer.WriteString("/v2/")
+		urlbuffer.WriteString(tp + "USRADDR" + usrname + "REPONAME" + reponame)
+		urlbuffer.WriteString("/blobs/sha256:")
 
-			url := urlbuffer.String()
-			url = strings.ToLower(url)
-			context.GetLogger(ctx).Debugf("NANNAN: notifyPeerPreconstructLayer URL %s", url)
+		newdgststring := strings.SplitN(dgststring, "sha256:", 2)[1]
+		urlbuffer.WriteString(newdgststring)
 
-			//let's skip head request
-			req, err := http.NewRequest("GET", url, nil)
-			if err != nil {
-				context.GetLogger(ctx).Errorf("NANNAN: notifyPeerPreconstructLayer GET URL %s, err %s", url, err)
-				return //false
-			}
+		url := urlbuffer.String()
+		url = strings.ToLower(url)
+		context.GetLogger(ctx).Debugf("NANNAN: notifyPeerPreconstructLayer URL %s", url)
 
-			client := &http.Client{}
-			resp, err := client.Do(req)
-			if err != nil {
-				context.GetLogger(ctx).Errorf("NANNAN: notifyPeerPreconstructLayer Do GET URL %s, err %s", url, err)
-				return //false
-			}
-			context.GetLogger(ctx).Debugf("NANNAN: notifyPeerPreconstructLayer %s returned status code %d", regip, resp.StatusCode)
-			if resp.StatusCode < 200 || resp.StatusCode > 299 {
-				return //false //errors.New("notifyPeerPreconstructLayer to other servers, failed")
-			}
-			return
+		//let's skip head request
+		req, err := http.NewRequest("GET", url, nil)
+		if err != nil {
+			context.GetLogger(ctx).Errorf("NANNAN: notifyPeerPreconstructLayer GET URL %s, err %s", url, err)
+			return //false
+		}
 
-		}(regip, ctx, dgst, wg)
-		//return true
-	}
+		client := &http.Client{}
+		resp, err := client.Do(req)
+		if err != nil {
+			context.GetLogger(ctx).Errorf("NANNAN: notifyPeerPreconstructLayer Do GET URL %s, err %s", url, err)
+			return //false
+		}
+		context.GetLogger(ctx).Debugf("NANNAN: notifyPeerPreconstructLayer %s returned status code %d", regip, resp.StatusCode)
+		if resp.StatusCode < 200 || resp.StatusCode > 299 {
+			return //false //errors.New("notifyPeerPreconstructLayer to other servers, failed")
+		}
+		//return
+
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			context.GetLogger(ctx).Errorf("NANNAN: cannot read from resp.body: %s", err)
+			return err
+
+		}
+
+		context.GetLogger(ctx).Debugf("NANNAN: GetLayerFromRegistry succeed! URL %s size: %d", url, len(body))
+
+		bs.reg.blobcache.SetFile(dgst.String(), body)
+
+		/*		buf := bytes.NewBuffer(body)
+
+				if bs.reg.compressmethod == "pgzip" {
+					err = bs.pgzipconcatTarFile(buf, pw)
+
+				} else if bs.reg.compressmethod == "lz4" {
+					err = bs.lz4concatTarFile(buf, pw)
+
+				} else {
+					fmt.Printf("NANNAN: error. what is the compress method?", bs.reg.compressmethod)
+
+				}*/
+
+	}(regip, ctx, dgst, wg)
+	//return true
+	//}
 	return true
 }
 
@@ -610,6 +639,7 @@ func (bs *blobServer) GetSliceFromRegistry(ctx context.Context, dgst digest.Dige
 		context.GetLogger(ctx).Debugf("NANNAN: GetSliceFromRegistry succeed! URL %s size: %d", url, len(body))
 
 		buf := bytes.NewBuffer(body)
+		//	bs.reg.blobcache.SetFile(dgst.String(), body)
 
 		if bs.reg.compressmethod == "pgzip" {
 			err = bs.pgzipconcatTarFile(buf, pw)
@@ -914,7 +944,9 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 				size = bytesreader.Size()
 
 			} else {
-				bytesreader = bytes.NewReader([]byte("gotta!"))
+				bytesreader = bytes.NewReader(bss)
+				size = bytesreader.Size()
+				//bytesreader = bytes.NewReader([]byte("gotta!"))
 			}
 
 			goto out
@@ -1019,9 +1051,9 @@ out:
 				if reqtype == "LAYER" {
 					context.GetLogger(ctx).Debug("NANNAN: layer cache miss!")
 				}
-				if size != 0 && size <= 1024*1024{
-					bs.reg.blobcache.SetFile(dgst.String(), bss)
-				}
+				//if size != 0 && size <= 4*1024*1024 {
+				bs.reg.blobcache.SetFile(dgst.String(), bss)
+				//}
 
 			}
 		}
