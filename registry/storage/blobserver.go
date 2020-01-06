@@ -21,6 +21,7 @@ import (
 	"regexp"
 	"sync"
 	"time"
+	"syscall"
 
 	mapset "github.com/deckarep/golang-set"
 	digest "github.com/opencontainers/go-digest"
@@ -262,8 +263,15 @@ func packFile(i interface{}) {
 			fmt.Printf("NANNAN: src file %v: error: %v\n", newsrc, err)
 			return
 		}
+		
+		in, err := os.OpenFile(newsrc, os.O_RDONLY|syscall.O_DIRECT, 0666)
+		if err != nil {
+			return err
+			context.GetLogger(ctx).Errorf("NANNAN: openFile: Failed to open %s for reading: %s\n", bpath, err)
+		}
+	    defer in.Close()
 
-		bfss, err := ioutil.ReadFile(newsrc)
+		bfss, err := ioutil.ReadAll(in)
 		if err != nil {
 			fmt.Printf("NANNAN: read file %s generated error: %v\n", desc, err)
 			return
@@ -880,12 +888,10 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 
 	var tp string
 	cachehit := false
-	//	stagehit := false
-	//	waitingconstruct := false
 
 	var bytesreader *bytes.Reader
 	var bss []byte
-	//var ok bool = false
+
 	var size int64 = 0
 	var Uncompressedsize int64 = 0
 	DurationML = 0.0
@@ -894,7 +900,7 @@ func (bs *blobServer) ServeBlob(ctx context.Context, w http.ResponseWriter, r *h
 	DurationSCT := 0.0
 	DurationNTT := 0.0
 	compressratio := 0.0
-	//ok = false
+
 
 	if reqtype == "LAYER" || reqtype == "PRECONSTRUCTLAYER" {
 		start = time.Now()

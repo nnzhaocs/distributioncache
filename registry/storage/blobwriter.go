@@ -149,6 +149,7 @@ http.request.uri="/v2/forward_repo/blobs/uploads/d8a15122-8119-4290-a100-bd6ccd4
 http.request.useragent="Go-http-client/1.1" http.response.contenttype="application/json; charset=utf-8" http.response.duration=9.048157ms
 http.response.status=400 http.response.written=131 vars.name="forward_repo" vars.uuid=d8a15122-8119-4290-a100-bd6ccd4ce747
 */
+
 func (bw *blobWriter) ForwardToRegistry(ctx context.Context, bss []byte, server string) error {
 
 	regname := server
