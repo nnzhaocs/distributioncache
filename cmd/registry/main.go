@@ -18,7 +18,7 @@ import (
 	_ "github.com/docker/distribution/registry/storage/driver/s3-aws"
 	_ "github.com/docker/distribution/registry/storage/driver/s3-goamz"
 	_ "github.com/docker/distribution/registry/storage/driver/swift"
-    _ "github.com/docker/distribution/registry/storage/driver/distributed"
+ //   _ "github.com/docker/distribution/registry/storage/driver/distributed"
 )
 
 func main() {

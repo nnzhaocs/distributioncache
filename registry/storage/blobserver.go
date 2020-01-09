@@ -266,8 +266,8 @@ func packFile(i interface{}) {
 		
 		in, err := os.OpenFile(newsrc, os.O_RDONLY|syscall.O_DIRECT, 0666)
 		if err != nil {
-			return err
-			context.GetLogger(ctx).Errorf("NANNAN: openFile: Failed to open %s for reading: %s\n", bpath, err)
+			//return err
+			fmt.Printf("NANNAN: openFile: Failed to open %s for reading: %s\n", newsrc, err)
 		}
 	    defer in.Close()
 
@@ -364,8 +364,8 @@ func (bs *blobServer) packAllFiles(ctx context.Context, desc distribution.SliceR
 		fcnt += 1
 	}
 
-	if fcnt > 500 {
-		fcnt = 500
+	if fcnt > 10 {
+		fcnt = 10
 	}
 
 	var wg sync.WaitGroup
