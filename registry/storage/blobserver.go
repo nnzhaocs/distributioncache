@@ -263,11 +263,16 @@ func packFile(i interface{}) {
 			return
 		}
 
-		bfss, err := ioutil.ReadFile(newsrc)
+		in, err := os.OpenFile(newsrc, os.O_RDONLY|syscall.O_DIRECT, 0666)
 		if err != nil {
-			fmt.Printf("NANNAN: read file %s generated error: %v\n", desc, err)
-			return
-		} else {
+			fmt.Printf("NANNAN: openFile: Failed to open %s for reading: %s\n", newsrc, err)
+		defer in.Close()
+
+                bfss, err := ioutil.ReadAll(in)
+                if err != nil {
+                        fmt.Printf("NANNAN: read file %s generated error: %v\n", desc, err)
+                        return
+	} else {
 			contents = &bfss
 			//put in cache
 			//			fmt.Printf("NANNAN: file cache put: %v B for %s\n", len(bfss), newsrc)
@@ -356,8 +361,8 @@ func (bs *blobServer) packAllFiles(ctx context.Context, desc distribution.SliceR
 		fcnt += 1
 	}
 
-	if fcnt > 100 {
-		fcnt = 100
+	if fcnt > 16 {
+		fcnt = 16
 	}
 
 	var wg sync.WaitGroup
