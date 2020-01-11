@@ -21,6 +21,7 @@ import (
 	"regexp"
 	"sync"
 	"time"
+	"syscall"
 
 	mapset "github.com/deckarep/golang-set"
 	digest "github.com/opencontainers/go-digest"
@@ -265,7 +266,8 @@ func packFile(i interface{}) {
 
 		in, err := os.OpenFile(newsrc, os.O_RDONLY|syscall.O_DIRECT, 0666)
 		if err != nil {
-			fmt.Printf("NANNAN: openFile: Failed to open %s for reading: %s\n", newsrc, err)
+			fmt.Printf("NANNAN: openFile: Failed to open %s for reading: %s\n", newsrc, err) 
+		}
 		defer in.Close()
 
                 bfss, err := ioutil.ReadAll(in)
