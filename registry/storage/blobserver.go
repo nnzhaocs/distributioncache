@@ -356,8 +356,8 @@ func (bs *blobServer) packAllFiles(ctx context.Context, desc distribution.SliceR
 		fcnt += 1
 	}
 
-	if fcnt > 500 {
-		fcnt = 500
+	if fcnt > 100 {
+		fcnt = 100
 	}
 
 	var wg sync.WaitGroup
@@ -650,11 +650,21 @@ func (bs *blobServer) constructSlice(ctx context.Context, desc distribution.Slic
 
 	start := time.Now()
 	_ = bs.packAllFiles(ctx, desc, &buf, reg, constructtype)
+	Duration := time.Since(start).Seconds()
+	context.GetLogger(ctx).Debugf("NANNAN: packAllFiles: %v", Duration)
+	
+	//context.GetLogger(ctx).Debugf("NANNAN: slice construct: reqtype: %s, %s: metadata lookup time: %v, slice construct time: %v, "+
+//					"slice transfer time: %v, slice compressed size: %v, slice uncompressed size: %v, compressratio: %.3f",
+//					reqtype, tp, DurationML, DurationSCT, DurationNTT, size, Uncompressedsize, compressratio)
 	//DurationCP
 	//start = time.Now()
 	var bss []byte
 	if bs.reg.compressmethod == "pgzip" {
+		start = time.Now()
 		bss = pgzipTarFile(&buf, &comprssbuf, 2) // bs.reg.compr_level)
+		Duration = time.Since(start).Seconds()
+		context.GetLogger(ctx).Debugf("NANNAN: pgzipTarFile: %v", Duration)
+		
 	} else if bs.reg.compressmethod == "lz4" {
 		bss = lz4TarFile(&buf, &comprssbuf, 8)
 	} else {
