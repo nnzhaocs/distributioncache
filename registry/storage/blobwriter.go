@@ -253,7 +253,7 @@ func packUniqFile(i interface{}) {
 	}
 
 	//size
-	_, err = addToTarFile(tf, desc, *contents)
+	_, err = addToTarFile(tf, desc, *contents, true)
 	if err != nil {
 		fmt.Printf("NANNAN: dedup desc file %s generated error: %v\n", desc, err)
 		return

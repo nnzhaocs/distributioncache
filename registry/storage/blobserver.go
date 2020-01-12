@@ -310,7 +310,7 @@ func packFile(i interface{}) {
 			
 			header = false
 		}
-//	}
+	}
 
 	//	DurationFCP := time.Since(start).Seconds()
 	//	fmt.Printf("NANNAN: wrote %d bytes to file %s duration: %v\n", size, desc, DurationFCP)
