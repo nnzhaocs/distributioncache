@@ -447,7 +447,7 @@ func (bw *blobWriter) Dedup(
 	}
 	idMapping := idtools.NewIDMappingsFromMaps(options.UIDMaps, options.GIDMaps)
 	rootIDs := idMapping.RootPair()
-	err = idtools.MkdirAllAndChownNew(unpackPath, 0777, rootIDs)
+	err = idtools.MkdirAllAndChownNew(unpackPath, 0755, rootIDs)
 	if err != nil {
 		fmt.Printf("NANNAN: error: %v\n", err)
 		return err
@@ -683,7 +683,7 @@ func (bw *blobWriter) doDedup(ctx context.Context, desc distribution.Descriptor,
 	sliceSizeMapnew := make(map[string]int64)
 	var maxsize int64 = 0
 	var masterIp string
-	for sip := range slices {
+	for sip, _ := range slices {
 		if sliceSizeMap[sip] > 0 {
 			hostserverIps = append(hostserverIps, sip)
 			sliceSizeMapnew[sip] = sliceSizeMap[sip]
@@ -722,6 +722,9 @@ func (bw *blobWriter) doDedup(ctx context.Context, desc distribution.Descriptor,
 		CompressionSize:   comressSize,
 		Fcnt:              fcnt,
 	}
+
+	fmt.Print("NANNAN: sliceSizeMap: %v\n", sliceSizeMap)
+	fmt.Printf("NANNAN: set layer recipt: %v\n", des)
 
 	err = bw.blobStore.registry.metadataService.SetLayerRecipe(ctx, desc.Digest, des)
 	if err != nil {

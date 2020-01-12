@@ -269,15 +269,20 @@ func packFile(i interface{}) {
 			fmt.Printf("NANNAN: openFile: Failed to open %s for reading: %s\n", newsrc, err) 
 		}
 		defer in.Close()
-
-                bfss, err := ioutil.ReadAll(in)
-                if err != nil {
-                        fmt.Printf("NANNAN: read file %s generated error: %v\n", desc, err)
-                        return
-	} else {
+		//fsize := fileinfo.Size()
+		bfss := make([]byte, 6144)
+		
+		//for {
+		_, err = io.ReadFull(in, bfss)
+		if err != nil && err != io.EOF {
+		 
+                 
+                 	fmt.Printf("NANNAN: read file %s generated error: %v\n", desc, err)
+                       	return
+		} else {
 			contents = &bfss
 			//put in cache
-			//			fmt.Printf("NANNAN: file cache put: %v B for %s\n", len(bfss), newsrc)
+			//fmt.Printf("NANNAN: file cache put: %v B for %s\n", len(bfss), newsrc)
 			if len(bfss) > 0 {
 				ok = reg.blobcache.SetFile(newsrc, bfss)
 				if !ok {
@@ -285,9 +290,9 @@ func packFile(i interface{}) {
 				}
 			}
 		}
-	}
+//	}
 
-	_, err := addToTarFile(tf, desc, *contents)
+	_, err = addToTarFile(tf, desc, *contents)
 	if err != nil {
 		fmt.Printf("NANNAN: desc file %s generated error: %v\n", desc, err)
 		return
@@ -611,7 +616,10 @@ func (bs *blobServer) GetSliceFromRegistry(ctx context.Context, dgst digest.Dige
 		buf := bytes.NewBuffer(body)
 
 		if bs.reg.compressmethod == "pgzip" {
+			start := time.Now()
 			err = bs.pgzipconcatTarFile(buf, pw)
+			elapsed := time.Since(start).Seconds()
+			fmt.Printf("NANNAN: concattarfile: %v", elapsed)
 		} else if bs.reg.compressmethod == "lz4" {
 			err = bs.lz4concatTarFile(buf, pw)
 		} else {
@@ -639,7 +647,11 @@ func (bs *blobServer) GetSliceFromRegistry(ctx context.Context, dgst digest.Dige
 	buf := bytes.NewBuffer(bss)
 
 	if bs.reg.compressmethod == "pgzip" {
+		start := time.Now()
 		err = bs.pgzipconcatTarFile(buf, pw)
+		elapsed := time.Since(start).Seconds()
+		fmt.Printf("NANNAN: concattarfile: %v", elapsed)
+		
 	} else if bs.reg.compressmethod == "lz4" {
 		err = bs.lz4concatTarFile(buf, pw)
 	} else {

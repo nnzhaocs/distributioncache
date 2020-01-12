@@ -398,7 +398,7 @@ func (rdms *redisDedupMetadataService) StatLayerRecipe(ctx context.Context, dgst
 
 func (rdms *redisDedupMetadataService) SetLayerRecipe(ctx context.Context, dgst digest.Digest, desc distribution.LayerRecipeDescriptor) error {
 
-	err := rdms.cluster.SetNX(rdms.LayerRecipeHashKey(dgst), &desc, 0).Err()
+	err := rdms.cluster.Set(rdms.LayerRecipeHashKey(dgst), &desc, 0).Err()
 	if err != nil {
 		context.GetLogger(ctx).Errorf("NANNAN: redis cluster cannot set value for key %s", err)
 		return err
@@ -428,7 +428,7 @@ func (rdms *redisDedupMetadataService) StatSliceRecipe(ctx context.Context, dgst
 
 func (rdms *redisDedupMetadataService) SetSliceRecipe(ctx context.Context, dgst digest.Digest, desc distribution.SliceRecipeDescriptor, sip string) error {
 
-	err := rdms.cluster.SetNX(rdms.SliceRecipeHashKey(dgst, sip), &desc, 0).Err()
+	err := rdms.cluster.Set(rdms.SliceRecipeHashKey(dgst, sip), &desc, 0).Err()
 	if err != nil {
 		context.GetLogger(ctx).Errorf("NANNAN: redis cluster cannot set value for key %s", err)
 		return err
