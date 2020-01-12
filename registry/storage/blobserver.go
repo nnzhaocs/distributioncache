@@ -308,7 +308,7 @@ func packFile(i interface{}) {
 	}
 
 	header := true
-	_, err = addToTarFile(tf, desc, *contents, header)
+	_, err := addToTarFile(tf, desc, *contents, header)
 	if err != nil {
 		fmt.Printf("NANNAN: desc file %s generated error: %v\n", desc, err)
 		return
