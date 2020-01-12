@@ -298,7 +298,6 @@ func packFile(i interface{}) {
 			
 		}
 		
-		
 		bfss, err = ioutil.ReadFile(newsrc)
 		if err != nil {
 			fmt.Printf("NANNAN: ioutil read file %s generated error: %v\n", desc, err)
@@ -314,8 +313,6 @@ func packFile(i interface{}) {
 		fmt.Printf("NANNAN: desc file %s generated error: %v\n", desc, err)
 		return
 	}
-	
-//	header = false
 
 	//	DurationFCP := time.Since(start).Seconds()
 	//	fmt.Printf("NANNAN: wrote %d bytes to file %s duration: %v\n", size, desc, DurationFCP)
