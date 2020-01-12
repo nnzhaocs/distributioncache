@@ -21,7 +21,7 @@ import (
 	"regexp"
 	"sync"
 	"time"
-	"syscall"
+	//"syscall"
 
 	mapset "github.com/deckarep/golang-set"
 	digest "github.com/opencontainers/go-digest"
@@ -264,21 +264,22 @@ func packFile(i interface{}) {
 			return
 		}
 
-		in, err := os.OpenFile(newsrc, os.O_RDONLY|syscall.O_DIRECT, 0666)
-		if err != nil {
-			fmt.Printf("NANNAN: openFile: Failed to open %s for reading: %s\n", newsrc, err) 
-		}
-		defer in.Close()
-		//fsize := fileinfo.Size()
-		bfss := make([]byte, 6144)
+		//in, err := os.OpenFile(newsrc, os.O_RDONLY|syscall.O_DIRECT, 0777)
+		//if err != nil {
+		//	fmt.Printf("NANNAN: openFile: Failed to open %s for reading: %s\n", newsrc, err) 
+		//}
+		//defer in.Close()
 		
-		//for {
-		_, err = io.ReadFull(in, bfss)
-		if err != nil && err != io.EOF {
-		 
-                 
-                 	fmt.Printf("NANNAN: read file %s generated error: %v\n", desc, err)
-                       	return
+	
+		//bfss := make([]byte, 6144)
+		//_, err = io.ReadFull(in, bfss)
+		//if err != nil && err != io.EOF {
+                // 	fmt.Printf("NANNAN: read file %s generated error: %v\n", desc, err)
+		bfss, err = ioutil.ReadFile(newsrc)
+		if err != nil {
+			fmt.Printf("NANNAN: ioutil read file %s generated error: %v\n", desc, err)
+                	return
+			//}
 		} else {
 			contents = &bfss
 			//put in cache
@@ -290,9 +291,9 @@ func packFile(i interface{}) {
 				}
 			}
 		}
-//	}
+	}
 
-	_, err = addToTarFile(tf, desc, *contents)
+	_, err := addToTarFile(tf, desc, *contents)
 	if err != nil {
 		fmt.Printf("NANNAN: desc file %s generated error: %v\n", desc, err)
 		return
