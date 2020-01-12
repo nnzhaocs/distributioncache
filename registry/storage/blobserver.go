@@ -288,7 +288,7 @@ func packFile(i interface{}) {
 				}
 	            return
 //			} else {
-//				contents = &bfss
+				//contents = &bfss
 				//put in cache
 				//fmt.Printf("NANNAN: file cache put: %v B for %s\n", len(bfss), newsrc)
 //				if len(bfss) > 0 {
@@ -300,7 +300,7 @@ func packFile(i interface{}) {
 			}
 			
 //		}
-		
+		contents = &bfss
 //		bfss, err = ioutil.ReadFile(newsrc)
 //		if err != nil {
 //			fmt.Printf("NANNAN: ioutil read file %s generated error: %v\n", desc, err)
