@@ -708,7 +708,8 @@ func (bw *blobWriter) doDedup(ctx context.Context, desc distribution.Descriptor,
 			err = bw.blobStore.registry.metadataService.SetSliceRecipe(ctx, desc.Digest, des, sip)
 			if err != nil {
 				//cleanup slice // omitted
-				return DurationRDF, DurationSRM, DurationSFT, dirSize, err, isdedup, isforward
+				fmt.Printf("NANNAN: error set slice recipe: %v\n", err)
+//				return DurationRDF, DurationSRM, DurationSFT, dirSize, err, isdedup, isforward
 			}
 		}
 	}
@@ -802,7 +803,7 @@ func (bw *blobWriter) CheckDuplicate(ctx context.Context, serverIp string, db ca
 		digestFn := algorithm.FromReader
 		dgst, err := digestFn(fp)
 		if err != nil {
-			fmt.Printf("NANNAN: %s: error %v \n", fpath, err)
+			fmt.Printf("NANNAN: error %s: error %v \n", fpath, err)
 			return err
 		}
 
