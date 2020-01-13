@@ -637,7 +637,12 @@ func (bs *blobServer) GetSliceFromRegistry(ctx context.Context, dgst digest.Dige
 		buf := bytes.NewBuffer(body)
 
 		if bs.reg.compressmethod == "pgzip" {
+			
+			start := time.Now()
 			err = bs.pgzipconcatTarFile(buf, pw)
+			elapsed := time.Since(start).Seconds()
+			fmt.Printf("NANNAN: concattarfile: %v", elapsed)
+			
 		} else if bs.reg.compressmethod == "lz4" {
 			err = bs.lz4concatTarFile(buf, pw)
 		} else {
@@ -683,11 +688,18 @@ func (bs *blobServer) constructSlice(ctx context.Context, desc distribution.Slic
 
 	start := time.Now()
 	_ = bs.packAllFiles(ctx, desc, &buf, reg, constructtype)
+	Duration := time.Since(start).Seconds()
+	context.GetLogger(ctx).Debugf("NANNAN: packAllFiles: %v", Duration)
+	
 	//DurationCP
 	//start = time.Now()
 	var bss []byte
 	if bs.reg.compressmethod == "pgzip" {
+		start = time.Now()
 		bss = pgzipTarFile(&buf, &comprssbuf, 2) // bs.reg.compr_level)
+		Duration = time.Since(start).Seconds()
+		context.GetLogger(ctx).Debugf("NANNAN: pgzipTarFile: %v", Duration)
+		
 	} else if bs.reg.compressmethod == "lz4" {
 		bss = lz4TarFile(&buf, &comprssbuf, 8)
 	} else {
