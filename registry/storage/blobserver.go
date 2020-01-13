@@ -274,19 +274,19 @@ func packFile(i interface{}) {
 		if err != nil {
 			fmt.Printf("NANNAN: openFile: Failed to open %s for reading: %s\n", newsrc, err) 
 		}
-		defer in.Close()
+		//defer in.Close()
 		
 		buf := directio.AlignedBlock(directio.BlockSize)
 		//bfss := make([]byte, 6144)
-		header := true
+		//header := true
 		
 		for {
 			_, err = io.ReadFull(in, buf)
 			if err != nil || err == io.EOF {
-				if err != io.ErrUnexpectedEOF{
-		            fmt.Printf("NANNAN: read file %s generated error: %v\n", desc, err)
-				}
-	            return
+					if err != io.ErrUnexpectedEOF{
+		            			fmt.Printf("NANNAN: read file %s generated error: %v\n", desc, err)
+					}
+	            			break
 //			} else {
 				//contents = &bfss
 				//put in cache
@@ -300,22 +300,24 @@ func packFile(i interface{}) {
 			}
 			
 		}
+		in.Close()
 		//contents = &bfss
 		bfss, err = ioutil.ReadFile(newsrc)
 		if err != nil {
 			fmt.Printf("NANNAN: ioutil read file %s generated error: %v\n", desc, err)
-	        return
+	        	return
 		}else {
 			contents = &bfss
 		}
 	
-	}		
-	_, err = addToTarFile(tf, desc, *contents, header)
+	}
+	header := true		
+	_, err := addToTarFile(tf, desc, *contents, header)
 	if err != nil {
 		fmt.Printf("NANNAN: desc file %s generated error: %v\n", desc, err)
 		return
 	}
-	header = false
+	//header = false
 	
 	//}
 	//}
