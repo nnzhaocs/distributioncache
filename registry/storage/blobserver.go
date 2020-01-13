@@ -22,7 +22,7 @@ import (
 	"sync"
 	"time"
 	"syscall"
-
+	"github.com/ncw/directio"
 	mapset "github.com/deckarep/golang-set"
 	digest "github.com/opencontainers/go-digest"
 	"github.com/panjf2000/ants"
