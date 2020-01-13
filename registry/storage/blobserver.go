@@ -137,19 +137,22 @@ type Task struct {
 	//Ctype string
 }
 
-func addToTarFile(tf *TarFile, path string, contents []byte) (int, error) {
+func addToTarFile(tf *TarFile, path string, contents []byte, header bool) (int, error) {
 
 	hdr := &tar.Header{
 		Name: path,
 		Mode: 0600,
 		Size: int64(len(contents)),
 	}
-
+	
 	tf.Lm.Lock()
-	if err := tf.Tw.WriteHeader(hdr); err != nil {
-		fmt.Printf("NANNAN: cannot write file header to tar file for %s\n", path)
-		tf.Lm.Unlock()
-		return 0, err
+	
+	if true == header {
+		if err := tf.Tw.WriteHeader(hdr); err != nil {
+			fmt.Printf("NANNAN: cannot write file header to tar file for %s\n", path)
+			tf.Lm.Unlock()
+			return 0, err
+		}
 	}
 
 	size, err := tf.Tw.Write(contents)
@@ -264,35 +267,57 @@ func packFile(i interface{}) {
 			return
 		}
 		
-		in, err := os.OpenFile(newsrc, os.O_RDONLY|syscall.O_DIRECT, 0666)
+		in, err := os.OpenFile(newsrc, os.O_RDONLY|syscall.O_DIRECT, 0777)
 		if err != nil {
-			//return err
-			fmt.Printf("NANNAN: openFile: Failed to open %s for reading: %s\n", newsrc, err)
+			fmt.Printf("NANNAN: openFile: Failed to open %s for reading: %s\n", newsrc, err) 
 		}
-	    defer in.Close()
-
-		bfss, err := ioutil.ReadAll(in)
-		if err != nil {
-			fmt.Printf("NANNAN: read file %s generated error: %v\n", desc, err)
-			return
-		} else {
-			contents = &bfss
-			//put in cache
-			//			fmt.Printf("NANNAN: file cache put: %v B for %s\n", len(bfss), newsrc)
-			if len(bfss) > 0 {
-				ok = reg.blobcache.SetFile(newsrc, bfss)
-				if !ok {
-					fmt.Printf("NANNAN: file cache cannot write to digest: %v: \n", newsrc)
-				}
+		//defer in.Close()
+		
+		buf := directio.AlignedBlock(directio.BlockSize)
+		//bfss := make([]byte, 6144)
+		//header := true
+		
+		for {
+			_, err = io.ReadFull(in, buf)
+			if err != nil || err == io.EOF {
+					if err != io.ErrUnexpectedEOF{
+		            			fmt.Printf("NANNAN: read file %s generated error: %v\n", desc, err)
+					}
+	            			break
+//			} else {
+				//contents = &bfss
+				//put in cache
+				//fmt.Printf("NANNAN: file cache put: %v B for %s\n", len(bfss), newsrc)
+//				if len(bfss) > 0 {
+//					ok = reg.blobcache.SetFile(newsrc, bfss)
+//					if !ok {
+//						fmt.Printf("NANNAN: file cache cannot write to digest: %v: \n", newsrc)
+//					}
+//				}
 			}
+			
 		}
+		in.Close()
+		//contents = &bfss
+		bfss, err = ioutil.ReadFile(newsrc)
+		if err != nil {
+			fmt.Printf("NANNAN: ioutil read file %s generated error: %v\n", desc, err)
+	        	return
+		}else {
+			contents = &bfss
+		}
+	
 	}
-
-	_, err := addToTarFile(tf, desc, *contents)
+	header := true		
+	_, err := addToTarFile(tf, desc, *contents, header)
 	if err != nil {
 		fmt.Printf("NANNAN: desc file %s generated error: %v\n", desc, err)
 		return
 	}
+	//header = false
+	
+	//}
+	//}
 
 	//	DurationFCP := time.Since(start).Seconds()
 	//	fmt.Printf("NANNAN: wrote %d bytes to file %s duration: %v\n", size, desc, DurationFCP)
